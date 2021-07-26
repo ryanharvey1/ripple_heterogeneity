@@ -53,10 +53,11 @@ for a = 1:numel(animal)
         end
         ses = ses+1;
         basename = bz_BasenameFromBasepath(pwd);
-        if exist([basename '.cell_metrics.cellinfo.mat'],'dir')
+        if exist([basename '.cell_metrics.cellinfo.mat'],'file')
             load([basename '.cell_metrics.cellinfo.mat']);
         else
-            co
+            disp([basename '.cell_metrics.cellinfo.mat',' does not exist'])
+            continue
         end
        
         ntemp=0;
@@ -75,19 +76,23 @@ end
 
 %% pool data v1
 sesPre=0; sesTask=0; sesPost=0;
-for a = 1:13%numel(animal)
+for a = 1:numel(animal)%13
     for d = 1:numel(day{a})
         if strncmp('OML',animal{a},3)
-        cd([dataDir2 animal{a} '\' day{a}{d}]); 
+            cd([dataDir2 animal{a} '\' day{a}{d}]); 
         elseif strncmp('Wmaze',animal{a},5)
-        cd([dataDir3 animal{a} '\' day{a}{d}]); 
+            cd([dataDir3 animal{a} '\' day{a}{d}]); 
         else
-        cd([dataDir1 animal{a} '\' day{a}{d}]);
+            cd([dataDir1 animal{a} '\' day{a}{d}]);
         end
         basename = bz_BasenameFromBasepath(pwd);
-        load([basename '.SWRunitMetrics.mat']);
-        load([basename '.cell_metrics.cellinfo.mat']);
-        
+        if exist([basename '.SWRunitMetrics.mat'],'file')
+            load([basename '.SWRunitMetrics.mat']);
+            load([basename '.cell_metrics.cellinfo.mat']);
+        else
+            disp([basename '.SWRunitMetrics.mat',' does not exist'])
+            continue
+        end
         if isfield(SWRunitMetrics,'pre') && ~isempty(SWRunitMetrics.pre)
            sesPre = sesPre+1;
            SWRunitMetrics.pre.cellType = cell_metrics.putativeCellType;
@@ -164,19 +169,23 @@ end
 
 %% pool data v2 
 sesAll = 0;
-for a = 1:13%numel(animal)
+for a = 1:numel(animal)
     for d = 1:numel(day{a})
         if strncmp('OML',animal{a},3)
-        cd([dataDir2 animal{a} '\' day{a}{d}]); 
+            cd([dataDir2 animal{a} '\' day{a}{d}]); 
         elseif strncmp('Wmaze',animal{a},5)
-        cd([dataDir3 animal{a} '\' day{a}{d}]); 
+            cd([dataDir3 animal{a} '\' day{a}{d}]); 
         else
-        cd([dataDir1 animal{a} '\' day{a}{d}]);
+            cd([dataDir1 animal{a} '\' day{a}{d}]);
         end
         basename = bz_BasenameFromBasepath(pwd);
-        load([basename '.SWRunitMetrics.mat']);
-        load([basename '.cell_metrics.cellinfo.mat']);
-        
+        if exist([basename '.SWRunitMetrics.mat'],'file')
+            load([basename '.SWRunitMetrics.mat']);
+            load([basename '.cell_metrics.cellinfo.mat']);
+        else
+            disp([basename '.SWRunitMetrics.mat',' does not exist'])
+            continue
+        end
         sesAll = sesAll+1;
            unitAll{sesAll}.cellType = cell_metrics.putativeCellType;
            unitAll{sesAll}.region = cell_metrics.brainRegion;
@@ -271,3 +280,81 @@ title(['r = ' num2str(r,2) ' / p = ' num2str(p,2)]);
 plot([0 1],[0 1],'--r'); xlabel('particp pre');ylabel('particp post');
 
 
+%% write to table
+
+varNames = {'particip','FRall','FRparticip','nSpkAll','nSpkParticip',...
+    'cellType','region','CA1depth','ID'};
+
+df_pre = table(allUnitPre.particip,...
+    allUnitPre.FRall,...
+    allUnitPre.FRparticip,...
+    allUnitPre.nSpkAll,...
+    allUnitPre.nSpkParticip,...
+    allUnitPre.cellType',...
+    allUnitPre.region',...
+    allUnitPre.CA1depth,...
+    allUnitPre.ID,...
+    'VariableNames',varNames);
+df_pre.epoch(:) = {'pre'};
+
+df_pre = table(allUnit.particip,...
+    allUnitPre.FRall,...
+    allUnitPre.FRparticip,...
+    allUnitPre.nSpkAll,...
+    allUnitPre.nSpkParticip,...
+    allUnitPre.cellType',...
+    allUnitPre.region',...
+    allUnitPre.CA1depth,...
+    allUnitPre.ID,...
+    'VariableNames',varNames);
+df_pre.epoch(:) = {'pre'};
+
+df_pre = table(allUnitPre.particip,...
+    allUnitPre.FRall,...
+    allUnitPre.FRparticip,...
+    allUnitPre.nSpkAll,...
+    allUnitPre.nSpkParticip,...
+    allUnitPre.cellType',...
+    allUnitPre.region',...
+    allUnitPre.CA1depth,...
+    allUnitPre.ID,...
+    'VariableNames',varNames);
+df_pre.epoch(:) = {'pre'};
+
+
+
+varNames = {'cellType','region','CA1depth','particip','FRall','ID'};
+
+df_all_unit = table(allUnitAll.cellType',...
+    allUnitAll.region',...
+    allUnitAll.CA1depth,...
+    allUnitAll.particip(:,1),...
+    allUnitAll.FRall(:,1),...
+    allUnitAll.ID,...
+    'VariableNames',varNames);
+
+% add different tasks (pre task post)
+df_all_unit.epoch(:) = {'pre'};
+
+df_all_unit_task = table(allUnitAll.cellType',...
+    allUnitAll.region',...
+    allUnitAll.CA1depth,...
+    allUnitAll.particip(:,2),...
+    allUnitAll.FRall(:,2),...
+    allUnitAll.ID,...
+    'VariableNames',varNames);
+
+df_all_unit_post = table(allUnitAll.cellType',...
+    allUnitAll.region',...
+    allUnitAll.CA1depth,...
+    allUnitAll.particip(:,3),...
+    allUnitAll.FRall(:,3),...
+    allUnitAll.ID,...
+    'VariableNames',varNames);
+
+% assign ID to real name
+df_all_unit.ca1_layer = df_all_unit.cellType; % placeholder
+df_all_unit.ca1_layer(df_all_unit.ID == 1) = {'deep'};
+df_all_unit.ca1_layer(df_all_unit.ID == 2) = {'mid'};
+df_all_unit.ca1_layer(df_all_unit.ID == 1) = {'sup'};
+df_all_unit.ca1_layer(df_all_unit.ID == 0) = {'unknown'};
