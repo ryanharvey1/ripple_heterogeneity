@@ -144,17 +144,17 @@ allUnitPost = bz_CollapseStruct(unitPost,'match');
 
 %% clasify cell types v1
 % 1- Deep, middle, sup
-allUnitPre.ID(allUnitPre.CA1depth>0 & strcmp(allUnitPre.region{i},'CA1'),1) = 1;
-allUnitPre.ID(allUnitPre.CA1depth==0 & strcmp(allUnitPre.region{i},'CA1'),1) = 2;
-allUnitPre.ID(allUnitPre.CA1depth<0 & strcmp(allUnitPre.region{i},'CA1'),1) = 3;
+allUnitPre.ID(allUnitPre.CA1depth>0 & strcmp(allUnitPre.region,'CA1')',1) = 1;
+allUnitPre.ID(allUnitPre.CA1depth==0 & strcmp(allUnitPre.region,'CA1')',1) = 2;
+allUnitPre.ID(allUnitPre.CA1depth<0 & strcmp(allUnitPre.region,'CA1')',1) = 3;
 
-allUnitTask.ID(allUnitTask.CA1depth>0 & strcmp(allUnitTask.region{i},'CA1'),1) = 1;
-allUnitTask.ID(allUnitTask.CA1depth==0 & strcmp(allUnitTask.region{i},'CA1'),1) = 2;
-allUnitTask.ID(allUnitTask.CA1depth<0 & strcmp(allUnitTask.region{i},'CA1'),1) = 3;
+allUnitTask.ID(allUnitTask.CA1depth>0 & strcmp(allUnitTask.region,'CA1')',1) = 1;
+allUnitTask.ID(allUnitTask.CA1depth==0 & strcmp(allUnitTask.region,'CA1')',1) = 2;
+allUnitTask.ID(allUnitTask.CA1depth<0 & strcmp(allUnitTask.region,'CA1')',1) = 3;
 
-allUnitPost.ID(allUnitPost.CA1depth>0 & strcmp(allUnitPost.region{i},'CA1'),1) = 1;
-allUnitPost.ID(allUnitPost.CA1depth==0 & strcmp(allUnitPost.region{i},'CA1'),1) = 2;
-allUnitPost.ID(allUnitPost.CA1depth<0 & strcmp(allUnitPost.region{i},'CA1'),1) = 3;
+allUnitPost.ID(allUnitPost.CA1depth>0 & strcmp(allUnitPost.region,'CA1')',1) = 1;
+allUnitPost.ID(allUnitPost.CA1depth==0 & strcmp(allUnitPost.region,'CA1')',1) = 2;
+allUnitPost.ID(allUnitPost.CA1depth<0 & strcmp(allUnitPost.region,'CA1')',1) = 3;
 
 % 2 - REM shifting / non shifting
 
