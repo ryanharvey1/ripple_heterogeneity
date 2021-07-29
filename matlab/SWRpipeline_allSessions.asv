@@ -93,7 +93,6 @@ for a = 1:numel(animal)%13
             load([basename '.SWRunitMetrics.mat']);
             load([basename '.cell_metrics.cellinfo.mat']);
         else
-%             disp([basename '.SWRunitMetrics.mat',' does not exist'])
             need_attention = [need_attention;{[animal{a},'_',day{a}{d}]}];
             continue
         end
@@ -145,17 +144,17 @@ allUnitPost = bz_CollapseStruct(unitPost,'match');
 
 %% clasify cell types v1
 % 1- Deep, middle, sup
-allUnitPre.ID(allUnitPre.CA1depth>0 & strcmp(allUnitPre.region{i},'CA1'),1) = 1;
-allUnitPre.ID(allUnitPre.CA1depth==0 & strcmp(allUnitPre.region{i},'CA1'),1) = 2;
-allUnitPre.ID(allUnitPre.CA1depth<0 & strcmp(allUnitPre.region{i},'CA1'),1) = 3;
+allUnitPre.ID(allUnitPre.CA1depth>0 & strcmp(allUnitPre.region,'CA1')',1) = 1;
+allUnitPre.ID(allUnitPre.CA1depth==0 & strcmp(allUnitPre.region,'CA1')',1) = 2;
+allUnitPre.ID(allUnitPre.CA1depth<0 & strcmp(allUnitPre.region,'CA1')',1) = 3;
 
-allUnitTask.ID(allUnitTask.CA1depth>0 & strcmp(allUnitTask.region{i},'CA1'),1) = 1;
-allUnitTask.ID(allUnitTask.CA1depth==0 & strcmp(allUnitTask.region{i},'CA1'),1) = 2;
-allUnitTask.ID(allUnitTask.CA1depth<0 & strcmp(allUnitTask.region{i},'CA1'),1) = 3;
+allUnitTask.ID(allUnitTask.CA1depth>0 & strcmp(allUnitTask.region,'CA1')',1) = 1;
+allUnitTask.ID(allUnitTask.CA1depth==0 & strcmp(allUnitTask.region,'CA1')',1) = 2;
+allUnitTask.ID(allUnitTask.CA1depth<0 & strcmp(allUnitTask.region,'CA1')',1) = 3;
 
-allUnitPost.ID(allUnitPost.CA1depth>0 & strcmp(allUnitPost.region{i},'CA1'),1) = 1;
-allUnitPost.ID(allUnitPost.CA1depth==0 & strcmp(allUnitPost.region{i},'CA1'),1) = 2;
-allUnitPost.ID(allUnitPost.CA1depth<0 & strcmp(allUnitPost.region{i},'CA1'),1) = 3;
+allUnitPost.ID(allUnitPost.CA1depth>0 & strcmp(allUnitPost.region,'CA1')',1) = 1;
+allUnitPost.ID(allUnitPost.CA1depth==0 & strcmp(allUnitPost.region,'CA1')',1) = 2;
+allUnitPost.ID(allUnitPost.CA1depth<0 & strcmp(allUnitPost.region,'CA1')',1) = 3;
 
 % 2 - REM shifting / non shifting
 
@@ -275,45 +274,22 @@ plot([0 1],[0 1],'--r'); xlabel('particp pre');ylabel('particp post');
 %% write to table
 
 varNames = {'particip','FRall','FRparticip','nSpkAll','nSpkParticip',...
-    'cellType','region','CA1depth','ID'};
+    'cellType','region','CA1depth','UID','burstIndex_Royer2012',...
+    'animal','day','opto','task','novel','ID'};
 
-df_pre = table(allUnitPre.particip,...
-    allUnitPre.FRall,...
-    allUnitPre.FRparticip,...
-    allUnitPre.nSpkAll,...
-    allUnitPre.nSpkParticip,...
-    allUnitPre.cellType',...
-    allUnitPre.region',...
-    allUnitPre.CA1depth,...
-    allUnitPre.ID,...
-    'VariableNames',varNames);
+df_pre = make_table(allUnitPre,varNames);
 df_pre.epoch(:) = {'pre'};
 
-df_task = table(allUnitTask.particip,...
-    allUnitTask.FRall,...
-    allUnitTask.FRparticip,...
-    allUnitTask.nSpkAll,...
-    allUnitTask.nSpkParticip,...
-    allUnitTask.cellType',...
-    allUnitTask.region',...
-    allUnitTask.CA1depth,...
-    allUnitTask.ID,...
-    'VariableNames',varNames);
+df_task = make_table(allUnitTask,varNames);
 df_task.epoch(:) = {'task'};
 
-df_post = table(allUnitPost.particip,...
-    allUnitPost.FRall,...
-    allUnitPost.FRparticip,...
-    allUnitPost.nSpkAll,...
-    allUnitPost.nSpkParticip,...
-    allUnitPost.cellType',...
-    allUnitPost.region',...
-    allUnitPost.CA1depth,...
-    allUnitPost.ID,...
-    'VariableNames',varNames);
+df_post = make_table(allUnitPost,varNames);
 df_post.epoch(:) = {'post'};
 
 df = [df_pre;df_task;df_post];
+
+
+%% assign labels to dummy coded values
 
 % assign ID to real name
 df.ca1_layer = df.cellType; % placeholder
@@ -321,36 +297,36 @@ df.ca1_layer(df.ID == 0) = {'unknown'};
 df.ca1_layer(df.ID == 1) = {'deep'};
 df.ca1_layer(df.ID == 2) = {'mid'};
 df.ca1_layer(df.ID == 3) = {'sup'};
+df.ID = [];
 
+% 0=sham, 1=MEC silencing; 2=LEC silencing; 3=prb stm; 4=SWR prolong; 8=problem
+temp_var = repmat({'none'},length(df.opto),1);
+temp_var(df.opto == 0) = {'sham'};
+temp_var(df.opto == 1) = {'mec_silencing'};
+temp_var(df.opto == 2) = {'lec_silencing'};
+temp_var(df.opto == 3) = {'prb_stm'};
+temp_var(df.opto == 4) = {'swr_prolong'};
+temp_var(df.opto == 8) = {'problem'};
+df.opto = temp_var;
+
+% 1=linear, 2=cheesboard, 3=Wmaze, 4=Tmaze
+temp_var = repmat({'unknown'},length(df.task),1);
+temp_var(df.task == 1) = {'linear'};
+temp_var(df.task == 2) = {'cheesboard'};
+temp_var(df.task == 3) = {'w_maze'};
+temp_var(df.task == 4) = {'t_maze'};
+df.task = temp_var;
+
+% 0=familiar env, 1=novel env.
+temp_var = repmat({'unknown'},length(df.novel),1);
+temp_var(df.novel == 0) = {'familiar_env'};
+temp_var(df.novel == 1) = {'novel_env'};
+df.novel = temp_var;
+
+%% write to csv for further processing
 writetable(df,'D:\projects\ripple_heterogeneity\df.csv')
-% varNames = {'cellType','region','CA1depth','particip','FRall','ID'};
-%
-% df_all_unit = table(allUnitAll.cellType',...
-%     allUnitAll.region',...
-%     allUnitAll.CA1depth,...
-%     allUnitAll.particip(:,1),...
-%     allUnitAll.FRall(:,1),...
-%     allUnitAll.ID,...
-%     'VariableNames',varNames);
-%
-% add different tasks (pre task post)
-% df_all_unit.epoch(:) = {'pre'};
-%
-% df_all_unit_task = table(allUnitAll.cellType',...
-%     allUnitAll.region',...
-%     allUnitAll.CA1depth,...
-%     allUnitAll.particip(:,2),...
-%     allUnitAll.FRall(:,2),...
-%     allUnitAll.ID,...
-%     'VariableNames',varNames);
-%
-% df_all_unit_post = table(allUnitAll.cellType',...
-%     allUnitAll.region',...
-%     allUnitAll.CA1depth,...
-%     allUnitAll.particip(:,3),...
-%     allUnitAll.FRall(:,3),...
-%     allUnitAll.ID,...
-%     'VariableNames',varNames);
+
+%%
 
 function [SWRunitMetrics,need_attention] = extract_from_metrics(cell_metrics,...
     SWRunitMetrics,epoch,a,d,animal,day,opto,task,novel,regions)
@@ -375,4 +351,11 @@ SWRunitMetrics.(epoch).opto = repmat(opto{a}(d),length(SWRunitMetrics.(epoch).ce
 SWRunitMetrics.(epoch).task = repmat(task{a}(d),length(SWRunitMetrics.(epoch).cellType),1);
 SWRunitMetrics.(epoch).novel = repmat(novel{a}(d),length(SWRunitMetrics.(epoch).cellType),1);
 SWRunitMetrics.(epoch).regions = repmat(regions{a}(d),length(SWRunitMetrics.(epoch).cellType),1);
+end
+
+function df = make_table(structure,varNames)
+df = table();
+for v = varNames
+    df.(v{1}) = structure.(v{1})(:);
+end
 end

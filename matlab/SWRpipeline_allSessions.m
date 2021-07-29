@@ -40,39 +40,6 @@ regions = {1,[1 1 1 1 1 1 1],[1 1 1 1 1],[3 3 3],[1 1 1],[2 2 2 2 2 2 2],[2 2 2 
 % PENDING: Gabi, Kenji, Shige
 % pyr/int clasific OML and OR
 
-% % count cells
-% nCA1pyr = 0; ses = 0; nCells = 0;
-% for a = 1:numel(animal)
-%     for d = 1:numel(day{a})
-%         if strncmp('OML',animal{a},3)
-%             cd([dataDir2 animal{a} '\' day{a}{d}]);
-%         elseif strncmp('Wmaze',animal{a},5)
-%             cd([dataDir3 animal{a} '\' day{a}{d}]);
-%         else
-%             cd([dataDir1 animal{a} '\' day{a}{d}]);
-%         end
-%         ses = ses+1;
-%         basename = bz_BasenameFromBasepath(pwd);
-%         if exist([basename '.cell_metrics.cellinfo.mat'],'file')
-%             load([basename '.cell_metrics.cellinfo.mat']);
-%         else
-%             disp([basename '.cell_metrics.cellinfo.mat',' does not exist'])
-%             continue
-%         end
-%         
-%         ntemp=0;
-%         for i = 1:numel(cell_metrics.putativeCellType)
-%             if strcmp(cell_metrics.putativeCellType{i},'Pyramidal Cell') && ...
-%                     strcmp(cell_metrics.brainRegion{i},'CA1')
-%                 ntemp= ntemp+1;
-%             end
-%         end
-%         nCA1pyrSes(ses,1) = ntemp;
-%         nCA1pyr = nCA1pyr + ntemp;
-%         nCells = nCells + numel(cell_metrics.putativeCellType);
-%         clear ntemp cell_metrics;
-%     end
-% end
 
 %% pool data v1
 sesPre=0; sesTask=0; sesPost=0;
@@ -156,163 +123,26 @@ allUnitPost.ID(allUnitPost.CA1depth>0 & strcmp(allUnitPost.region,'CA1')',1) = 1
 allUnitPost.ID(allUnitPost.CA1depth==0 & strcmp(allUnitPost.region,'CA1')',1) = 2;
 allUnitPost.ID(allUnitPost.CA1depth<0 & strcmp(allUnitPost.region,'CA1')',1) = 3;
 
-% 2 - REM shifting / non shifting
-
-%% pool data v2
-sesAll = 0;
-for a = 1:numel(animal)
-    for d = 1:numel(day{a})
-        if strncmp('OML',animal{a},3)
-            cd([dataDir2 animal{a} '\' day{a}{d}]);
-        elseif strncmp('Wmaze',animal{a},5)
-            cd([dataDir3 animal{a} '\' day{a}{d}]);
-        else
-            cd([dataDir1 animal{a} '\' day{a}{d}]);
-        end
-        basename = bz_BasenameFromBasepath(pwd);
-        if exist([basename '.SWRunitMetrics.mat'],'file')
-            load([basename '.SWRunitMetrics.mat']);
-            load([basename '.cell_metrics.cellinfo.mat']);
-        else
-            disp([basename '.SWRunitMetrics.mat',' does not exist'])
-            continue
-        end
-        sesAll = sesAll+1;
-        unitAll{sesAll}.cellType = cell_metrics.putativeCellType;
-        unitAll{sesAll}.region = cell_metrics.brainRegion;
-        unitAll{sesAll}.CA1depth = cell_metrics.CA1depth;
-        
-        if isfield(SWRunitMetrics,'pre') && ~isempty(SWRunitMetrics.pre)
-            unitAll{sesAll}.particip(:,1) = SWRunitMetrics.pre.particip;
-            unitAll{sesAll}.FRall(:,1) = SWRunitMetrics.pre.particip;
-        else
-            unitAll{sesAll}.particip(1:numel(cell_metrics.brainRegion),1) = NaN;
-            unitAll{sesAll}.FRall(1:numel(cell_metrics.brainRegion),1) = NaN;
-        end
-        if isfield(SWRunitMetrics,'task') && ~isempty(SWRunitMetrics.task)
-            unitAll{sesAll}.particip(:,2) = SWRunitMetrics.task.particip;
-            unitAll{sesAll}.FRall(:,2) = SWRunitMetrics.task.particip;
-        else
-            unitAll{sesAll}.particip(1:numel(cell_metrics.brainRegion),2) = NaN;
-            unitAll{sesAll}.FRall(1:numel(cell_metrics.brainRegion),2) = NaN;
-        end
-        if isfield(SWRunitMetrics,'post') && ~isempty(SWRunitMetrics.post)
-            unitAll{sesAll}.particip(:,3) = SWRunitMetrics.post.particip;
-            unitAll{sesAll}.FRall(:,3) = SWRunitMetrics.post.particip;
-        else
-            unitAll{sesAll}.particip(1:numel(cell_metrics.brainRegion),3) = NaN;
-            unitAll{sesAll}.FRall(1:numel(cell_metrics.brainRegion),3) = NaN;
-        end
-        
-    end
-end
-
-unitAll = cell2mat(unitAll);
-allUnitAll = bz_CollapseStruct(unitAll,'match');
-
-% clasify cell types v2
-for i = 1:length(allUnitAll.particip)
-    if strcmp(allUnitAll.cellType{i},'Pyramidal Cell') && ...
-            strcmp(allUnitAll.region{i},'CA1') && ...
-            allUnitAll.CA1depth(i) > 0
-        allUnitAll.ID(i,1) = 1;
-    elseif strcmp(allUnitAll.cellType{i},'Pyramidal Cell') && ...
-            strcmp(allUnitAll.region{i},'CA1') && ...
-            allUnitAll.CA1depth(i) == 0
-        allUnitAll.ID(i,1) = 2;
-    elseif strcmp(allUnitAll.cellType{i},'Pyramidal Cell') && ...
-            strcmp(allUnitAll.region{i},'CA1') && ...
-            allUnitAll.CA1depth(i) < 0
-        allUnitAll.ID(i,1) = 3;
-    else
-        allUnitAll.ID(i,1) = 0;
-    end
-end
-
-%% plot
-binrange = 0:0.05:1; f = 3;
-figure;
-plot(binrange,smooth(histc(allUnitPre.particip(allUnitPre.ID==1),binrange)/sum(histc(allUnitPre.particip(allUnitPre.ID==1),binrange)),f,'sgolay'),'r');hold on;
-plot(binrange,smooth(histc(allUnitPre.particip(allUnitPre.ID==2),binrange)/sum(histc(allUnitPre.particip(allUnitPre.ID==2),binrange)),f,'sgolay'),'k');hold on;
-plot(binrange,smooth(histc(allUnitPre.particip(allUnitPre.ID==3),binrange)/sum(histc(allUnitPre.particip(allUnitPre.ID==3),binrange)),f,'sgolay'),'b');hold on;
-plot([median(allUnitPre.particip(allUnitPre.ID==1)) median(allUnitPre.particip(allUnitPre.ID==1))],ylim,'r'); hold on;
-plot([median(allUnitPre.particip(allUnitPre.ID==2)) median(allUnitPre.particip(allUnitPre.ID==2))],ylim,'k'); hold on;
-plot([median(allUnitPre.particip(allUnitPre.ID==3)) median(allUnitPre.particip(allUnitPre.ID==3))],ylim,'b'); hold on;
-ylim([0 Inf]);xlim([0 1]); xlabel('particip. prob'); ylabel('frac. of cells');legend({'deep','mid','sup'});
-p=ranksum(allUnitPre.particip(allUnitPre.ID==1),allUnitPre.particip(allUnitPre.ID==3));title(['p = ' num2str(p,2)]);
-%set(gca,'XScale','log')
-
-figure;
-plot(binrange,smooth(histc(allUnitPost.particip(allUnitPost.ID==1),binrange)/sum(histc(allUnitPost.particip(allUnitPost.ID==1),binrange)),f,'sgolay'),'r');hold on;
-plot(binrange,smooth(histc(allUnitPost.particip(allUnitPost.ID==2),binrange)/sum(histc(allUnitPost.particip(allUnitPost.ID==2),binrange)),f,'sgolay'),'k');hold on;
-plot(binrange,smooth(histc(allUnitPost.particip(allUnitPost.ID==3),binrange)/sum(histc(allUnitPost.particip(allUnitPost.ID==3),binrange)),f,'sgolay'),'b');hold on;
-plot([median(allUnitPost.particip(allUnitPost.ID==1)) median(allUnitPost.particip(allUnitPost.ID==1))],ylim,'r'); hold on;
-plot([median(allUnitPost.particip(allUnitPost.ID==2)) median(allUnitPost.particip(allUnitPost.ID==2))],ylim,'k'); hold on;
-plot([median(allUnitPost.particip(allUnitPost.ID==3)) median(allUnitPost.particip(allUnitPost.ID==3))],ylim,'b'); hold on;
-ylim([0 Inf]);xlim([0 1]); xlabel('particip. prob'); ylabel('frac. of cells');legend({'deep','mid','sup'});
-p=ranksum(allUnitPost.particip(allUnitPost.ID==1),allUnitPost.particip(allUnitPost.ID==3));title(['p = ' num2str(p,2)]);
-%set(gca,'XScale','log')
-
-%%
-binrange = 0:0.05:1; f = 3;
-figure;
-subplot(1,2,1);
-plot(binrange,smooth(histc(allUnitAll.particip(allUnitAll.ID>0,1),binrange)/sum(histc(allUnitAll.particip(allUnitAll.ID>0,1),binrange)),f,'sgolay'),'k');hold on;
-ylim([0 Inf]);xlim([0 1]); xlabel('particip. prob'); ylabel('frac. of cells');legend({'all CA1pyr'});
-subplot(1,2,2);
-scatter(allUnitAll.particip(allUnitAll.ID>0,1),allUnitAll.particip(allUnitAll.ID>0,2),'.');hold on;
-[r p]=corr(allUnitAll.particip(allUnitAll.ID>0,1),allUnitAll.particip(allUnitAll.ID>0,2),'rows','complete');
-title(['r = ' num2str(r,2) ' / p = ' num2str(p,2)]);
-plot([0 1],[0 1],'--r'); xlabel('particp pre');ylabel('particp task');
-subplot(1,3,3);
-scatter(allUnitAll.particip(allUnitAll.ID>0,1),allUnitAll.particip(allUnitAll.ID>0,3),'.');hold on;
-[r p]=corr(allUnitAll.particip(allUnitAll.ID>0,1),allUnitAll.particip(allUnitAll.ID>0,3),'rows','complete');
-title(['r = ' num2str(r,2) ' / p = ' num2str(p,2)]);
-plot([0 1],[0 1],'--r'); xlabel('particp pre');ylabel('particp post');
-
 
 %% write to table
 
 varNames = {'particip','FRall','FRparticip','nSpkAll','nSpkParticip',...
-    'cellType','region','CA1depth','ID'};
+    'cellType','region','CA1depth','UID','burstIndex_Royer2012',...
+    'animal','day','opto','task','novel','ID'};
 
-df_pre = table(allUnitPre.particip,...
-    allUnitPre.FRall,...
-    allUnitPre.FRparticip,...
-    allUnitPre.nSpkAll,...
-    allUnitPre.nSpkParticip,...
-    allUnitPre.cellType',...
-    allUnitPre.region',...
-    allUnitPre.CA1depth,...
-    allUnitPre.ID,...
-    'VariableNames',varNames);
+df_pre = make_table(allUnitPre,varNames);
 df_pre.epoch(:) = {'pre'};
 
-df_task = table(allUnitTask.particip,...
-    allUnitTask.FRall,...
-    allUnitTask.FRparticip,...
-    allUnitTask.nSpkAll,...
-    allUnitTask.nSpkParticip,...
-    allUnitTask.cellType',...
-    allUnitTask.region',...
-    allUnitTask.CA1depth,...
-    allUnitTask.ID,...
-    'VariableNames',varNames);
+df_task = make_table(allUnitTask,varNames);
 df_task.epoch(:) = {'task'};
 
-df_post = table(allUnitPost.particip,...
-    allUnitPost.FRall,...
-    allUnitPost.FRparticip,...
-    allUnitPost.nSpkAll,...
-    allUnitPost.nSpkParticip,...
-    allUnitPost.cellType',...
-    allUnitPost.region',...
-    allUnitPost.CA1depth,...
-    allUnitPost.ID,...
-    'VariableNames',varNames);
+df_post = make_table(allUnitPost,varNames);
 df_post.epoch(:) = {'post'};
 
 df = [df_pre;df_task;df_post];
+
+
+%% assign labels to dummy coded values
 
 % assign ID to real name
 df.ca1_layer = df.cellType; % placeholder
@@ -320,36 +150,41 @@ df.ca1_layer(df.ID == 0) = {'unknown'};
 df.ca1_layer(df.ID == 1) = {'deep'};
 df.ca1_layer(df.ID == 2) = {'mid'};
 df.ca1_layer(df.ID == 3) = {'sup'};
+df.ID = [];
 
+% 0=sham, 1=MEC silencing; 2=LEC silencing; 3=prb stm; 4=SWR prolong; 8=problem
+temp_var = repmat({'none'},length(df.opto),1);
+temp_var(df.opto == 0) = {'sham'};
+temp_var(df.opto == 1) = {'mec_silencing'};
+temp_var(df.opto == 2) = {'lec_silencing'};
+temp_var(df.opto == 3) = {'prb_stm'};
+temp_var(df.opto == 4) = {'swr_prolong'};
+temp_var(df.opto == 8) = {'problem'};
+df.opto = temp_var;
+
+% 1=linear, 2=cheesboard, 3=Wmaze, 4=Tmaze
+temp_var = repmat({'unknown'},length(df.task),1);
+temp_var(df.task == 1) = {'linear'};
+temp_var(df.task == 2) = {'cheesboard'};
+temp_var(df.task == 3) = {'w_maze'};
+temp_var(df.task == 4) = {'t_maze'};
+df.task = temp_var;
+
+% 0=familiar env, 1=novel env.
+temp_var = repmat({'unknown'},length(df.novel),1);
+temp_var(df.novel == 0) = {'familiar_env'};
+temp_var(df.novel == 1) = {'novel_env'};
+df.novel = temp_var;
+
+%% write to csv for further processing
 writetable(df,'D:\projects\ripple_heterogeneity\df.csv')
-% varNames = {'cellType','region','CA1depth','particip','FRall','ID'};
-%
-% df_all_unit = table(allUnitAll.cellType',...
-%     allUnitAll.region',...
-%     allUnitAll.CA1depth,...
-%     allUnitAll.particip(:,1),...
-%     allUnitAll.FRall(:,1),...
-%     allUnitAll.ID,...
-%     'VariableNames',varNames);
-%
-% add different tasks (pre task post)
-% df_all_unit.epoch(:) = {'pre'};
-%
-% df_all_unit_task = table(allUnitAll.cellType',...
-%     allUnitAll.region',...
-%     allUnitAll.CA1depth,...
-%     allUnitAll.particip(:,2),...
-%     allUnitAll.FRall(:,2),...
-%     allUnitAll.ID,...
-%     'VariableNames',varNames);
-%
-% df_all_unit_post = table(allUnitAll.cellType',...
-%     allUnitAll.region',...
-%     allUnitAll.CA1depth,...
-%     allUnitAll.particip(:,3),...
-%     allUnitAll.FRall(:,3),...
-%     allUnitAll.ID,...
-%     'VariableNames',varNames);
+
+
+
+
+
+%% local functions
+
 
 function [SWRunitMetrics,need_attention] = extract_from_metrics(cell_metrics,...
     SWRunitMetrics,epoch,a,d,animal,day,opto,task,novel,regions)
@@ -374,4 +209,11 @@ SWRunitMetrics.(epoch).opto = repmat(opto{a}(d),length(SWRunitMetrics.(epoch).ce
 SWRunitMetrics.(epoch).task = repmat(task{a}(d),length(SWRunitMetrics.(epoch).cellType),1);
 SWRunitMetrics.(epoch).novel = repmat(novel{a}(d),length(SWRunitMetrics.(epoch).cellType),1);
 SWRunitMetrics.(epoch).regions = repmat(regions{a}(d),length(SWRunitMetrics.(epoch).cellType),1);
+end
+
+function df = make_table(structure,varNames)
+df = table();
+for v = varNames
+    df.(v{1}) = structure.(v{1})(:);
+end
 end
