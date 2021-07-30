@@ -111,6 +111,10 @@ allUnitPost = bz_CollapseStruct(unitPost,'match');
 
 %% clasify cell types v1
 % 1- Deep, middle, sup
+allUnitPre.ID = zeros(length(allUnitPre.UID),1);
+allUnitTask.ID = zeros(length(allUnitTask.UID),1);
+allUnitPost.ID = zeros(length(allUnitPost.UID),1);
+
 allUnitPre.ID(allUnitPre.CA1depth>0 & strcmp(allUnitPre.region,'CA1')',1) = 1;
 allUnitPre.ID(allUnitPre.CA1depth==0 & strcmp(allUnitPre.region,'CA1')',1) = 2;
 allUnitPre.ID(allUnitPre.CA1depth<0 & strcmp(allUnitPre.region,'CA1')',1) = 3;
@@ -193,7 +197,7 @@ need_attention = [];
 
 SWRunitMetrics.(epoch).cellType = cell_metrics.putativeCellType;
 SWRunitMetrics.(epoch).region = cell_metrics.brainRegion;
-SWRunitMetrics.(epoch).CA1depth = cell_metrics.CA1depth;
+SWRunitMetrics.(epoch).CA1depth = cell_metrics.CA1depth(:);
 if isfield(cell_metrics,'UID')
     SWRunitMetrics.(epoch).UID = cell_metrics.UID(:);
     SWRunitMetrics.(epoch).burstIndex_Royer2012 = cell_metrics.burstIndex_Royer2012(:);
@@ -214,6 +218,7 @@ end
 function df = make_table(structure,varNames)
 df = table();
 for v = varNames
+%     disp(v)
     df.(v{1}) = structure.(v{1})(:);
 end
 end

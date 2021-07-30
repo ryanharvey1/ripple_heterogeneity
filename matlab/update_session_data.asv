@@ -8,7 +8,7 @@ files_to_redo = {'A:\Data\GrosmarkAD\Cicero\Cicero_09012014',...
     'A:\Data\GrosmarkAD\Gatsby\Gatsby_08022013',...
     'A:\Data\GrosmarkAD\Gatsby\Gatsby_08282013'};
 
-basepath = files_to_redo{4};
+basepath = files_to_redo{2};
 basename = bz_BasenameFromBasepath(basepath);
 
 %% rename spikes.cellinfo as to preserve that data
@@ -25,13 +25,12 @@ spikes = loadSpikes(...
                     'getWaveformsFromDat',false,...
                     'getWaveformsFromSource',true...
                     );
-%% make cell metrics
+%%
 cell_metrics = ProcessCellMetrics('basepath',basepath,...
     'showGUI',false,...
     'spikes',spikes,...
     'getWaveformsFromDat',false);
 
-%% add ca1 depth and region
 if ~isfield(cell_metrics,'CA1depth') && isfield(cell_metrics,'Cell_Position')
     cell_metrics.CA1depth = cell_metrics.Cell_Position;
     save(fullfile(basepath,[basename '.cell_metrics.cellinfo.mat']),'cell_metrics')
@@ -41,8 +40,7 @@ elseif ~isfield(cell_metrics,'CA1depth')
 end     
 
 if sum(contains(cell_metrics.brainRegion,'Unknown')) == length(cell_metrics.brainRegion)
-    cell_metrics.brainRegion = cell_metrics.region;
-    save(fullfile(basepath,[basename '.cell_metrics.cellinfo.mat']),'cell_metrics')
+    
 end
 %% GUI to manually curate cell classification
 cell_metrics = CellExplorer('metrics',cell_metrics);
