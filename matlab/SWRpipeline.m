@@ -3,7 +3,7 @@
 % This is a wrapper to concatenate all functions to perform basic ripple analysis in a single session
 % run it from session folder
 basename = bz_BasenameFromBasepath(pwd);
-
+basepath = pwd;
 %% 0- Pre processing
 %   - Detection of sleep states and theta epochs is done in bz_PreprocessSession
 %   - Spikes and cell_metrics are calculated in bz_PreprocessSpikes 
