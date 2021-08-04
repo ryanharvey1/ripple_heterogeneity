@@ -115,17 +115,26 @@ allUnitPre.ID = zeros(length(allUnitPre.UID),1);
 allUnitTask.ID = zeros(length(allUnitTask.UID),1);
 allUnitPost.ID = zeros(length(allUnitPost.UID),1);
 
-allUnitPre.ID(allUnitPre.CA1depth>0 & strcmp(allUnitPre.region,'CA1')',1) = 1;
-allUnitPre.ID(allUnitPre.CA1depth==0 & strcmp(allUnitPre.region,'CA1')',1) = 2;
-allUnitPre.ID(allUnitPre.CA1depth<0 & strcmp(allUnitPre.region,'CA1')',1) = 3;
+allUnitPre.ID(allUnitPre.CA1depth>0 &...
+    ismember(allUnitPre.region,{'CA1','lCA1','rCA1'}),1) = 1;
+allUnitPre.ID(allUnitPre.CA1depth==0 &...
+    ismember(allUnitPre.region,{'CA1','lCA1','rCA1'}),1) = 2;
+allUnitPre.ID(allUnitPre.CA1depth<0 &...
+    ismember(allUnitPre.region,{'CA1','lCA1','rCA1'}),1) = 3;
 
-allUnitTask.ID(allUnitTask.CA1depth>0 & strcmp(allUnitTask.region,'CA1')',1) = 1;
-allUnitTask.ID(allUnitTask.CA1depth==0 & strcmp(allUnitTask.region,'CA1')',1) = 2;
-allUnitTask.ID(allUnitTask.CA1depth<0 & strcmp(allUnitTask.region,'CA1')',1) = 3;
+allUnitTask.ID(allUnitTask.CA1depth>0 &...
+    ismember(allUnitTask.region,{'CA1','lCA1','rCA1'}),1) = 1;
+allUnitTask.ID(allUnitTask.CA1depth==0 &...
+    ismember(allUnitTask.region,{'CA1','lCA1','rCA1'}),1) = 2;
+allUnitTask.ID(allUnitTask.CA1depth<0 &...
+    ismember(allUnitTask.region,{'CA1','lCA1','rCA1'}),1) = 3;
 
-allUnitPost.ID(allUnitPost.CA1depth>0 & strcmp(allUnitPost.region,'CA1')',1) = 1;
-allUnitPost.ID(allUnitPost.CA1depth==0 & strcmp(allUnitPost.region,'CA1')',1) = 2;
-allUnitPost.ID(allUnitPost.CA1depth<0 & strcmp(allUnitPost.region,'CA1')',1) = 3;
+allUnitPost.ID(allUnitPost.CA1depth>0 &...
+    ismember(allUnitPost.region,{'CA1','lCA1','rCA1'}),1) = 1;
+allUnitPost.ID(allUnitPost.CA1depth==0 &...
+    ismember(allUnitPost.region,{'CA1','lCA1','rCA1'}),1) = 2;
+allUnitPost.ID(allUnitPost.CA1depth<0 &...
+    ismember(allUnitPost.region,{'CA1','lCA1','rCA1'}),1) = 3;
 
 
 %% write to table
@@ -184,9 +193,6 @@ df.novel = temp_var;
 writetable(df,'D:\projects\ripple_heterogeneity\df.csv')
 
 
-
-
-
 %% local functions
 
 
@@ -196,7 +202,7 @@ function [SWRunitMetrics,need_attention] = extract_from_metrics(cell_metrics,...
 need_attention = [];
 
 SWRunitMetrics.(epoch).cellType = cell_metrics.putativeCellType;
-SWRunitMetrics.(epoch).region = cell_metrics.brainRegion;
+SWRunitMetrics.(epoch).region = cell_metrics.brainRegion(:);
 SWRunitMetrics.(epoch).CA1depth = cell_metrics.CA1depth(:);
 if isfield(cell_metrics,'UID')
     SWRunitMetrics.(epoch).UID = cell_metrics.UID(:);
