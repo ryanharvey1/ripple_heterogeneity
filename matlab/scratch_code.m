@@ -37,6 +37,49 @@ cell_metrics = ProcessCellMetrics('basepath',basepath,...
     'spikes',spikes,...
     'getWaveformsFromDat',false);
 
+%% custom spikes and cell metrics for A:\Data\AB3\AB3_60
+% AB3_60 has 30 .spk files and only 16 shanks
+%
+clear
+close all
+
+basepath = 'A:\Data\AB3\AB3_60';
+basename = bz_BasenameFromBasepath(basepath);
+
+load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.legacy.mat']))
+load(fullfile(basepath,[basename,'.spikes.cellinfo.legacy.mat']))
+load(fullfile(basepath,[basename,'.session.mat']))
+load(fullfile(basepath,['cell_waveforms.mat']))
+
+loc=17;
+timeWaveform = ((1:size(waveforms,2)) - mode(loc)) / session.extracellular.sr * 1000;
+
+for i = 1:size(waveforms,1)
+    spikes.filtWaveform{i} = waveforms(i,:);
+    spikes.peakVoltage(i)= max(spikes.filtWaveform{i}) - min(spikes.filtWaveform{i});
+    spikes.timeWaveform{i} = timeWaveform;
+    spikes.channels_all{i} = session.extracellular.electrodeGroups.channels{1};
+    spikes.maxWaveformCh(i) = cell_metrics.maxWaveformCh(i);
+    spikes.maxWaveformCh1(i) = cell_metrics.maxWaveformCh1(i);
+end
+
+spikes.basename = basename;
+spikes.sr = session.extracellular.sr;
+
+save(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'spikes')
+
+cell_metrics = ProcessCellMetrics('basepath',basepath,...
+    'showGUI',false,...
+    'spikes',spikes,...
+    'getWaveformsFromDat',false);
+
+% test=load('A:\Data\AB3\AB3_55_57\AB3_55_57.spikes.cellinfo.mat')
+
+%% custom bz_getRipSpikes for Kenji
+session.epochs = get_kenji_epochs();
+save(fullfile(basepath,[basename '.session.mat']),'session')
+
+
 %% custom bz_getRipSpikes for A:\OptoMECLEC\OML18 & OML19
 % custom because some session contain pre/task/task/post & other combos
 
