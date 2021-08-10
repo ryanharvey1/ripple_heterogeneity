@@ -19,10 +19,12 @@ files_to_redo = {'A:\Data\GrosmarkAD\Cicero\Cicero_09012014',...
     'A:\Data\AB3\AB3_47_49',...
     'A:\Data\AB3\AB3_50_51',...
     'A:\Data\AB3\AB3_55_57',...
-    'A:\Data\AB3\AB3_60'};
+    'A:\Data\AB3\AB3_60',...
+    'A:\Data\Kenji\ec013.895_902'};
 
-basepath = files_to_redo{15};
+basepath = files_to_redo{19};
 basename = bz_BasenameFromBasepath(basepath);
+basename = 'ec013.895_902';
 
 %% rename spikes.cellinfo and cell_metrics.cellinfo as to preserve that data
 if exist(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'file') &&...
@@ -36,30 +38,35 @@ if exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file') &&..
     load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
     save(fullfile(basepath,[basename,'.cell_metrics.cellinfo.legacy.mat']))
 end
-%%
+%% save session
+if ~exist([basename '.session.mat'],'file')
+    session = sessionTemplate(basepath,'showGUI',false); % 
+    save([basename '.session.mat'],'session');
+end
+%% load spikes
 spikes = loadSpikes(...
                     'basepath',basepath,...
+                    'basename',basename,...
                     'saveMat',true,...
                     'format','Klustakwik',...
                     'getWaveformsFromDat',false,...
                     'getWaveformsFromSource',true,...
-                    'forceReload',true...
-                    );
+                    'forceReload',true);
                 
 %% detect ripples
 if ~exist(fullfile(basepath,[basename,'.ripplesALL.event.mat']),'file') ||...
         ~exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file')
     
     disp('finding best ripple and sharp wave channels')
-    swrCh = bz_swrChannels('basepath',basepath,'Manual',true);
+    swrCh = bz_swrChannels('basepath',basepath,'basename',basename,'Manual',true);
     
     load(fullfile(basepath,[basename '.swrCh.mat']))
 
     disp('detecting ripples')
-    ripples = bz_DetectSWR([swrCh.ripple swrCh.sharpwave],'saveMat',true);
+    ripples = bz_DetectSWR([swrCh.ripple swrCh.sharpwave],'saveMat',true,'basename',basename);
     
     disp('refining ripples by mua')    
-    ripples = eventSpikingTreshold(ripples,spikes,'spikingThreshold',0.5); 
+    ripples = eventSpikingTreshold(ripples,'spikes',spikes,'spikingThreshold',0.5); 
     
     save(fullfile(basepath,[basename '.ripples.events.mat']),'ripples')
 end
@@ -77,6 +84,12 @@ elseif ~isfield(cell_metrics,'CA1depth')
     cell_metrics.CA1depth = cell_metrics.deepSuperficialDistance;
     save(fullfile(basepath,[basename '.cell_metrics.cellinfo.mat']),'cell_metrics')
 end     
+
+if contains(basepath,'Kenji')
+    cell_metrics.brainRegion = get_kenji_region('basepath',basepath,...
+        'basename',basename);
+    save(fullfile(basepath,[basename '.cell_metrics.cellinfo.mat']),'cell_metrics')
+end
 
 if sum(contains(cell_metrics.brainRegion,'Unknown')) == length(cell_metrics.brainRegion)
     cell_metrics.brainRegion = cell_metrics.region;
