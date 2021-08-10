@@ -66,6 +66,7 @@ function [spkEventTimes] = bz_getRipSpikes(varargin)
 % Parse inputs 
 p = inputParser;
 addParameter(p,'basepath',pwd,@isstr);
+addParameter(p,'basename',[],@isstr);
 addParameter(p,'events',[], @(x) isnumeric(x) || isstruct(x));
 addParameter(p,'spikes',{},@isstruct);
 addParameter(p,'UIDs',[],@islogical);
@@ -74,6 +75,7 @@ addParameter(p,'saveMat', true, @islogical);
 
 parse(p,varargin{:});
 basepath = p.Results.basepath;
+basename = p.Results.basename;
 events = p.Results.events;
 spikes = p.Results.spikes;
 UIDs = p.Results.UIDs;
@@ -81,7 +83,9 @@ padding = p.Results.padding;
 saveMat = p.Results.saveMat;
 
 % Get session info
-basename = bz_BasenameFromBasepath(basepath);
+if isempty(basename)
+    basename = bz_BasenameFromBasepath(basepath);
+end
 load([basepath filesep basename '.session.mat']);
 
 % Default events, UIDs and spikes
