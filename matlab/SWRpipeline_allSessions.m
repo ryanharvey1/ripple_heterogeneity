@@ -6,7 +6,8 @@ dataDir2 = 'A:\OptoMECLEC\';
 dataDir3 = 'A:\ORproject\';
 animal = {'AB1','AB3','AB4','AYA4','AYA6','AYA7','AYA9','AYA10','OML5','OML3','OML7','OML8','OML10',...
     'OML18','OML19','Wmaze2\OR15','Wmaze2\OR18','Wmaze3\OR22','Wmaze3\OR21','Wmaze3\OR23',...
-    'GrosmarkAD\Cicero','GrosmarkAD\Buddy','GrosmarkAD\Achilles','GrosmarkAD\Gatsby'};
+    'GrosmarkAD\Cicero','GrosmarkAD\Buddy','GrosmarkAD\Achilles','GrosmarkAD\Gatsby',...
+    'Kenji'};
 day = {{'day1'},{'AB3_38_41','AB3_42_46','AB3_47_49','AB3_50_51','AB3_55_57','AB3_58_59','AB3_60'},...
     {'day03','day07','day08','day09','day11'},{'day150726','day150728','day150804'},...
     {'day17','day19','day20'},{'day19','day20','day22','day24','day25','day27','day30'},...
@@ -17,27 +18,29 @@ day = {{'day1'},{'AB3_38_41','AB3_42_46','AB3_47_49','AB3_50_51','AB3_55_57','AB
     {'day1','day2','day4','day5'},{'day2','day3'},...
     {'day1','day2','day3','day4','day10'},{'day1','day2','day3'},{'day1','day4','day3','day5'},...
     {'day2','day4'},{'day1','day5'},...
-    {'Cicero_09012014','Cicero_09102014','Cicero_09172014'},{'Buddy_06272013'},{'Achilles_10252013','Achilles_11012013'},{'Gatsby_08282013','Gatsby_08022013'}};
+    {'Cicero_09012014','Cicero_09102014','Cicero_09172014'},{'Buddy_06272013'},...
+    {'Achilles_10252013','Achilles_11012013'},{'Gatsby_08282013','Gatsby_08022013'},...
+    {'ec013.895_902'}};
 opto =    {NaN,[NaN NaN NaN NaN NaN NaN NaN],[NaN NaN NaN NaN NaN],[NaN NaN NaN],...
     [NaN NaN NaN],[NaN NaN NaN NaN NaN NaN NaN],[NaN NaN NaN NaN NaN],[NaN NaN NaN NaN NaN],...
     [1 0 1 1 0 8 3 0 1],[1 0 1 1 3 3],[1 0 1],[0 2 0 2 0 2 2 2],[2 2 2],[1 1 1 1],[1 1]...
-    [4 4 4 4 4],[4 4 4],[4 4 4 4],[4 4],[4 4],[NaN NaN NaN],NaN,[NaN NaN],[NaN NaN]};
+    [4 4 4 4 4],[4 4 4],[4 4 4 4],[4 4],[4 4],[NaN NaN NaN],NaN,[NaN NaN],[NaN NaN],NaN};
 % 0=sham, 1=MEC silencing; 2=LEC silencing; 3=prb stm; 4=SWR prolong; 8=problem
 task =    {1,[1 1 4 4 4 1 4],[2 2 2 2 2],[1 1 1],[1 1 1],[1 1 2 2 2 1 2],[1 2 2 1 2],[2 2 2 2 2],...
     [2 2 2 2 2 2 2 2 2],[2 2 2 2 2 2],[2 2 2],[2 2 2 2 2 2 2 2],[2 2 2],[1 1 1 1],[1 1]...
-    [3 3 3 3 3],[3 3 3],[3 3 3 3],[3 3],[3 3],[1 1 1],1,[1 1],[1 1]};
-% 1=linear, 2=cheesboard, 3=Wmaze, 4=Tmaze
+    [3 3 3 3 3],[3 3 3],[3 3 3 3],[3 3],[3 3],[1 1 1],1,[1 1],[1 1],5};
+% 1=linear, 2=cheesboard, 3=Wmaze, 4=Tmaze, 5=Mwheel
 novel =   {0,[0 0 0 0 0 0 0],[0 0 0 0 0],[0 0 0],[0 0 0],[0 0 0 0 0 0 0],[0 0 0 0 0],[0 0 0 0 0],...
     [0 0 0 0 0 0 0 0 0],[0 0 0 0 0 0],[0 0 0],[0 0 0 0 0 0 0 0],[0 0 0],[0 0 0 0],[0 0]...
-    [0 0 0 0 0],[0 0 0],[0 0 0 0],[0 0],[0 0],[1 1 1],1,[1 1],[1 1]};
+    [0 0 0 0 0],[0 0 0],[0 0 0 0],[0 0],[0 0],[1 1 1],1,[1 1],[1 1],0};
 % 0=familiar env, 1=novel env.   THIS NEEDS TO BE CHECKED, THERE ARE SOME NOVEL SES
 regions = {1,[1 1 1 1 1 1 1],[1 1 1 1 1],[3 3 3],[1 1 1],[2 2 2 2 2 2 2],[2 2 2 2 2],[3 3 3 3 3],...
     [1 1 1 1 1 1 1 1 1],[1 1 1 1 1 1],[1 1 1],[1 1 1 1 1 1 1 1],[1 1 1],[1 1 1 1],[1 1]...
-    [1 1 1 1 1],[4 4 4],[1 1 1 1],[1 1],[1 1],[1 1 1],1,[1 1],[1 1]};
+    [1 1 1 1 1],[4 4 4],[1 1 1 1],[1 1],[1 1],[1 1 1],1,[1 1],[1 1],NaN};
 % 1=only HP, 2=also MEC, 3=also LEC, 4=PFC
 
 % PROBLEMS: OML8day17 (States)
-% PENDING: Gabi, Kenji, Shige
+% PENDING: Gabi (A:\Data\GirardeauG), Kenji, Shige
 % pyr/int clasific OML and OR
 
 
@@ -55,7 +58,9 @@ for a = 1:numel(animal)%13
         else
             cd([dataDir1 animal{a} '\' day{a}{d}]);
         end
-        basename = bz_BasenameFromBasepath(pwd);
+%         basename = bz_BasenameFromBasepath(pwd);
+        basename = strsplit(pwd,filesep);
+        basename = basename{end};
         if exist([basename '.SWRunitMetrics.mat'],'file')
             load([basename '.SWRunitMetrics.mat']);
             load([basename '.cell_metrics.cellinfo.mat']);
@@ -181,6 +186,7 @@ temp_var(df.task == 1) = {'linear'};
 temp_var(df.task == 2) = {'cheesboard'};
 temp_var(df.task == 3) = {'w_maze'};
 temp_var(df.task == 4) = {'t_maze'};
+temp_var(df.task == 5) = {'Mwheel'};
 df.task = temp_var;
 
 % 0=familiar env, 1=novel env.
@@ -203,7 +209,13 @@ need_attention = [];
 
 SWRunitMetrics.(epoch).cellType = cell_metrics.putativeCellType;
 SWRunitMetrics.(epoch).region = cell_metrics.brainRegion(:);
-SWRunitMetrics.(epoch).CA1depth = cell_metrics.CA1depth(:);
+if isfield(cell_metrics,'CA1depth')
+    SWRunitMetrics.(epoch).CA1depth = cell_metrics.CA1depth(:);
+else
+    SWRunitMetrics.(epoch).CA1depth = nan(length(cell_metrics.putativeCellType),1);
+    SWRunitMetrics.(epoch).CA1depth(strcmp(cell_metrics.deepSuperficial,'Superficial')) = -1;
+    SWRunitMetrics.(epoch).CA1depth(strcmp(cell_metrics.deepSuperficial,'Deep')) = 1;
+end
 if isfield(cell_metrics,'UID')
     SWRunitMetrics.(epoch).UID = cell_metrics.UID(:);
     SWRunitMetrics.(epoch).burstIndex_Royer2012 = cell_metrics.burstIndex_Royer2012(:);
