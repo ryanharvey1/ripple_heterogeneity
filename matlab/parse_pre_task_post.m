@@ -19,8 +19,14 @@ disp('manipulate & run epoch_struct and type dbcont')
 keyboard
 if isempty(epoch_struct)
     epoch_struct.pre = [session.epochs{1}.startTime,session.epochs{3}.stopTime];
-    epoch_struct.task = [session.epochs{4}.startTime,session.epochs{4}.stopTime];
-    epoch_struct.post = [session.epochs{5}.startTime,session.epochs{8}.stopTime];
+    epoch_struct.task = [session.epochs{4}.startTime,session.epochs{5}.stopTime];
+    epoch_struct.post = [session.epochs{6}.startTime,session.epochs{8}.stopTime];
+    
+    epoch_struct.task_2 = [session.epochs{9}.startTime,session.epochs{10}.stopTime];
+    epoch_struct.post_2 = [session.epochs{11}.startTime,session.epochs{12}.stopTime];
+    
+    epoch_struct.task_3 = [session.epochs{13}.startTime,session.epochs{18}.stopTime];
+    epoch_struct.post_3 = [session.epochs{19}.startTime,session.epochs{20}.stopTime];
 end
 SWRunitMetrics = [];
 if isfield(epoch_struct,'pre')
