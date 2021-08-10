@@ -51,23 +51,32 @@ if check_cell_count
     end
 end
 
-ca3p = cellSesMap(cleanSes==1 & iCellSes{1}==1 & regionSes==2,2);
-ca3i = cellSesMap(cleanSes==1 & iCellSes{2}==1 & regionSes==2,2);          
-DGe =  cellSesMap(cleanSes==1 & iCellSes{1}==1 & regionSes==3,2);
-DGi =  cellSesMap(cleanSes==1 & iCellSes{2}==1 & regionSes==3,2); 
-ec2p = cellSesMap(cleanSes==1 & iCellSes{1}==1 & regionSes==4,2);
-ec2i = cellSesMap(cleanSes==1 & iCellSes{2}==1 & regionSes==4,2); 
-ec3p = cellSesMap(cleanSes==1 & iCellSes{1}==1 & regionSes==5,2);
-ec3i = cellSesMap(cleanSes==1 & iCellSes{2}==1 & regionSes==5,2);         
+regions = {'ca1','ca3','dg','ec2','ec3','ec4','ec5','ecq'};
+% brain_region = regions(cellSesMap(:,19));
 
-brain_region = repmat({'unknown'},1,length(regionSes));
-brain_region(ca3p) = {'CA3p'};
-brain_region(ca3i) = {'CA3i'};
-brain_region(DGe) = {'DGe'};
-brain_region(DGi) = {'DGi'};
-brain_region(ec2p) = {'EC2p'};
-brain_region(ec2i) = {'EC2i'};
-brain_region(ec3p) = {'EC3p'};
-brain_region(ec3i) = {'EC3i'};
+brain_region = regions(regionSes);
+
+% ca3p = cellSesMap(cleanSes==1 & iCellSes{1}==1 & regionSes==2,2);
+% ca3i = cellSesMap(cleanSes==1 & iCellSes{2}==1 & regionSes==2,2);          
+% DGe =  cellSesMap(cleanSes==1 & iCellSes{1}==1 & regionSes==3,2);
+% DGi =  cellSesMap(cleanSes==1 & iCellSes{2}==1 & regionSes==3,2); 
+% ec2p = cellSesMap(cleanSes==1 & iCellSes{1}==1 & regionSes==4,2);
+% ec2i = cellSesMap(cleanSes==1 & iCellSes{2}==1 & regionSes==4,2); 
+% ec3p = cellSesMap(cleanSes==1 & iCellSes{1}==1 & regionSes==5,2);
+% ec3i = cellSesMap(cleanSes==1 & iCellSes{2}==1 & regionSes==5,2);         
+
+% brain_region = repmat({'unknown'},1,length(regionSes));
+% brain_region(ca3p) = {'CA3p'};
+% brain_region(ca3i) = {'CA3i'};
+% brain_region(DGe) = {'DGe'};
+% brain_region(DGi) = {'DGi'};
+% brain_region(ec2p) = {'EC2p'};
+% brain_region(ec2i) = {'EC2i'};
+% brain_region(ec3p) = {'EC3p'};
+% brain_region(ec3i) = {'EC3i'};
+
+
+
+
 
 end
