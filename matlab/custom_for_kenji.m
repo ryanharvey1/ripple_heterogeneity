@@ -1,9 +1,11 @@
 % custom_for_kenji
 
+force_rerun = false;
+
 load('A:\Data\Kenji\ElePosition.mat')
 shank_region = ElePosition(:,6:end);
 for i = 1:size(shank_region,1)
-    for j = 1:size(shank_region,2)  
+    for j = 1:size(shank_region,2)
         shank_region{i,j}=lower(shank_region{i,j});
     end
 end
@@ -15,21 +17,9 @@ idx = any(strcmp(shank_region,'ca1') |...
     strcmp(shank_region,'ca2') |...
     strcmp(shank_region,'dg') |...
     strcmp(shank_region,'dgca3'),2);
-                
+
 sessions = ElePosition(idx,2);
-    
-% sessions ={...
-%     'ec013.895_902','ec013.906_918','ec013.921_927',...
-%     'ec013.931_942','ec013.944_958','ec013.961_974',...
-%     'ec013.976_985','ec016.659_674','ec016.682_688',...
-%     'ec016.694_711','ec016.715_735','ec016.740_764',...
-%     'ec016.769_789','ec016.791_810','ec016.813_831',...
-%     'ec016.835_850','ec016.853_867','ec016.871_889',...
-%     'ec016.893_911','ec016.914_932','ec016.934_946',...
-%     'ec016.950_965','ec016.969_986','ec016.1002_1023',...
-%     'ec016.1025_1048','2006-4-18','2006-4-10',...
-%     '2006-6-12','2006-6-13'...
-%     };
+
 
 data_path = 'A:\Data\Kenji\';
 
@@ -42,12 +32,13 @@ for i = 1:length(sessions)
     if exist(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'file') &&...
             exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file') &&...
             exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file') &&...
-            exist(fullfile(basepath,[basename,'.SWRunitMetrics.mat']),'file')
+            exist(fullfile(basepath,[basename,'.SWRunitMetrics.mat']),'file') &&...
+            ~force_rerun
         continue
     end
     
     % check and make session.mat
-    if ~exist([basename '.session.mat'],'file')
+    if ~exist([basename '.session.mat'],'file') || force_rerun
         session = sessionTemplate(basepath,'showGUI',false);
         session.epochs = get_kenji_epochs('basepath',basepath,'basename',basename);
         save(fullfile(basepath,[basename '.session.mat']),'session')
@@ -66,13 +57,13 @@ for i = 1:length(sessions)
         'forceReload',false);
     
     % detect ripples
-    if ~exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file')
+    if ~exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file') || force_rerun
         addpath(genpath('D:\github\buzcode')) % cell-explorer and buzcode don't like eachother
         run_ripple_pipe(basepath,basename,spikes)
     end
     
     % make cell metrics
-    if ~exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file')
+    if ~exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file') || force_rerun
         rmpath(genpath('D:\github\buzcode')) % cell-explorer and buzcode don't like eachother
         
         cell_metrics = ProcessCellMetrics('basepath',basepath,...
@@ -90,10 +81,12 @@ for i = 1:length(sessions)
     % assign region from kenji metadata
     if contains(basepath,'Kenji') &&...
             ~isfield(cell_metrics,'brainRegion') ||...
-            sum(contains(cell_metrics.brainRegion,'Unknown')) == length(cell_metrics.brainRegion)
+            sum(contains(cell_metrics.brainRegion,'Unknown')) == length(cell_metrics.brainRegion) ||...
+            force_rerun
         
         cell_metrics.brainRegion = get_kenji_region('basepath',basepath,...
-            'basename',basename);
+                                                    'basename',basename);
+%         cell_metrics.brainRegion = get_kenji_region_2(cell_metrics.shankID,basename,data_path);
         save(fullfile(basepath,[basename '.cell_metrics.cellinfo.mat']),'cell_metrics')
     end
     
@@ -118,7 +111,6 @@ for i = 1:length(shank_region);shank_region{i}=lower(shank_region{i});end
 
 % if data has ca1 then we can look at ripples that co-occur with sharp waves
 if any(strcmp(shank_region,'ca1') |...
-        strcmp(shank_region,'ca') |...
         strcmp(shank_region,'ca1c'))
     disp('finding best ripple and sharp wave channels')
     if ~exist(fullfile(basepath,[basename '.swrCh.mat']),'file')
@@ -139,7 +131,7 @@ elseif any(strcmp(shank_region,'ca3') |...
         strcmp(shank_region,'ca2') |...
         strcmp(shank_region,'dg') |...
         strcmp(shank_region,'dgca3'))
-
+    
     % find out what channel has ca3 and run that channel
     idx = find(strcmp(shank_region,'ca3') |...
         strcmp(shank_region,'ca2') |...
@@ -160,11 +152,13 @@ elseif any(strcmp(shank_region,'ca3') |...
     [~,c_idx] = max(n_rips);
     c = sessionInfo.spikeGroups.groups{idx(1)}(c_idx);
     [ripples] = bz_FindRipples(lfp.data(:,c+1),lfp.timestamps);
-        
+    
     save(fullfile(basepath,[basename '.ripples.events.mat']),'ripples')
 else
-%     lfp = bz_GetLFP('all','basepath',basepath,'basename',basename);
-%     c = bz_GetBestRippleChan(lfp);
+    %     lfp = bz_GetLFP('all','basepath',basepath,'basename',basename);
+    %     c = bz_GetBestRippleChan(lfp);
+    lfp = bz_GetLFP('all','basepath',basepath,'basename',basename,'noPrompts',true);
+
     disp('not sure how this session got through')
     c = input('pick channel number for ripples (0 indexing): ');
     [ripples] = bz_FindRipples(lfp.data(:,c+1),lfp.timestamps);
