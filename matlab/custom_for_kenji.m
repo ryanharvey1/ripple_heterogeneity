@@ -1,6 +1,6 @@
 % custom_for_kenji
 
-force_rerun = false;
+force_rerun = true;
 
 load('A:\Data\Kenji\ElePosition.mat')
 shank_region = ElePosition(:,6:end);
@@ -38,7 +38,7 @@ for i = 1:length(sessions)
     end
     
     % check and make session.mat
-    if ~exist([basename '.session.mat'],'file') || force_rerun
+    if ~exist([basename '.session.mat'],'file')
         session = sessionTemplate(basepath,'showGUI',false);
         session.epochs = get_kenji_epochs('basepath',basepath,...
             'basename',basename);
@@ -92,11 +92,30 @@ for i = 1:length(sessions)
     
     % parse the epochs in order to make consistent pre/task/post structure
     % for swr code
-    load(fullfile(basepath,[basename,'.ripples.events.mat']))
+%     load(fullfile(basepath,[basename,'.ripples.events.mat']))
     
     % keep this at top of path
-    addpath('D:\github\ripple_heterogeneity\matlab')
+%     addpath('D:\github\ripple_heterogeneity\matlab')
+%     parse_pre_task_post(session,basepath,basename,ripples,spikes)
+end
+
+% keep this at top of path
+addpath('D:\github\ripple_heterogeneity\matlab')
+for i = 1:length(sessions)
+    basename = sessions{i};
+    basepath = [data_path,basename];
+    disp(basepath)
+
+    if exist(fullfile(basepath,[basename,'.SWRunitMetrics.mat']),'file')
+        continue
+    end
+    
+    load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
+
+    load(fullfile(basepath,[basename,'.ripples.events.mat']))
+
     parse_pre_task_post(session,basepath,basename,ripples,spikes)
+    
 end
 
 
@@ -127,14 +146,19 @@ if any(strcmp(shank_region,'ca1') | strcmp(shank_region,'ca1c'))
 
     parfor i = 1:length(chan_to_check)
         ripples = detect_ripple(lfp.data(:,chan_to_check(i)),...
+            lfp.timestamps,...
             restrict_spikes(spikes,cell_idx));
         n_rips(i) = length(ripples.peaks);
     end
     [~,c_idx] = max(n_rips);
     c = chan_to_check(c_idx);
     
-    ripples = detect_ripple(lfp.data(:,c),restrict_spikes(spikes,cell_idx));
-                            
+    ripples = detect_ripple(lfp.data(:,c),...
+                            lfp.timestamps,...
+                            restrict_spikes(spikes,cell_idx));
+                        
+    ripples.detectorinfo.detectionparms.ripple_channel = c;
+    
 elseif any(strcmp(shank_region,'ca3') |...
         strcmp(shank_region,'ca2') |...
         strcmp(shank_region,'ca') |...
@@ -154,13 +178,19 @@ elseif any(strcmp(shank_region,'ca3') |...
     parfor i = 1:length(chan_to_check)
         
         ripples = detect_ripple(lfp.data(:,chan_to_check(i)),...
+            lfp.timestamps,...
             restrict_spikes(spikes,cell_idx));
 
         n_rips(i) = length(ripples.peaks);
     end
     [~,c_idx] = max(n_rips);
     c = chan_to_check(c_idx);
-    ripples = detect_ripple(lfp.data(:,c),restrict_spikes(spikes,cell_idx));
+    
+    ripples = detect_ripple(lfp.data(:,c),...
+                            lfp.timestamps,...
+                            restrict_spikes(spikes,cell_idx));
+                        
+    ripples.detectorinfo.detectionparms.ripple_channel = c;
 else
     disp('no HPC channels... find a channel you want to use and manually run')
     keyboard
@@ -169,9 +199,9 @@ end
 save(fullfile(basepath,[basename '.ripples.events.mat']),'ripples')
 end
 
-function ripples = detect_ripple(lfp,spikes)
+function ripples = detect_ripple(lfp,timestamps,spikes)
 
-ripples = bz_FindRipples(lfp,lfp.timestamps,...
+ripples = bz_FindRipples(lfp,timestamps,...
                         'durations',[50,300],...
                         'thresholds',[1,3],...
                         'passband',[100,250],...
