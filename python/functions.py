@@ -58,6 +58,8 @@ def loadXML(path):
         path : string
     Returns:
         int, int, dict
+
+    by Guillaume Viejo    
     """
     if not os.path.exists(path):
         print("The path "+path+" doesn't exist; Exiting ...")
@@ -79,7 +81,7 @@ def loadXML(path):
     groups = xmldoc.getElementsByTagName('anatomicalDescription')[0].getElementsByTagName('channelGroups')[0].getElementsByTagName('group')
     for i in range(len(groups)):
         shank_to_channel[i] = np.sort([int(child.firstChild.data) for child in groups[i].getElementsByTagName('channel')])
-    return int(nChannels), int(fs), shank_to_channel    
+    return int(nChannels), int(fs), int(fs_dat), shank_to_channel
 
 def loadLFP(path, n_channels=90, channel=64, frequency=1250.0, precision='int16'):
     if type(channel) is not list:
