@@ -40,7 +40,8 @@ for i = 1:length(sessions)
     % check and make session.mat
     if ~exist([basename '.session.mat'],'file') || force_rerun
         session = sessionTemplate(basepath,'showGUI',false);
-        session.epochs = get_kenji_epochs('basepath',basepath,'basename',basename);
+        session.epochs = get_kenji_epochs('basepath',basepath,...
+            'basename',basename);
         save(fullfile(basepath,[basename '.session.mat']),'session')
     else
         load(fullfile(basepath,[basename '.session.mat']))
@@ -86,7 +87,6 @@ for i = 1:length(sessions)
         
         cell_metrics.brainRegion = get_kenji_region('basepath',basepath,...
                                                     'basename',basename);
-%         cell_metrics.brainRegion = get_kenji_region_2(cell_metrics.shankID,basename,data_path);
         save(fullfile(basepath,[basename '.cell_metrics.cellinfo.mat']),'cell_metrics')
     end
     
@@ -109,6 +109,12 @@ for i = 1:length(shank_region);shank_region{i}=lower(shank_region{i});end
 
 load(fullfile(basepath,[basename,'.session.mat']))
 
+% check if emg exist
+if ~exist(fullfile(basepath,[basename, '.EMGFromLFP.LFP.mat']),'file')
+    bz_EMGFromLFP(basepath,'basename',basename,...
+        'samplingFrequency',10,'savemat',true,'noPrompts',true);
+end
+    
 % if data has ca1 then we can look at ripples that co-occur with sharp waves
 if any(strcmp(shank_region,'ca1') |...
         strcmp(shank_region,'ca1c'))
@@ -124,13 +130,18 @@ if any(strcmp(shank_region,'ca1') |...
         ripples = bz_FindRipples(lfp.data(:,chan_to_check(i)),lfp.timestamps);
         ripples = eventSpikingTreshold(ripples,...
                                     'spikes',restrict_spikes(spikes,cell_idx),...
-                                    'spikingThreshold',0.5);
+                                    'spikingThreshold',0.5,...
+                                    'figOpt',false);
         n_rips(i) = length(ripples.peaks);
     end
     [~,c_idx] = max(n_rips);
     c = chan_to_check(c_idx);
-    [ripples] = bz_FindRipples(lfp.data(:,c),lfp.timestamps);
-
+    ripples = bz_FindRipples(lfp.data(:,c),lfp.timestamps);
+    ripples = eventSpikingTreshold(ripples,...
+                                'spikes',restrict_spikes(spikes,cell_idx),...
+                                'spikingThreshold',0.5,...
+                                'figOpt',false);
+                            
 elseif any(strcmp(shank_region,'ca3') |...
         strcmp(shank_region,'ca2') |...
         strcmp(shank_region,'ca') |...
@@ -151,21 +162,24 @@ elseif any(strcmp(shank_region,'ca3') |...
         ripples = bz_FindRipples(lfp.data(:,chan_to_check(i)),lfp.timestamps);
         ripples = eventSpikingTreshold(ripples,...
                                     'spikes',restrict_spikes(spikes,cell_idx),...
-                                    'spikingThreshold',0.5);
+                                    'spikingThreshold',0.5,...
+                                    'figOpt',false);
         n_rips(i) = length(ripples.peaks);
     end
     [~,c_idx] = max(n_rips);
     c = chan_to_check(c_idx);
-    [ripples] = bz_FindRipples(lfp.data(:,c),lfp.timestamps);
-    
+    ripples = bz_FindRipples(lfp.data(:,c),lfp.timestamps);
+    ripples = eventSpikingTreshold(ripples,...
+                                'spikes',restrict_spikes(spikes,cell_idx),...
+                                'spikingThreshold',0.5,...
+                                'figOpt',false);
+                                
     save(fullfile(basepath,[basename '.ripples.events.mat']),'ripples')
 else
     disp('no HPC channels... find a channel you want to use and manually run')
     keyboard
 end
 
-disp('refining ripples by mua')
-ripples = eventSpikingTreshold(ripples,'spikes',spikes,'spikingThreshold',0.5);
 save(fullfile(basepath,[basename '.ripples.events.mat']),'ripples')
 end
 
