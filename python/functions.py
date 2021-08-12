@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
-import hdf5storage
-import h5py
+# import hdf5storage
+# import h5py
+import scipy.io as sio
+
 from scipy.signal import find_peaks
 import os
 import sys
@@ -125,3 +127,76 @@ def writeNeuroscopeEvents(path, ep, name):
         f.writelines(str(ep.as_units('ms').iloc[i]['end']) + " "+name+" end "+ str(1)+"\n")
     f.close()
     return
+
+
+def load_cell_metrics(filename):
+    """ 
+    loader of cell-explorer cell_metrics.cellinfo.mat
+
+    Inputs: filename: path to cell_metrics.cellinfo.mat
+    outputs: df: data frame of single unit features
+    data_: dict with data that does not fit nicely into a dataframe (waveforms, acgs, epochs, etc.)
+
+    TODO: extract all fields from cell_metrics.cellinfo. 
+
+    - Ryan H
+    """
+    def extract_epochs(data):
+        startTime = [ep['startTime'][0][0][0][0] for ep in data['cell_metrics']['general'][0][0]['epochs'][0][0][0]]
+        stopTime = [ep['stopTime'][0][0][0][0] for ep in data['cell_metrics']['general'][0][0]['epochs'][0][0][0]]
+        name = [ep['name'][0][0][0] for ep in data['cell_metrics']['general'][0][0]['epochs'][0][0][0]]
+
+        epochs = pd.DataFrame()
+        epochs['name'] = name
+        epochs['startTime'] = startTime
+        epochs['stopTime'] = stopTime
+        return epochs
+
+    def extract_general(data):
+        # extract fr per unit with lag zero to ripple
+        ripple_fr = [ev.T[0] for ev in data['cell_metrics']['events'][0][0]['ripples'][0][0][0]]
+        # extract spikes times
+        spikes = [spk.T[0] for spk in data['cell_metrics']['spikes'][0][0]['times'][0][0][0]]
+        # extract epochs
+        epochs = extract_epochs(data)
+        # extract avg waveforms (one wavefrom per channel on shank)
+        waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0][0][0][0]]
+        # add to dictionary 
+        data_ = {
+            "acg_wide": data['cell_metrics']['acg'][0][0]['wide'][0][0],
+            "acg_narrow": data['cell_metrics']['acg'][0][0]['narrow'][0][0],
+            "acg_log10": data['cell_metrics']['acg'][0][0]['log10'][0][0],
+            "ripple_fr": ripple_fr,
+            "chanCoords_x": data['cell_metrics']['general'][0][0]['chanCoords'][0][0][0][0]['x'].T[0],
+            "chanCoords_y": data['cell_metrics']['general'][0][0]['chanCoords'][0][0][0][0]['y'].T[0],
+            "epochs": epochs,
+            "spikes": spikes,
+            "waveforms": waveforms
+            }
+        return data_ 
+
+    # load cell_metrics file
+    data = sio.loadmat(filename)
+    dt = data['cell_metrics'].dtype
+
+    # construct data frame with features per neuron
+    df = pd.DataFrame()
+    for dn in dt.names:
+        try:
+            df[dn] = data['cell_metrics'][dn][0][0][0]
+        except:
+            continue
+
+    # add data from general metrics        
+    df['basename'] = data['cell_metrics']['general'][0][0]['basename'][0][0][0]
+    df['basepath'] = data['cell_metrics']['general'][0][0]['basepath'][0][0][0]
+    df['sex'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['sex'][0][0][0]
+    df['species'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['species'][0][0][0]
+    df['strain'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['strain'][0][0][0]
+    df['geneticLine'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['geneticLine'][0][0][0]
+    df['cellCount'] = data['cell_metrics']['general'][0][0]['cellCount'][0][0][0][0]
+
+    # extract other general data and put into dict    
+    data_ = extract_general(data)
+
+    return df,data_
