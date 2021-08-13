@@ -5,8 +5,9 @@ import pandas as pd
 import scipy.io as sio
 
 from scipy.signal import find_peaks
-import os
-import sys
+import sys,os
+from sklearn.decomposition import PCA
+
 
 def set_size(width, fraction=1, subplots=(1, 1)):
     """Set figure dimensions to avoid scaling in LaTeX.
@@ -130,6 +131,19 @@ def writeNeuroscopeEvents(path, ep, name):
     f.close()
     return
 
+def load_position(path,fs=39.0625):
+    if not os.path.exists(path):
+        print("The path "+path+" doesn't exist; Exiting ...")
+        sys.exit()
+    listdir = os.listdir(path)
+    whlfiles = [f for f in listdir if f.endswith('.whl')]
+    if not len(whlfiles):
+        print("Folder contains no whl files; Exiting ...")
+        sys.exit()
+    new_path = os.path.join(path, whlfiles[0])
+    df = pd.read_csv(new_path,delimiter="\t",header=0,names=['x1','y1','x2','y2'])
+    df[df==-1] = np.nan
+    return df,fs
 
 def load_cell_metrics(filename):
     """ 
@@ -202,3 +216,39 @@ def load_cell_metrics(filename):
     data_ = extract_general(data)
 
     return df,data_
+
+def linearize_position(x,y):
+    """
+    use PCA (a dimensionality reduction technique) to find
+     the direction of maximal variance in our position data, 
+     and we use this as our new 1D linear track axis.
+    -Ryan H
+    """
+    # locate and remove nans (sklearn pca does not like nans)
+    badidx = (np.isnan(x)) | (np.isnan(y)) 
+    badidx_pos = np.where(badidx)
+    goodidx_pos = np.where(~badidx)
+    n = len(x)
+
+    x = x[~badidx]
+    y = y[~badidx]
+
+    # perform pca and return the first 2 components
+    pca = PCA(n_components=2)
+    # transform our coords 
+    linear = pca.fit_transform(np.array([x,y]).T)
+
+    # add back nans
+    x = np.zeros([n])
+    x[badidx_pos] = np.nan
+    x[goodidx_pos] = linear[:,0]
+
+    y = np.zeros([n])
+    y[badidx_pos] = np.nan
+    y[goodidx_pos] = linear[:,1]
+
+    # pca will center data at 0,0... adjust for this here
+    x = x + np.abs(np.nanmin(x))
+    y = y + np.abs(np.nanmin(y))
+
+    return x,y
