@@ -51,9 +51,9 @@ if check_cell_count
     end
 end
 
-regions = {'ca1','ca3','dg','ec2','ec3','ec4','ec5','ecq'};
+regions = {'ca1','ca3','dg','ec2','ec3','ec4','ec5','ecq','unknown'};
 % brain_region = regions(cellSesMap(:,19));
-
+regionSes(regionSes == 0)=9;
 brain_region = regions(regionSes);
 
 % ca3p = cellSesMap(cleanSes==1 & iCellSes{1}==1 & regionSes==2,2);
