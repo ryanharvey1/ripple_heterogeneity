@@ -28,14 +28,20 @@ for i = 1:length(sessions)
     basename = sessions{i};
     basepath = [data_path,basename];
     disp(basepath)
+    
     % check for needed files
     if exist(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'file') &&...
             exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file') &&...
             exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file') &&...
             ~force_rerun
-        continue
+    else
+        run_all(basepath,basename,force_rerun)
     end
-    
+end
+
+custom_for_kenji_SWRunitMetrics()
+
+function run_all(basepath,basename,force_rerun)    
     % check and make session.mat
     if ~exist([basename '.session.mat'],'file')
         session = sessionTemplate(basepath,'showGUI',false);
@@ -71,7 +77,8 @@ for i = 1:length(sessions)
             'spikes',spikes,...
             'getWaveformsFromDat',false,...
             'manualAdjustMonoSyn',false,...
-            'session',session);
+            'session',session,...
+            'excludeMetrics',{'deepSuperficial'});
         
         addpath(genpath('D:\github\buzcode'))
         
@@ -100,24 +107,27 @@ for i = 1:length(sessions)
 %     parse_pre_task_post(session,basepath,basename,ripples,spikes)
 end
 
-% keep this at top of path
-addpath('D:\github\ripple_heterogeneity\matlab')
-for i = 1:length(sessions)
-    basename = sessions{i};
-    basepath = [data_path,basename];
-    disp(basepath)
 
-    if exist(fullfile(basepath,[basename,'.SWRunitMetrics.mat']),'file')
-        continue
-    end
-    
-    load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
-
-    load(fullfile(basepath,[basename,'.ripples.events.mat']))
-
-    parse_pre_task_post(session,basepath,basename,ripples,spikes)
-    
-end
+% % keep this at top of path
+% addpath('D:\github\ripple_heterogeneity\matlab')
+% for i = 1:length(sessions)
+%     basename = sessions{i};
+%     basepath = [data_path,basename];
+%     disp(basepath)
+% 
+%     if exist(fullfile(basepath,[basename,'.SWRunitMetrics.mat']),'file')
+%         continue
+%     end
+%     
+%     load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
+% 
+%     load(fullfile(basepath,[basename,'.ripples.events.mat']))
+% 
+%     load(fullfile(basepath,[basename '.session.mat']))
+% 
+%     parse_pre_task_post(session,basepath,basename,ripples,spikes)
+%     
+% end
 
 
 function run_ripple_pipe(basepath,basename,spikes)
