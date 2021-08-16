@@ -18,7 +18,7 @@ end
 dirfile = [dirData, basename, filesep];
 
 % load table with kenji session data
-load([dirData '\KenjiData2.mat']);
+load([dirData '\KenjiData3.mat']);
 
 % pull out this current session
 info = Beh(ismember(Beh(:,2),basename),:);
