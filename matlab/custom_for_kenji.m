@@ -134,10 +134,11 @@ if ~exist(fullfile(basepath,[basename, '.EMGFromLFP.LFP.mat']),'file')
     bz_EMGFromLFP(basepath,'basename',basename,...
         'samplingFrequency',10,'savemat',true,'noPrompts',true);
 end
-    
+% load lfp
+lfp = bz_GetLFP('all','basepath',basepath,'basename',basename,'noPrompts',true);
+
 % if data has ca1 then we can look at ripples that co-occur with sharp waves
 if any(strcmp(shank_region,'ca1') | strcmp(shank_region,'ca1c'))
-    lfp = bz_GetLFP('all','basepath',basepath,'basename',basename,'noPrompts',true);
     
     % find out what channel has ca1 and run that channel
     idx = find(strcmp(shank_region,'ca1') | strcmp(shank_region,'ca1c'));
