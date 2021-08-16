@@ -215,9 +215,15 @@ def load_cell_metrics(filename):
 
     # construct data frame with features per neuron
     df = pd.DataFrame()
+    # count units
+    n_cells = data['cell_metrics']['UID'][0][0][0].size
     for dn in dt.names:
+        # check if var has the right n of units and is a vector
         try:
-            df[dn] = data['cell_metrics'][dn][0][0][0]
+            if ((data['cell_metrics'][dn][0][0][0][0].size == 1) &
+                    (data['cell_metrics'][dn][0][0][0].size == n_cells)):
+                    
+                df[dn] = data['cell_metrics'][dn][0][0][0]
         except:
             continue
 
@@ -241,9 +247,17 @@ def load_SWRunitMetrics(basepath):
     def extract_swr_epoch_data(data,epoch):
         # get var names
         dt = data['SWRunitMetrics'][epoch][0][0].dtype
-        # get n units
-        n_cells = data['SWRunitMetrics'][epoch][0][0][0]['particip'][0].shape[0]
+
         df2 = pd.DataFrame()
+
+        # get n units
+        # there might be other fields within here like the epoch timestamps
+        # skip those by returning empty df
+        try:
+            n_cells = data['SWRunitMetrics'][epoch][0][0][0]['particip'][0].shape[0]
+        except:
+            return df2
+
         for dn in dt.names:
             if (
                 (data['SWRunitMetrics'][epoch][0][0][0][dn][0].shape[1] == 1) &
@@ -256,7 +270,9 @@ def load_SWRunitMetrics(basepath):
     df2 = pd.DataFrame()
     for epoch in data['SWRunitMetrics'].dtype.names:
         if data['SWRunitMetrics'][epoch][0][0].size>0: # not empty
-            df2 = df2.append(extract_swr_epoch_data(data,epoch),ignore_index=True)
+            df_ = extract_swr_epoch_data(data,epoch)
+            if df_.size>0:
+                df2 = df2.append(df_,ignore_index=True)
 
     return df2
 
