@@ -3,6 +3,7 @@ import pandas as pd
 # import hdf5storage
 # import h5py
 import scipy.io as sio
+import glob
 
 from scipy.signal import find_peaks
 import sys,os
@@ -170,21 +171,38 @@ def load_cell_metrics(filename):
 
     def extract_general(data):
         # extract fr per unit with lag zero to ripple
-        ripple_fr = [ev.T[0] for ev in data['cell_metrics']['events'][0][0]['ripples'][0][0][0]]
+        try:
+            ripple_fr = [ev.T[0] for ev in data['cell_metrics']['events'][0][0]['ripples'][0][0][0]]
+        except:
+            ripple_fr = []
         # extract spikes times
         spikes = [spk.T[0] for spk in data['cell_metrics']['spikes'][0][0]['times'][0][0][0]]
         # extract epochs
-        epochs = extract_epochs(data)
+        try:
+            epochs = extract_epochs(data)
+        except:
+            epochs = []
         # extract avg waveforms (one wavefrom per channel on shank)
-        waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0][0][0][0]]
+        try:
+            waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0][0][0][0]]
+        except:
+            waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0]]
+        # extract chanCoords
+        try:
+            chanCoords_x = data['cell_metrics']['general'][0][0]['chanCoords'][0][0][0][0]['x'].T[0]
+            chanCoords_y = data['cell_metrics']['general'][0][0]['chanCoords'][0][0][0][0]['y'].T[0]
+        except:
+            chanCoords_x = []
+            chanCoords_y = []
+
         # add to dictionary 
         data_ = {
             "acg_wide": data['cell_metrics']['acg'][0][0]['wide'][0][0],
             "acg_narrow": data['cell_metrics']['acg'][0][0]['narrow'][0][0],
             "acg_log10": data['cell_metrics']['acg'][0][0]['log10'][0][0],
             "ripple_fr": ripple_fr,
-            "chanCoords_x": data['cell_metrics']['general'][0][0]['chanCoords'][0][0][0][0]['x'].T[0],
-            "chanCoords_y": data['cell_metrics']['general'][0][0]['chanCoords'][0][0][0][0]['y'].T[0],
+            "chanCoords_x": chanCoords_x,
+            "chanCoords_y": chanCoords_y,
             "epochs": epochs,
             "spikes": spikes,
             "waveforms": waveforms
@@ -216,6 +234,31 @@ def load_cell_metrics(filename):
     data_ = extract_general(data)
 
     return df,data_
+
+def load_SWRunitMetrics(basepath):
+    filename = glob.glob(os.path.join(basepath,'*.SWRunitMetrics.mat'))
+    data = sio.loadmat(filename[0])
+    def extract_swr_epoch_data(data,epoch):
+        # get var names
+        dt = data['SWRunitMetrics'][epoch][0][0].dtype
+        # get n units
+        n_cells = data['SWRunitMetrics'][epoch][0][0][0]['particip'][0].shape[0]
+        df2 = pd.DataFrame()
+        for dn in dt.names:
+            if (
+                (data['SWRunitMetrics'][epoch][0][0][0][dn][0].shape[1] == 1) &
+                (data['SWRunitMetrics'][epoch][0][0][0][dn][0].shape[0] == n_cells)
+                ):
+                df2[dn] = data['SWRunitMetrics'][epoch][0][0][0][dn][0].T[0]
+        df2['epoch'] = epoch
+        return df2
+
+    df2 = pd.DataFrame()
+    for epoch in data['SWRunitMetrics'].dtype.names:
+        if data['SWRunitMetrics'][epoch][0][0].size>0: # not empty
+            df2 = df2.append(extract_swr_epoch_data(data,epoch),ignore_index=True)
+
+    return df2
 
 def linearize_position(x,y):
     """
