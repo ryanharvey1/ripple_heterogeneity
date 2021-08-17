@@ -3,7 +3,7 @@ p = inputParser;
 addParameter(p,'basepath',pwd,@isstr);
 addParameter(p,'basename',[],@isstr); 
 addParameter(p,'dirData','A:\Data\Kenji\',@isstr); 
-addParameter(p,'check_cell_count',true,@logical); 
+addParameter(p,'check_cell_count',true); 
 
 % Parsing inputs
 parse(p,varargin{:})
