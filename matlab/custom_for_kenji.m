@@ -25,9 +25,9 @@ sessions = ElePosition(idx,2);
 
 data_path = 'A:\Data\Kenji\';
 
-if isempty(gcp('nocreate'))
-    parpool(4)
-end
+% if isempty(gcp('nocreate'))
+%     parpool(4)
+% end
 WaitMessage = parfor_wait(length(sessions),'Waitbar',true);
 % loop through each session
 for i = 1:length(sessions)
@@ -35,20 +35,25 @@ for i = 1:length(sessions)
     basepath = [data_path,basename];
     disp(basepath)
     
-    if ~isempty(re_run_if_before)
+    if ~isempty(re_run_if_before) &&...
+            exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file')
         pass = check_file_date(fullfile(basepath,[basename,'.ripples.events.mat']),...
             re_run_if_before);
         if pass == 0
             WaitMessage.Send;
             continue
         end
+    else
+        pass=0;
     end
     
     % check for needed files
     if exist(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'file') &&...
             exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file') &&...
             exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file') &&...
-            ~force_rerun && ~pass
+            ~force_rerun &&...
+            ~pass ||...
+            ~exist(basepath,'dir')
         WaitMessage.Send;
     else
         run_all(basepath,basename,force_rerun,pass)
