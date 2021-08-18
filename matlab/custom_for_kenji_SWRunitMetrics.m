@@ -31,7 +31,13 @@ for i = 1:length(sessions)
     if exist(fullfile(basepath,[basename,'.SWRunitMetrics.mat']),'file')
         continue
     end
-    
+    if ~exist(basepath,'dir')
+       continue 
+    end
+    if ~exist(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'file') ||...
+        ~exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file')
+        continue
+    end
     load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
 
     load(fullfile(basepath,[basename,'.ripples.events.mat']))
