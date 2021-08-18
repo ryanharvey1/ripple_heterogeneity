@@ -1,9 +1,14 @@
 function run_ripple_pipe_kenji(basepath,basename,spikes)
 
 % load electrode position info
-load('A:\Data\Kenji\ElePosition.mat')
-shank_region = ElePosition(contains(ElePosition(:,2),basename),6:end);
-for i = 1:length(shank_region);shank_region{i}=lower(shank_region{i});end
+% load('A:\Data\Kenji\ElePosition2.mat')
+ElePosition = readtable('A:\Data\Kenji\ElePosition.Mizuseki_v2.csv');
+shank_region = ElePosition(contains(ElePosition.session,basename),contains(fields(ElePosition),'shank'));
+shank_region = table2cell(shank_region);
+
+for i = 1:length(shank_region)
+    shank_region{i}=lower(shank_region{i});
+end
 
 load(fullfile(basepath,[basename,'.session.mat']))
 
