@@ -131,7 +131,7 @@ for i = 1:length(session.epochs)
 end
 for i = 1:length(epoch)
    epoch_temp = strsplit(epoch{i},'_');
-   epoch{i,1} = epoch_temp{2};
+   epoch{i,1} = epoch_temp{end};
 end
 
 idx = contains(epoch,'sleep');
