@@ -44,6 +44,7 @@ for a = 1:length(animal)
             SleepState = SleepScoreMaster(basepath);
             % score theta states asleep and awake
             SleepState = bz_ThetaStates(basepath,1);
+            close all
         end
                 
     end
