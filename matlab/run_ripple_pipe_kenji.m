@@ -56,8 +56,15 @@ end
 % estimate ripple band power normalized by wide band power
 disp('finding ripple channel...')
 
-pBand = bandpower(double(lfp.data),lfp.samplingRate,[100,250]);
-pTot = bandpower(double(lfp.data),lfp.samplingRate,[1,(lfp.samplingRate/2)-1]);
+try
+    pBand = bandpower(double(lfp.data),lfp.samplingRate,[100,250]);
+    pTot = bandpower(double(lfp.data),lfp.samplingRate,[1,(lfp.samplingRate/2)-1]);
+catch
+    for c = 1:size(lfp.data,2)
+        pBand(c) = bandpower(double(lfp.data(:,c)),lfp.samplingRate,[100,250]);
+        pTot(c) = bandpower(double(lfp.data(:,c)),lfp.samplingRate,[1,(lfp.samplingRate/2)-1]);
+    end
+end
 [~,c_idx] = max(pBand./pTot);
 c = chan_to_check(c_idx);
 
