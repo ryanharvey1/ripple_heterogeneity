@@ -276,6 +276,41 @@ def load_SWRunitMetrics(basepath):
 
     return df2
 
+def load_ripples_events(filename):
+    """
+    load info from ripples.events.mat and store within df
+    """
+    df = pd.DataFrame()
+
+    data = sio.loadmat(filename)
+    dt = data['ripples'].dtype
+
+    df['start'] = data['ripples']['timestamps'][0][0][:,0]
+    df['stop'] = data['ripples']['timestamps'][0][0][:,1]
+    df['peaks'] = data['ripples']['peaks'][0][0]
+    df['amplitude'] = data['ripples']['amplitude'][0][0]
+    df['duration'] = data['ripples']['duration'][0][0]
+    df['frequency'] = data['ripples']['frequency'][0][0]
+
+    if "detectorName" not in dt.names:
+        df['detectorName'] = data['ripples']['detectorinfo'][0][0]['detectorname'][0][0][0]
+    else:
+        df['detectorName'] = data['ripples']['detectorName'][0][0][0]
+
+    if "eventSpikingParameters" in dt.names:
+        df['event_spk_thres'] = 1
+    else:
+        df['event_spk_thres'] = 0
+
+    normalized_path = os.path.normpath(filename)
+    path_components = normalized_path.split(os.sep)
+    head_tail = os.path.split(normalized_path)
+    df['basename'] = path_components[-2]
+    df['basepath'] = head_tail[0]   
+    df['animal'] = path_components[-3]
+
+    return df
+
 def linearize_position(x,y):
     """
     use PCA (a dimensionality reduction technique) to find
