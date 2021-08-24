@@ -346,3 +346,82 @@ def linearize_position(x,y):
     y = y + np.abs(np.nanmin(y))
 
     return x,y
+
+
+def crossCorr(t1, t2, binsize, nbins):
+    ''' 
+        Fast crossCorr 
+        # crossCorr functions from Guillaume Viejo of Peyrache Lab
+        # https://github.com/PeyracheLab/StarterPack/blob/master/python/main6_autocorr.py
+    '''
+    nt1 = len(t1)
+    nt2 = len(t2)
+    if np.floor(nbins/2)*2 == nbins:
+        nbins = nbins+1
+
+    m = -binsize*((nbins+1)/2)
+    B = np.zeros(nbins)
+    for j in range(nbins):
+        B[j] = m+j*binsize
+
+    w = ((nbins/2) * binsize)
+    C = np.zeros(nbins)
+    i2 = 1
+
+    for i1 in range(nt1):
+        lbound = t1[i1] - w
+        while i2 < nt2 and t2[i2] < lbound:
+            i2 = i2+1
+        while i2 > 1 and t2[i2-1] > lbound:
+            i2 = i2-1
+
+        rbound = lbound
+        l = i2
+        for j in range(nbins):
+            k = 0
+            rbound = rbound+binsize
+            while l < nt2 and t2[l] < rbound:
+                l = l+1
+                k = k+1
+
+            C[j] += k
+
+    # for j in range(nbins):
+    # C[j] = C[j] / (nt1 * binsize)
+    C = C/(nt1 * binsize)
+
+    return C
+
+def compute_AutoCorrs(spks, binsize = 0.001, nbins = 100):
+    # First let's prepare a pandas dataframe to receive the data
+    times = np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2	
+    autocorrs = pd.DataFrame(index = times, columns = np.arange(len(spks)))
+
+    # Now we can iterate over the dictionnary of spikes
+    for i,s in enumerate(spks):		
+        # Calling the crossCorr function
+        autocorrs[i] = crossCorr(s, s, binsize, nbins)
+
+    # And don't forget to replace the 0 ms for 0
+    autocorrs.loc[0] = 0.0
+    return autocorrs
+
+def BurstIndex_Royer_2012(autocorrs):
+    # calc burst index from royer 2012
+    # burst_idx will range from -1 to 1
+    # -1 being non-bursty and 1 being bursty
+    
+    # peak range 2 - 9 ms
+    peak = autocorrs.loc[0.002:0.009].max()
+    # baseline idx 40 - 50 ms
+    baseline = autocorrs.loc[0.04:0.05].mean()
+
+    burst_idx = []
+    for p, b in zip(peak, baseline):
+        if p > b:
+            burst_idx.append((p-b)/p)
+        elif p < b:
+            burst_idx.append((p-b)/b)
+        else:
+            burst_idx.append(np.nan)
+    return burst_idx
