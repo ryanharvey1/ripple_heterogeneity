@@ -193,8 +193,18 @@ def load_cell_metrics(filename):
     return df,data_
 
 def load_SWRunitMetrics(basepath):
-    filename = glob.glob(os.path.join(basepath,'*.SWRunitMetrics.mat'))
-    data = sio.loadmat(filename[0])
+    """
+    load_SWRunitMetrics loads SWRunitMetrics.mat into pandas dataframe
+
+    returns pandas dataframe with the following fields
+        particip: the probability of participation into ripples for each unit
+        FRall: mean firing rate during ripples
+        FRparticip: mean firing rate for ripples with at least 1 spike
+        nSpkAll: mean number of spikes in all ripples
+        nSpkParticip: mean number of spikes in ripples with at least 1 spike
+        epoch: behavioral epoch label
+    """
+
     def extract_swr_epoch_data(data,epoch):
         # get var names
         dt = data['SWRunitMetrics'][epoch][0][0].dtype
@@ -218,10 +228,25 @@ def load_SWRunitMetrics(basepath):
         df2['epoch'] = epoch
         return df2
 
+    filename = glob.glob(os.path.join(basepath,'*.SWRunitMetrics.mat'))[0]
+
+    # check if saved file exists
+    if not os.path.exists(filename):
+        warnings.warn("file does not exist")
+        return pd.DataFrame()
+
+    # load file
+    data = sio.loadmat(filename)
+
     df2 = pd.DataFrame()
+    # loop through each available epoch and pull out contents
     for epoch in data['SWRunitMetrics'].dtype.names:
         if data['SWRunitMetrics'][epoch][0][0].size>0: # not empty
+            
+            # call content extractor 
             df_ = extract_swr_epoch_data(data,epoch)
+
+            # append conents to overall data frame
             if df_.size>0:
                 df2 = df2.append(df_,ignore_index=True)
 
