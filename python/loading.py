@@ -3,6 +3,7 @@ import sys,os
 import pandas as pd
 import numpy as np
 import glob
+import warnings
 
 
 def loadXML(path):
@@ -94,7 +95,6 @@ def load_position(path,fs=39.0625):
     df = pd.read_csv(new_path,delimiter="\t",header=0,names=['x1','y1','x2','y2'])
     df[df==-1] = np.nan
     return df,fs
-
 
 
 def load_cell_metrics(filename):
@@ -227,37 +227,65 @@ def load_SWRunitMetrics(basepath):
 
     return df2
 
-def load_ripples_events(filename):
+def load_ripples_events(basepath):
     """
     load info from ripples.events.mat and store within df
+
+    basepath: path to your session where ripples.events.mat is
+    
+    returns pandas dataframe with the following fields
+        start: start time of ripple
+        stop: end time of ripple
+        peaks: peak time of ripple
+        amplitude: envlope value at peak time
+        duration: ripple duration
+        frequency: insta frequency at peak
+        detectorName: the name of ripple detector used
+        event_spk_thres: 1 or 0 for if a mua thres was used 
+        basepath: path name
+        basename: session id
+        animal: animal id *
+
+        * Note that basepath/basename/animal relies on specific folder 
+        structure and may be incorrect for some data structures
     """
-    df = pd.DataFrame()
 
+    # locate .mat file
+    filename = glob.glob(basepath+os.sep+'*ripples.events.mat')[0]
+
+    # check if saved file exists
+    if not os.path.exists(filename):
+        warnings.warn("file does not exist")
+        return pd.DataFrame()
+
+    # load matfile
     data = sio.loadmat(filename)
-    dt = data['ripples'].dtype
 
+    # make data frame of known fields 
+    df = pd.DataFrame()
     df['start'] = data['ripples']['timestamps'][0][0][:,0]
     df['stop'] = data['ripples']['timestamps'][0][0][:,1]
     df['peaks'] = data['ripples']['peaks'][0][0]
     df['amplitude'] = data['ripples']['amplitude'][0][0]
     df['duration'] = data['ripples']['duration'][0][0]
     df['frequency'] = data['ripples']['frequency'][0][0]
-
-    if "detectorName" not in dt.names:
+    
+    try:
         df['detectorName'] = data['ripples']['detectorinfo'][0][0]['detectorname'][0][0][0]
-    else:
+    except:
         df['detectorName'] = data['ripples']['detectorName'][0][0][0]
 
+    dt = data['ripples'].dtype
     if "eventSpikingParameters" in dt.names:
         df['event_spk_thres'] = 1
     else:
         df['event_spk_thres'] = 0
 
+    # get basename and animal
     normalized_path = os.path.normpath(filename)
     path_components = normalized_path.split(os.sep)
-    head_tail = os.path.split(normalized_path)
+    df['basepath'] = basepath  
     df['basename'] = path_components[-2]
-    df['basepath'] = head_tail[0]   
     df['animal'] = path_components[-3]
 
     return df
