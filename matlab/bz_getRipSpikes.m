@@ -84,7 +84,7 @@ saveMat = p.Results.saveMat;
 
 % Get session info
 if isempty(basename)
-    basename = bz_BasenameFromBasepath(basepath);
+    basename = basenameFromBasepath(basepath);
 end
 load([basepath filesep basename '.session.mat']);
 
