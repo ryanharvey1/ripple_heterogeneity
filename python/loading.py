@@ -97,15 +97,17 @@ def load_position(path,fs=39.0625):
     return df,fs
 
 
-def load_cell_metrics(filename):
+def load_cell_metrics(basepath):
     """ 
     loader of cell-explorer cell_metrics.cellinfo.mat
 
-    Inputs: filename: path to cell_metrics.cellinfo.mat
+    Inputs: basepath: path to folder with cell_metrics.cellinfo.mat
     outputs: df: data frame of single unit features
     data_: dict with data that does not fit nicely into a dataframe (waveforms, acgs, epochs, etc.)
+    
+    See https://cellexplorer.org/datastructure/standard-cell-metrics/ for details
 
-    TODO: extract all fields from cell_metrics.cellinfo. 
+    TODO: extract all fields from cell_metrics.cellinfo. There are more items that can be extracted
 
     - Ryan H
     """
@@ -160,14 +162,35 @@ def load_cell_metrics(filename):
             }
         return data_ 
 
+    def un_nest_df(df):
+        # Un-nest some strings are nested within brackets (a better solution exists...)
+        # locate and iterate objects in df
+        for item in df.keys()[df.dtypes =="object"]:
+            # if you can get the size of the first item with [0], it is nested
+            # otherwise it fails and is not nested
+            try:
+                df[item][0][0].size
+                # the below line is from: https://www.py4u.net/discuss/140913
+                df[item] = df[item].str.get(0)
+            except:
+                continue
+        return df
+
+    filename = glob.glob(os.path.join(basepath,'*.cell_metrics.cellinfo.mat'))[0]
+
+    # check if saved file exists
+    if not os.path.exists(filename):
+        warnings.warn("file does not exist")
+        return 
+
     # load cell_metrics file
     data = sio.loadmat(filename)
-    dt = data['cell_metrics'].dtype
 
     # construct data frame with features per neuron
     df = pd.DataFrame()
     # count units
     n_cells = data['cell_metrics']['UID'][0][0][0].size
+    dt = data['cell_metrics'].dtype
     for dn in dt.names:
         # check if var has the right n of units and is a vector
         try:
@@ -186,6 +209,9 @@ def load_cell_metrics(filename):
     df['strain'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['strain'][0][0][0]
     df['geneticLine'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['geneticLine'][0][0][0]
     df['cellCount'] = data['cell_metrics']['general'][0][0]['cellCount'][0][0][0][0]
+
+    # fix nesting issue for strings
+    df = un_nest_df(df)
 
     # extract other general data and put into dict    
     data_ = extract_general(data)
