@@ -1,5 +1,7 @@
 % make_states_all_sessions
-animal = {'Kenji','AB1','AB3','AB4','AYA4','AYA6','AYA7','AYA9','AYA10',...
+animal = {'GirardeauG\Rat07','GirardeauG\Rat08',...
+    'GirardeauG\Rat09','GirardeauG\Rat10','GirardeauG\Rat11',...
+    'Kenji','AB1','AB3','AB4','AYA4','AYA6','AYA7','AYA9','AYA10',...
     'OML5','OML3','OML7','OML8','OML10','OML18','OML19',...
     'Wmaze2\OR15','Wmaze2\OR18','Wmaze3\OR22','Wmaze3\OR21','Wmaze3\OR23',...
     'GrosmarkAD\Cicero','GrosmarkAD\Buddy','GrosmarkAD\Achilles','GrosmarkAD\Gatsby'};
@@ -8,9 +10,9 @@ dataDir1 = 'A:\Data\';
 dataDir2 = 'A:\OptoMECLEC\';
 dataDir3 = 'A:\ORproject\';
 
-if isempty(gcp('nocreate'))
-    parpool(6)
-end
+% if isempty(gcp('nocreate'))
+%     parpool(6)
+% end
 for a = 1:length(animal)
     disp(animal{a})
     if strncmp('OML',animal{a},3)
@@ -28,7 +30,7 @@ for a = 1:length(animal)
     
     for f = 1:length(files)
         basepath = files(f).folder;
-        basename = bz_BasenameFromBasepath(basepath);
+        basename = basenameFromBasepath(basepath);
         disp(basepath)
         % list all matfiles in basedir and check sleep state files
         matfiles = dir([basepath,filesep,'*.mat']);
@@ -43,7 +45,7 @@ for a = 1:length(animal)
             % score sleep
             SleepState = SleepScoreMaster(basepath);
             % score theta states asleep and awake
-            SleepState = bz_ThetaStates(basepath,1);
+            SleepState = thetaEpochs(basepath);
             close all
         end
                 
