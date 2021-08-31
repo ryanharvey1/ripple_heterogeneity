@@ -22,9 +22,9 @@ files_to_redo = {'A:\Data\GrosmarkAD\Cicero\Cicero_09012014',...
     'A:\Data\AB3\AB3_60',...
     'A:\Data\Kenji\ec013.895_902'};
 
-basepath = files_to_redo{19};
-basename = bz_BasenameFromBasepath(basepath);
-basename = 'ec013.895_902';
+basepath = files_to_redo{7};
+basename = basenameFromBasepath(basepath);
+% basename = 'ec013.895_902';
 
 %% rename spikes.cellinfo and cell_metrics.cellinfo as to preserve that data
 if exist(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'file') &&...
@@ -51,22 +51,33 @@ spikes = loadSpikes(...
                     'format','Klustakwik',...
                     'getWaveformsFromDat',false,...
                     'getWaveformsFromSource',true,...
-                    'forceReload',true);
+                    'forceReload',false);
                 
 %% detect ripples
 if ~exist(fullfile(basepath,[basename,'.ripplesALL.event.mat']),'file') ||...
         ~exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file')
     
-    disp('finding best ripple and sharp wave channels')
-    swrCh = bz_swrChannels('basepath',basepath,'basename',basename,'Manual',true);
-    
-    load(fullfile(basepath,[basename '.swrCh.mat']))
+    if exist(fullfile(basepath,'ripCh.mat'),'file') &&...
+            exist(fullfile(basepath,'swrCh.mat'),'file')
+        load(fullfile(basepath,'ripCh.mat'))
+        load(fullfile(basepath,'swrCh.mat'))
+        channels = [ripCh,swrCh];
+    elseif exist(fullfile(basepath,'ripCh.mat'),'file')
+         load(fullfile(basepath,[basename '.swrCh.mat']))
+         channels = [swrCh.ripple swrCh.sharpwave];
+    else
+        disp('finding best ripple and sharp wave channels')
+        swrCh = bz_swrChannels('basepath',basepath,'basename',basename,'Manual',true);
 
+        load(fullfile(basepath,[basename '.swrCh.mat']))
+        channels = [swrCh.ripple swrCh.sharpwave];
+    end
     disp('detecting ripples')
-    ripples = bz_DetectSWR([swrCh.ripple swrCh.sharpwave],'saveMat',true,'basename',basename);
+    ripples = DetectSWR(channels,'saveMat',true,'basepath',basepath);
     
     disp('refining ripples by mua')    
-    ripples = eventSpikingTreshold(ripples,'spikes',spikes,'spikingThreshold',0.5); 
+    ripples = eventSpikingTreshold(ripples,...
+        'spikes',spikes,'basepath',basepath,'spikingThreshold',0.5); 
     
     save(fullfile(basepath,[basename '.ripples.events.mat']),'ripples')
 end
@@ -107,11 +118,12 @@ cell_metrics = CellExplorer('metrics',cell_metrics);
 
 %% make swr metrics
 % load all ripples
-if exist(fullfile(basepath,[basename,'.ripplesALL.event.mat']),'file')
-    load(fullfile(basepath,[basename,'.ripplesALL.event.mat']))
-elseif exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file')
-    load(fullfile(basepath,[basename,'.ripples.events.mat']))
-end
+load(fullfile(basepath,[basename,'.ripples.events.mat']))
+% if exist(fullfile(basepath,[basename,'.ripplesALL.event.mat']),'file')
+%     load(fullfile(basepath,[basename,'.ripplesALL.event.mat']))
+% elseif exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file')
+%     load(fullfile(basepath,[basename,'.ripples.events.mat']))
+% end
 % load position behavior file in order to get epochs
 load(fullfile(basepath,[basename,'.position.behavior.mat']))
 % extract epochs
