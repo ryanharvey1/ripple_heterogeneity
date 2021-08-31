@@ -23,6 +23,8 @@ for i = 1:length(files)
     
     basename = basenameFromBasepath(basepath);
     
+    % load important files here... if they don't exist, make them
+
     % check if spikes file exist, make it if not
     if ~exist(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'file')
         spikes = loadSpikes(...
@@ -34,11 +36,20 @@ for i = 1:length(files)
             'getWaveformsFromSource',true,...
             'forceReload',false);
     end
-    
-    % load inportant files here
-    load(fullfile(basepath,[basename,'.session.mat']))
     load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
+
+    if ~exist(fullfile(basepath,[basename,'.session.mat']),'file')
+        session = sessionTemplate(basepath,'basename',basename,'showGUI',false);
+        save(fullfile(basepath,[basename,'.session.mat']),'session')
+    end
+    load(fullfile(basepath,[basename,'.session.mat']))
+    
+    if ~exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file')
+        run_ripple_pipe_girardeau(basepath,basename,spikes)
+    end
     load(fullfile(basepath,[basename,'.ripples.events.mat']))
+    
+    
     
     if ~exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file')
         % load spikes to make sure they are up-to-date
