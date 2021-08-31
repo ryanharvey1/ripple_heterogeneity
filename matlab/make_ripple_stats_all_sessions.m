@@ -1,18 +1,20 @@
 
 
 % make_ripple_stats_all_sessions
-animal = {'Kenji','AB1','AB3','AB4','AYA4','AYA6','AYA7','AYA9','AYA10',...
+animal = {'GirardeauG\Rat07','GirardeauG\Rat08',...
+    'GirardeauG\Rat09','GirardeauG\Rat10','GirardeauG\Rat11',...
+    'GrosmarkAD\Cicero','GrosmarkAD\Buddy','GrosmarkAD\Achilles','GrosmarkAD\Gatsby',...
+    'Kenji','AB1','AB3','AB4','AYA4','AYA6','AYA7','AYA9','AYA10',...
     'OML5','OML3','OML7','OML8','OML10','OML18','OML19',...
-    'Wmaze2\OR15','Wmaze2\OR18','Wmaze3\OR22','Wmaze3\OR21','Wmaze3\OR23',...
-    'GrosmarkAD\Cicero','GrosmarkAD\Buddy','GrosmarkAD\Achilles','GrosmarkAD\Gatsby'};
+    'Wmaze2\OR15','Wmaze2\OR18','Wmaze3\OR22','Wmaze3\OR21','Wmaze3\OR23'};
 
 dataDir1 = 'A:\Data\';
 dataDir2 = 'A:\OptoMECLEC\';
 dataDir3 = 'A:\ORproject\';
 
-if isempty(gcp('nocreate'))
-    parpool(10)
-end
+% if isempty(gcp('nocreate'))
+%     parpool(10)
+% end
 for a = 1:length(animal)
     disp(animal{a})
     if strncmp('OML',animal{a},3)
@@ -27,16 +29,26 @@ for a = 1:length(animal)
         filesep,'**',filesep,...
         filesep,'**',filesep,...
         '*.ripples.events.mat']);
-    
+    if isempty(files)
+        files = dir([base_path,...
+            animal{a},...
+            filesep,'**',filesep,...
+            filesep,'**',filesep,...
+            '*.ripplesALL.event.mat']);  
+    end
     for f = 1:length(files)
         basepath = files(f).folder;
-        basename = bz_BasenameFromBasepath(basepath);
+        basename = basenameFromBasepath(basepath);
         disp(basepath)
-        if exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file')
+        if exist(fullfile(basepath,[basename,'.ripples.events.mat']),'file') ||...
+                exist(fullfile(basepath,[basename,'.ripplesALL.event.mat']),'file') 
         
             % load detected ripples 
-            load(fullfile(basepath,[basename,'.ripples.events.mat']))
-
+            try
+                load(fullfile(basepath,[basename,'.ripples.events.mat']))
+            catch
+                load(fullfile(basepath,[basename,'.ripplesALL.event.mat']))
+            end
             if isfield(ripples,'duration')
                 continue
             end
@@ -45,9 +57,9 @@ for a = 1:length(animal)
             
             if re_run
                 disp([basepath,' something odd with lfp channel in ripples.events'])
-                load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
-                run_ripple_pipe_kenji(basepath,basename,spikes)
-                continue
+%                 load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
+%                 run_ripple_pipe_kenji(basepath,basename,spikes)
+%                 continue
             end
             save(fullfile(basepath,[basename,'.ripples.events.mat']),'ripples')
         end
@@ -55,6 +67,12 @@ for a = 1:length(animal)
     end
 end
 function [ripples,re_run] = add_features(ripples,basepath,basename)
+
+if ~exist(fullfile(basepath,[basename,'.session.mat']),'file')
+    session = sessionTemplate(basepath,'basename',basename,'showGUI',false);
+    save(fullfile(basepath,[basename '.session.mat']),'session');
+end
+       
 try
     detector = ripples.detectorName;
 catch
@@ -75,21 +93,34 @@ if contains(detector,'bz_DetectSWR')
     passband = ripples.detectorinfo.detectionparms.ripBP;
 else
     % extract lfp data from ripples struct
-    fs = ripples.detectorinfo.detectionparms.frequency;
-    passband = ripples.detectorinfo.detectionparms.passband;
-
-    if isfield(ripples.detectorinfo.detectionparms,'lfp')
-        samples.samplingRate = fs;
-        samples.data = ripples.detectorinfo.detectionparms.lfp;
-        samples.timestamps = [0:1/fs:(length(samples.data)/fs)-1/fs]';
-    else
-        samples = bz_GetLFP(ripples.detectorinfo.detectionparms.channel(1)-1,...
-            'basepath',basepath,'basename',basename,'noPrompts',true);
+    try
+        fs = ripples.detectorinfo.detectionparms.frequency;
+        passband = ripples.detectorinfo.detectionparms.passband;
+        ripple_channel = ripples.detectorinfo.detectionparms.channel(1);
+    catch
+        fs = ripples.detectorParams.frequency;
+        passband = ripples.detectorParams.passband;
+        ripple_channel = ripples.detectorParams.channel(1);
     end
+    
+%     
+%     if isfield(ripples.detectorinfo.detectionparms,'lfp')
+%         samples.samplingRate = fs;
+%         samples.data = ripples.detectorinfo.detectionparms.lfp;
+%         samples.timestamps = [0:1/fs:(length(samples.data)/fs)-1/fs]';
+%     else
+
+    samples = getLFP(ripple_channel,...
+        'basepath',basepath,'basename',basename,'noPrompts',true);
+%     end
 end
      
 % filter signal according to detection parameters
 filtered = bz_Filter(samples,'filter','butter','passband',passband,'order', 3);
+
+if isfield(ripples,'times') && ~isfield(ripples,'timestamps')
+    ripples.timestamps = ripples.times;
+end
 
 % Compute instantaneous frequency
 unwrapped = unwrap(filtered.phase);
@@ -104,6 +135,11 @@ ripples.duration = ripples.timestamps(:,2) - ripples.timestamps(:,1);
 %   where peakNormedPower and amplitude are not correlated
 %   I'm assuming something bad happened, but can't track down the issue
 %   If found, re-run.
+
+if ~isfield(ripples,'peakNormedPower')
+    ripples.peakNormedPower = [];
+end
+
 if isempty(ripples.peakNormedPower)
     re_run = false;
     return
@@ -144,7 +180,7 @@ end
 % xlim([min(samples.timestamps(interval)),max(samples.timestamps(interval))])
 
 
-% rip_n = 2;
+% rip_n = 1;
 % range_ = .2;
 % interval = samples.timestamps >= ripples.peaks(rip_n) - range_ &...
 %     samples.timestamps <= ripples.peaks(rip_n) + range_;
