@@ -1,5 +1,11 @@
 function parse_pre_task_post(session,basepath,basename,ripples,spikes)
 
+
+if isfield(session.epochs{1},'behavioralParadigm')
+    for i = 1:length(session.epochs)
+        session.epochs{i}.name = [session.epochs{i}.name,'_',session.epochs{i}.behavioralParadigm];
+    end
+end
 for i = 1:length(session.epochs)
     epoch{i} = session.epochs{i}.name;
 end
