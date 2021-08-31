@@ -61,24 +61,47 @@ for i = 1:length(files)
         load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
     end
     % check if epochs are in cell metrics... if not add them
-    if ~isfield(cell_metrics.general,'epochs')
+    % first check if the number of epochs are the same
+    remake_session = false;
+    if exist(fullfile(basepath,[basename,'.cat.evt']),'file')
+        events = LoadEvents(fullfile(basepath,[basename,'.cat.evt']));
+        if length(session.epochs) ~= length(events.description)/2
+            remake_session = true;
+        end
+    end
+    if ~isfield(cell_metrics.general,'epochs') || remake_session
         events = LoadEvents(fullfile(basepath,[basename,'.cat.evt']));
         
         % try to link existing epoch info with epoch data from cat.evt
-        try
-            for e = 1:length(session.epochs)
-                times = events.time(contains(events.description,session.epochs{e}.name));
-                session.epochs{e}.startTime = times(1);
-                session.epochs{e}.stopTime = times(2);
+        if ~remake_session
+            try
+                for e = 1:length(session.epochs)
+                    times = events.time(contains(events.description,session.epochs{e}.name));
+                    session.epochs{e}.startTime = times(1);
+                    session.epochs{e}.stopTime = times(2);
+                end
+                % if the above fails, there may be something wrong with .session
+            catch
+                % rename existing .session with old
+                movefile(fullfile(basepath,[basename,'.session.mat']),fullfile(basepath,[basename,'.session_old.mat']),'f');
+                % make new .session
+                session = sessionTemplate(basepath,'basename',basename,'showGUI',false);
+                % iter through .cat.evt and use those epochs to fill .session
+                for e = 1:(length(events.description)/2)
+                    times = events.time(e:e+1);
+                    session.epochs{e}.startTime = times(1);
+                    session.epochs{e}.stopTime = times(2);
+                    name = strsplit(events.description{e},'-');
+                    session.epochs{e}.name = name{end};
+                end
             end
-            % if the above fails, there may be something wrong with .session
-        catch
+        else
             % rename existing .session with old
             movefile(fullfile(basepath,[basename,'.session.mat']),fullfile(basepath,[basename,'.session_old.mat']),'f');
             % make new .session
             session = sessionTemplate(basepath,'basename',basename,'showGUI',false);
             % iter through .cat.evt and use those epochs to fill .session
-            for e = 1:(length(events.description)/2)-1
+            for e = 1:(length(events.description)/2)
                 times = events.time(e:e+1);
                 session.epochs{e}.startTime = times(1);
                 session.epochs{e}.stopTime = times(2);
