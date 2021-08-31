@@ -12,13 +12,13 @@ disp(toc)
 
 
 for i = 1:length(files)
-   
+    
     basepath = fullfile(files(i).folder);
     disp(basepath)
-
+    
     % Rat07 may not be good. pass it here
     if contains(basepath,'Rat07')
-       continue 
+        continue
     end
     
     basename = basenameFromBasepath(basepath);
@@ -39,8 +39,17 @@ for i = 1:length(files)
     load(fullfile(basepath,[basename,'.session.mat']))
     load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
     load(fullfile(basepath,[basename,'.ripples.events.mat']))
-    load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
     
+    if ~exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file')
+        cell_metrics = ProcessCellMetrics('basepath',basepath,...
+            'showGUI',false,...
+            'spikes',spikes,...
+            'getWaveformsFromDat',false,...
+            'manualAdjustMonoSyn',false,...
+            'session',session);
+    else
+        load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
+    end
     % check if epochs are in cell metrics... if not add them
     if ~isfield(cell_metrics.general,'epochs')
         events = LoadEvents(fullfile(basepath,[basename,'.cat.evt']));
@@ -52,7 +61,7 @@ for i = 1:length(files)
                 session.epochs{e}.startTime = times(1);
                 session.epochs{e}.stopTime = times(2);
             end
-        % if the above fails, there may be something wrong with .session
+            % if the above fails, there may be something wrong with .session
         catch
             % rename existing .session with old
             movefile(fullfile(basepath,[basename,'.session.mat']),fullfile(basepath,[basename,'.session_old.mat']),'f');
@@ -67,16 +76,16 @@ for i = 1:length(files)
                 session.epochs{e}.name = name{end};
             end
         end
-        % save .session 
+        % save .session
         save(fullfile(basepath,[basename,'.session.mat']),'session')
         
-        % run ProcessCellMetrics so new epochs will be added to cell_metrics 
+        % run ProcessCellMetrics so new epochs will be added to cell_metrics
         cell_metrics = ProcessCellMetrics('basepath',basepath,...
-                                        'showGUI',false,...
-                                        'spikes',spikes,...
-                                        'getWaveformsFromDat',false,...
-                                        'manualAdjustMonoSyn',false,...
-                                        'session',session); 
+            'showGUI',false,...
+            'spikes',spikes,...
+            'getWaveformsFromDat',false,...
+            'manualAdjustMonoSyn',false,...
+            'session',session);
     end
     % fill brain region field, sometimes this info is in region and not brainRegion
     if isempty(cell_metrics.brainRegion)
@@ -93,19 +102,19 @@ end
 % tic
 % files = dir([data_path,'\**\*.cell_metrics.cellinfo.mat*']);
 % disp(toc)
-% 
+%
 % data_path = 'A:\Data\GirardeauG';
 % tic
 % files = dir([data_path,'\**\*.spk.*']);
 % disp(toc)
-% 
+%
 % sessions = unique({files.folder});
-% 
+%
 % for i = 1:length(sessions)
 %     basepath = sessions{i};
 %     basename = bz_BasenameFromBasepath(basepath);
 %     disp(basepath)
-%     
+%
 %     % check for needed files
 %     if exist(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'file') &&...
 %             exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file') &&...
@@ -113,13 +122,13 @@ end
 %             exist(fullfile(basepath,[basename,'.SWRunitMetrics.mat']),'file')
 %         continue
 %     end
-%     
+%
 %     % make sure there are the same n of res and spk
 %     if length(dir([basepath,filesep,'*.res.*'])) ~=...
 %             length(dir([basepath,filesep,'*.spk.*']))
-%         continue 
+%         continue
 %     end
-%     
+%
 %     % check and make session.mat
 %     if ~exist([basename '.session.mat'],'file')
 %         session = sessionTemplate(basepath,'showGUI',false);
@@ -128,21 +137,20 @@ end
 %     else
 %         load(fullfile(basepath,[basename '.session.mat']))
 %     end
-% 
+%
 % end
 
 % basepath = 'A:\Data\GirardeauG\Rat09\Rat09-20140324'
-% 
+%
 % spikes = loadSpikes('basepath',basepath);
 % load('A:\Data\GirardeauG\Rat09\Rat09-20140324\Rat09-20140324.cell_metrics.cellinfo.mat')
-% 
-% 
-% 
+%
+%
+%
 % ripSpk = bz_getRipSpikes('basepath',basepath,...
 %                             'basename',basename,...
 %                             'spikes',spikes,...
 %                             'events',ripples.timestamps(idx,:),...
 %                             'saveMat',false);
-%                         
-                        
-                        
+%
+
