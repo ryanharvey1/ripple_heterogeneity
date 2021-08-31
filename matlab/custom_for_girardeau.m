@@ -57,6 +57,7 @@ for i = 1:length(files)
             'getWaveformsFromDat',false,...
             'manualAdjustMonoSyn',false,...
             'session',session);
+        close all
     else
         load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
     end
@@ -119,6 +120,7 @@ for i = 1:length(files)
             'getWaveformsFromDat',false,...
             'manualAdjustMonoSyn',false,...
             'session',session);
+        close all
     end
     % fill brain region field, sometimes this info is in region and not brainRegion
     if isempty(cell_metrics.brainRegion)
