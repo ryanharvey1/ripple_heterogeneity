@@ -24,20 +24,29 @@ for i = 1:length(files)
     basename = basenameFromBasepath(basepath);
     
     % load important files here... if they don't exist, make them
+    
+    % make sure the number of shanks is represented in both .res and .spk
+    shanks_res = shank_nums(basepath,basename,'.res.');
+    shanks_spk = shank_nums(basepath,basename,'.spk.');
+    shanks_clu = shank_nums(basepath,basename,'.clu.');
 
-    % check if spikes file exist, make it if not
-    if ~exist(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'file')
-        spikes = loadSpikes(...
-            'basepath',basepath,...
-            'basename',basename,...
-            'saveMat',true,...
-            'format','Klustakwik',...
-            'getWaveformsFromDat',false,...
-            'getWaveformsFromSource',true,...
-            'forceReload',false);
+    shanks = intersect(shanks_res,shanks_spk);
+    shanks = intersect(shanks,shanks_clu);
+    
+    if (length(shanks_res)-length(shanks_spk)) ~= 0
+       disp(basepath)
+       disp('different n .res and .spk')
     end
-    load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
-
+    spikes = loadSpikes(...
+        'basepath',basepath,...
+        'basename',basename,...
+        'saveMat',true,...
+        'format','Klustakwik',...
+        'getWaveformsFromDat',false,...
+        'getWaveformsFromSource',true,...
+        'forceReload',false,...
+        'shanks',shanks);
+    
     if ~exist(fullfile(basepath,[basename,'.session.mat']),'file')
         session = sessionTemplate(basepath,'basename',basename,'showGUI',false);
         save(fullfile(basepath,[basename,'.session.mat']),'session')
@@ -145,6 +154,17 @@ for i = 1:length(files)
     end
 end
 
+
+function shanks = shank_nums(basepath,basename,file_key)
+fileList = dir(fullfile(basepath,[basename,file_key,'*']));
+fileList = {fileList.name};
+shanks_new = [];
+for s = 1:length(fileList)
+    temp = strsplit(fileList{s},file_key);
+    shanks_new = [shanks_new,str2double(temp{2})];
+end
+shanks = sort(shanks_new);
+end
 % tic
 % files = dir([data_path,'\**\*.cell_metrics.cellinfo.mat*']);
 % disp(toc)
