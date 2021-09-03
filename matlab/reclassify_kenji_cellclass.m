@@ -87,10 +87,21 @@ ids = {'ec013','ec014','ec016','f01_m',...
       'g01_m','gor01','i01_m','j01_m','km01',...
       'nlx'};
 
-for id = ids
-    idx = contains(cell_metrics.sessionName,id);
-    cell_metrics.animal(idx) = id;
+% for id = ids
+%     idx = contains(cell_metrics.sessionName,id);
+%     cell_metrics.animal(idx) = id;
+% end
+% need to save manually... :( cell explorer is not saving the new names
+for i = 1:length(basepath)
+    disp(basepath{i})
+    load(fullfile(basepath{i},[basename{i},'.cell_metrics.cellinfo.mat']))
+    for id = ids
+        idx = contains(cell_metrics.sessionName,id);
+        cell_metrics.animal(idx) = id;
+    end
+    save(fullfile(basepath{i},[basename{i},'.cell_metrics.cellinfo.mat']),'cell_metrics')
 end
+
 %%
 cell_metrics = CellExplorer('metrics',cell_metrics);
 
