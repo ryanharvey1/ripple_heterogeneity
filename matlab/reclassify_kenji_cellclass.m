@@ -68,9 +68,29 @@ end
 %% load all cell metrics
 cell_metrics = loadCellMetricsBatch('basepaths',basepath,'basenames',basename);
 
-%%
+%% classify shank region
 
+df = readtable('A:\Data\Kenji\ElePosition.Mizuseki_v2.csv');
+sessions = unique(cell_metrics.sessionName(strcmp(cell_metrics.brainRegion,'unknown')));
+for i = 1:length(sessions)
+    cell_metric_idx = strcmp(cell_metrics.sessionName,sessions{i});
 
+    brain_region = table2cell(df(strcmp(df.session,sessions{i}),...
+        cell_metrics.shankID(cell_metric_idx)+4));
+    
+    cell_metrics.brainRegion(cell_metric_idx) = brain_region;
+end
+cell_metrics.brainRegion = upper(cell_metrics.brainRegion);
+
+%% make custom naming for kenji dataset
+ids = {'ec013','ec014','ec016','f01_m',...
+      'g01_m','gor01','i01_m','j01_m','km01',...
+      'nlx'};
+
+for id = ids
+    idx = contains(cell_metrics.sessionName,id);
+    cell_metrics.animal(idx) = id;
+end
 %%
 cell_metrics = CellExplorer('metrics',cell_metrics);
 
@@ -97,3 +117,32 @@ plot(waveforms(:,contains(labels,'Narrow Interneuron')))
 
 
 cell_metrics.putativeCellType(strcmp(y,'unknown')) = labels;
+
+%% make deep sup classes
+clear
+data_path = 'A:\Data\Kenji';
+tic
+files = dir([data_path,'\**\*.cell_metrics.cellinfo.mat']);
+disp(toc)
+
+for i = 1:length(files)
+    basepath{i} = files(i).folder;
+    basename{i} = basenameFromBasepath(files(i).folder);
+end
+for i = 1:length(basepath)
+    disp(basepath{i})
+
+    if ~exist(fullfile(basepath{i},[basename{i},'.deepSuperficialfromRipple.channelinfo.mat']))
+%             load(fullfile(basepath{i},[basename{i},'.spikes.cellinfo.mat']))
+    load(fullfile(basepath{i},[basename{i},'.session.mat']))
+%     load(fullfile(basepath{i},[basename{i},'.cell_metrics.cellinfo.mat']))
+        disp('running classification_DeepSuperficial...')
+        deepSuperficialfromRipple = classification_DeepSuperficial(session);
+    end
+%     cell_metrics = ProcessCellMetrics('basepath',basepath{i},...
+%         'showGUI',false,...
+%         'spikes',spikes,...
+%         'getWaveformsFromDat',false,...
+%         'manualAdjustMonoSyn',false,...
+%         'session',session);
+end
