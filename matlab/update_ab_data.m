@@ -6,6 +6,24 @@ for i = 1:length(basepath)
     disp(basepath{i})
     check_and_add(basepath{i})
 end
+for i = 1:length(basepath)
+    disp(basepath{i})
+    add_region(basepath{i})
+end
+
+function add_region(basepath)
+    basename = basenameFromBasepath(basepath);
+    load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
+    try
+        cell_metrics2 = load(fullfile(basepath,[basename,'.cell_metrics.cellinfo_old.mat']));
+    catch
+        cell_metrics2 = load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.legacy.mat']));
+    end
+    cell_metrics.brainRegion = cell_metrics2.cell_metrics.brainRegion;
+    cell_metrics.CA1depth(1,:) = cell_metrics2.cell_metrics.CA1depth;
+    
+    save(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'cell_metrics')
+end
 
 function check_and_add(basepath)
 basename = basenameFromBasepath(basepath);
@@ -124,8 +142,6 @@ if exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file') && a
     movefile(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),...
         fullfile(basepath,[basename,'.cell_metrics.cellinfo_old.mat']));
 end
-
-
 
 if adjusted || ~exist(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'file')
     cell_metrics = ProcessCellMetrics('basepath',basepath,...
