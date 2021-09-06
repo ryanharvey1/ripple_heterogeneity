@@ -3,12 +3,12 @@ clc
 
 %%
 clearvars;
-basename = bz_BasenameFromBasepath(pwd);
+basename = basenameFromBasepath(pwd);
 session = sessionTemplate(pwd,'showGUI',false); %
 session.channelTags.Bad.channels = [];
 save([basename '.session.mat'],'session');
 
-spikes = loadSpikes('basepath',pwd,'clusteringformat','neurosuite',...
+spikes = loadSpikes('basepath',pwd,'format','neurosuite',...
                     'getWaveformsFromDat',false);
 
 %% OR data 
