@@ -61,10 +61,8 @@ if ~isfield(spikes,'timeWaveform') || detected_nan
     end
 end
 if ~isfield(spikes,'channels_all')
-    for shank = 1:length(session.extracellular.electrodeGroups.channels)
-        for s = 1:length(spikes.UID)
-            spikes.channels_all{s} = session.extracellular.electrodeGroups.channels{shank};
-        end
+    for s = 1:length(spikes.UID)
+        spikes.channels_all{s} = session.extracellular.electrodeGroups.channels{spikes.shankID(s)};
     end
 end
 
