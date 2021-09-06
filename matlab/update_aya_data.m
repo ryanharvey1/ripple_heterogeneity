@@ -26,23 +26,36 @@ if ~isfield(spikes,'filtWaveform')
         spikes.filtWaveform{s} = waveforms(s,:);
     end
 end
+
 if pull_old_cell_metrics
     cell_metrics_2 = load(fullfile(basepath,[basename,'.cell_metrics.cellinfo1.mat']));
     spikes.filtWaveform = cell_metrics_2.cell_metrics.waveforms;
 end
-if ~isfield(spikes,'peakVoltage')
+
+% check for nan waveforms
+detected_nan = false;
+for s = 1:length(spikes.UID)
+    idx = isnan(spikes.filtWaveform{s});
+    spikes.filtWaveform{s}(idx) = 0;
+    if any(idx)
+        detected_nan(s) = true;
+    end
+end
+detected_nan = any(detected_nan);
+
+if ~isfield(spikes,'peakVoltage') || detected_nan
     for s = 1:length(spikes.UID)
         spikes.peakVoltage(s) = max(spikes.filtWaveform{s}) -...
             min(spikes.filtWaveform{s});
     end
 end
-if ~isfield(spikes,'timeWaveform')
+if ~isfield(spikes,'timeWaveform') || detected_nan
     wf = [];
     for w = 1:length(spikes.filtWaveform)
         wf(:,w) = spikes.filtWaveform{w};
     end
     [~,midx] = min(wf);
-    timeWaveform = ((1:size(waveforms,2)) - mode(midx)) / session.extracellular.sr * 1000;
+    timeWaveform = ((1:size(wf,1)) - mode(midx)) / session.extracellular.sr * 1000;
     for s = 1:length(spikes.UID)
         spikes.timeWaveform{s} = timeWaveform;
     end
@@ -68,6 +81,25 @@ if ~isfield(spikes,'maxWaveformCh') || ~isfield(spikes,'maxWaveformCh1')
         end
     end
 end
+
+if ~isfield(spikes,'filtWaveform_all') || detected_nan
+    for s = 1:length(spikes.UID)
+        n_channels = length(session.extracellular.electrodeGroups.channels{spikes.shankID(s)});
+        spikes.filtWaveform_all{s} = zeros(n_channels,length(spikes.filtWaveform{s}));
+        if isnan(spikes.maxWaveformCh1(s))
+            spikes.filtWaveform_all{s}(1,:) = spikes.filtWaveform{s};
+        else
+            spikes.filtWaveform_all{s}(spikes.maxWaveformCh1(s),:) = spikes.filtWaveform{s};
+        end
+    end 
+end
+
+if ~isfield(spikes,'filtWaveform_all_std') || detected_nan
+    for s = 1:length(spikes.UID)
+        spikes.filtWaveform_all_std{s} = zeros(1,length(spikes.filtWaveform{s}));
+    end 
+end
+
 save(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'spikes')
 
 cell_metrics = ProcessCellMetrics('basepath',basepath,...
