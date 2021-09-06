@@ -31,6 +31,13 @@ for i = 1:length(basepath)
             break
         end
     end
+    
+    % check for rawWaveform, indicating waveforms were taken from .dat
+    % file using cell explorer
+    if ~isfield(spikes,'rawWaveform')
+        extract_from_dat = true;
+    end
+
     if extract_from_dat
         disp(['extracting waveforms from: ', basepath{i}])
         
