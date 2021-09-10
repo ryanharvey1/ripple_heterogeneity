@@ -93,7 +93,7 @@ if save_csv
 end
 
 if fig
-    generateChannelMap1(session,anatomical_map) 
+    generateChannelMap1(session,anatomical_map,channel_map) 
 end
 
 if show_gui_session
@@ -168,11 +168,16 @@ for region = unique(anatomical_map_vec)'
 end
 end
 
-function generateChannelMap1(session,anatomical_map)
-
+function generateChannelMap1(session,anatomical_map,channel_map)
+channel_map_vec = channel_map(:);
 anatomical_map_vec = anatomical_map(:);
+channel_map_vec = channel_map_vec(~cellfun('isempty',anatomical_map_vec));
 anatomical_map_vec = anatomical_map_vec(~cellfun('isempty',anatomical_map_vec));
 anatomical_map_vec(contains(anatomical_map_vec,'Unknown')) = {''};
+
+for i = 1:length(anatomical_map_vec)
+    label{i} = [anatomical_map_vec{i},' ',num2str(channel_map_vec(i))];
+end
 
 chanMap = generateChannelMap(session);
 chanCoords.x = chanMap.xcoords(:);
@@ -194,6 +199,6 @@ fig1 = figure('Name','Channel map','position',[5,5,fig_width,fig_height]);
 movegui(fig1,'center')
 plot(chanCoords.x,chanCoords.y,'.k'), hold on
 text(chanCoords.x,chanCoords.y,anatomical_map_vec,...
-    'VerticalAlignment', 'bottom','HorizontalAlignment','center');
+    'VerticalAlignment','bottom','HorizontalAlignment','center','fontsize',8);
 title({' ','Channel map',' '}), xlabel('X (um)'), ylabel('Y (um)')
 end
