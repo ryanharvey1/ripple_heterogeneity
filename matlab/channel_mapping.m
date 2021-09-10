@@ -1,5 +1,11 @@
 function channel_mapping(varargin)
 % channel_mapping: updates basename.session with brain regions per channel
+% and creates a adjustable .csv with brain region labels. 
+%
+% In the csv, each column is a shank and each row is a level on your probe
+% corresponding to each channel. This can be adjusted as you drive down,
+% simply by copying the .csv from the last session and making minor edits. 
+%
 % Usages:
 %       1. To be ran after basename.session is created to set up initial
 %       anatomical map for an animal. This will set up a unlabeled .csv.
@@ -47,6 +53,9 @@ end
 % anatomical map will be blank at this point
 [anatomical_map,channel_map] = get_maps(session);
 
+% get the number of unknown channels
+initial_unknown = get_unknown_count(anatomical_map);
+
 % populate from cell metrics
 % here we use previously labeled units to label channels
 % this is done to integrate older data that has already been labeled
@@ -60,6 +69,12 @@ end
 % pull from csv that has been already been generated
 if ~pull_from_cell_metrics
     anatomical_map = get_anatomical_map_csv(basepath,anatomical_map);
+end
+
+% check if anatomical_map has been populated
+if get_unknown_count(anatomical_map) == initial_unknown
+    disp('regions not found... edit your .csv')
+    return
 end
 
 % update session with anatomical_map data
@@ -86,6 +101,12 @@ if show_gui_session
 end
 end
 
+function initial_unknown = get_unknown_count(anatomical_map)
+anatomical_map_vec = anatomical_map(:);
+anatomical_map_vec = anatomical_map_vec(~cellfun('isempty',anatomical_map_vec));
+initial_unknown = sum(contains(anatomical_map_vec,'Unknown'));
+end
+
 function [anatomical_map,channel_map] = get_maps(session)
 
 max_channels = max(cellfun('length',session.extracellular.electrodeGroups.channels));
@@ -94,7 +115,7 @@ channel_map = nan(size(anatomical_map));
 
 for i = 1:session.extracellular.nElectrodeGroups
     n_ch = length(session.extracellular.electrodeGroups.channels{i});
-    anatomical_map(1:n_ch,i) = repmat({'unknown'},1,n_ch);
+    anatomical_map(1:n_ch,i) = repmat({'Unknown'},1,n_ch);
     channel_map(1:n_ch,i) = session.extracellular.electrodeGroups.channels{i};
 end
 end
@@ -151,7 +172,7 @@ function generateChannelMap1(session,anatomical_map)
 
 anatomical_map_vec = anatomical_map(:);
 anatomical_map_vec = anatomical_map_vec(~cellfun('isempty',anatomical_map_vec));
-anatomical_map_vec(contains(anatomical_map_vec,'unknown')) = {''};
+anatomical_map_vec(contains(anatomical_map_vec,'Unknown')) = {''};
 
 chanMap = generateChannelMap(session);
 chanCoords.x = chanMap.xcoords(:);
