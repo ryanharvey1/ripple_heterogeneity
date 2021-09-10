@@ -6,7 +6,7 @@ function channel_mapping(varargin)
 % corresponding to each channel. This can be adjusted as you drive down,
 % simply by copying the .csv from the last session and making minor edits.
 %
-% Usages:
+% Usage:
 %       1. To be ran after basename.session is created to set up initial
 %       anatomical map for an animal. This will set up a unlabeled .csv.
 %       You are then to label each channel and run this function again to
@@ -21,6 +21,10 @@ function channel_mapping(varargin)
 %       location where each unit fired max. Manual adjustment of the
 %       anatomical map csv may be need after as many channels will be
 %       unknown if the cell counts are low.
+%
+% Note: if you make a manual edit in the .csv, make sure to run this
+% function again to propagate that change to basename.session
+%
 %
 % Ryan H 2021
 
