@@ -1,10 +1,10 @@
 function channel_mapping(varargin)
 % channel_mapping: updates basename.session with brain regions per channel
-% and creates a adjustable .csv with brain region labels. 
+% and creates a adjustable .csv with brain region labels.
 %
 % In the csv, each column is a shank and each row is a level on your probe
 % corresponding to each channel. This can be adjusted as you drive down,
-% simply by copying the .csv from the last session and making minor edits. 
+% simply by copying the .csv from the last session and making minor edits.
 %
 % Usages:
 %       1. To be ran after basename.session is created to set up initial
@@ -18,7 +18,7 @@ function channel_mapping(varargin)
 %       3. To be run to integrate older data.
 %       Ex: channel_mapping('pull_from_cell_metrics',true)
 %       This approach will look within cell_metrics.cellinfo for the
-%       location where each unit fired max. Manual adjustment of the 
+%       location where each unit fired max. Manual adjustment of the
 %       anatomical map csv may be need after as many channels will be
 %       unknown if the cell counts are low.
 %
@@ -68,7 +68,13 @@ end
 
 % pull from csv that has been already been generated
 if ~pull_from_cell_metrics
-    anatomical_map = get_anatomical_map_csv(basepath,anatomical_map);
+    [anatomical_map,pull_from_session] = get_anatomical_map_csv(basepath,...
+        anatomical_map);
+end
+
+% check if session has already been updated and generate map from that
+if pull_from_session
+    anatomical_map = get_map_from_session(session,anatomical_map,channel_map);
 end
 
 % check if anatomical_map has been populated
@@ -93,7 +99,7 @@ if save_csv
 end
 
 if fig
-    generateChannelMap1(session,anatomical_map,channel_map) 
+    generateChannelMap1(session,anatomical_map,channel_map)
 end
 
 if show_gui_session
@@ -105,6 +111,17 @@ function initial_unknown = get_unknown_count(anatomical_map)
 anatomical_map_vec = anatomical_map(:);
 anatomical_map_vec = anatomical_map_vec(~cellfun('isempty',anatomical_map_vec));
 initial_unknown = sum(contains(anatomical_map_vec,'Unknown'));
+end
+
+function anatomical_map = get_map_from_session(session,anatomical_map,channel_map)
+if isfield(session,'brainRegions')
+    regions = fields(session.brainRegions);
+    for i = 1:length(regions)
+        region_idx = ismember(channel_map,...
+            session.brainRegions.(regions{i}).channels);
+        anatomical_map(region_idx) = {regions{i}};
+    end
+end
 end
 
 function [anatomical_map,channel_map] = get_maps(session)
@@ -121,9 +138,9 @@ end
 end
 
 function anatomical_map = get_region_from_cell_metrics(basepath,...
-    basename,...
-    channel_map,...
-    anatomical_map)
+                                                        basename,...
+                                                        channel_map,...
+                                                        anatomical_map)
 load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
 for i = 1:length(cell_metrics.maxWaveformCh1)
     anatomical_map(channel_map == cell_metrics.maxWaveformCh1(i)) =...
@@ -131,18 +148,18 @@ for i = 1:length(cell_metrics.maxWaveformCh1)
 end
 end
 
-function anatomical_map = get_anatomical_map_csv(basepath,anatomical_map)
-
+function [anatomical_map,pull_from_session] = get_anatomical_map_csv(basepath,anatomical_map)
+pull_from_session = false;
 filename = fullfile(basepath,'anatomical_map.csv');
 if ~exist(filename,'file')
     warning('no .anatomical_map.csv... ')
-    disp('or pull from cell metrics first?')
-    disp('saving empty anatomical_map...')
-    disp('edit anatomical_map and rerun')
+    disp('will try to pull from basename.session')
+    disp('you can check anatomical_map and rerun')
     
     writetable(cell2table(anatomical_map),...
         fullfile(basepath,'anatomical_map.csv'),...
         'WriteVariableNames',0)
+    pull_from_session = true;
     return
 end
 anatomical_map = table2cell(readtable(filename,'ReadVariableNames',false));
@@ -195,7 +212,7 @@ else
     fig_height = 1000;
     fig_width = ceil(fig_height*x_range/y_range)+200;
 end
-fig1 = figure('Name','Channel map','position',[5,5,fig_width,fig_height]); 
+fig1 = figure('Name','Channel map','position',[5,5,fig_width,fig_height]);
 movegui(fig1,'center')
 plot(chanCoords.x,chanCoords.y,'.k'), hold on
 
