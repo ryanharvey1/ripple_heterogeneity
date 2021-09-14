@@ -178,13 +178,20 @@ function lfp = get_deep_ca1_lfp(basepath,passband)
 
 basename = basenameFromBasepath(basepath);
 
-% load cell_metrics to locate deep ca1 channels
-load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
+load(fullfile(basepath,[basename,'.session.mat']))
+load(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']))
 
 % find deep ca1 channels to check
-ca1_idx = contains(lower(cell_metrics.brainRegion),'ca1');
-deep_idx = cell_metrics.CA1depth>0;
-deep_channels = unique(cell_metrics.maxWaveformCh1(deep_idx & ca1_idx));
+deep_channels = deepSuperficialfromRipple.channel(contains(deepSuperficialfromRipple.channelClass,'Deep'));
+deep_channels = deep_channels(ismember(deep_channels,session.brainRegions.CA1.channels))';
+
+% load cell_metrics to locate deep ca1 channels
+% load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
+
+% find deep ca1 channels to check
+% ca1_idx = contains(lower(cell_metrics.brainRegion),'ca1');
+% deep_idx = cell_metrics.CA1depth>0;
+% deep_channels = unique(cell_metrics.maxWaveformCh1(deep_idx & ca1_idx));
 
 if isempty(deep_channels)
     disp('deep channel not found...')
