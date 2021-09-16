@@ -11,8 +11,24 @@ basepaths = unique(df.basepath);
 for i = 1:length(basepaths)
     % make input
 %     get_rem_shift_input(basepaths{i})
-    
-    get_rem_shift('basepath',basepaths{i}) 
+    disp(basepaths{i})
+    basename = basenameFromBasepath(basepaths{i});
+    if exist(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']),'file')
+        continue
+    end
+    if ~exist(fullfile(basepaths{i},...
+            [basename,'.deepSuperficialfromRipple.channelinfo.mat']),'file')
+        load(fullfile(basepaths{i},[basename,'.session.mat']));
+        classification_DeepSuperficial(session,'basepath',basepaths{i});
+    end
+    try
+        get_rem_shift('basepath',basepaths{i});
+    catch
+        load(fullfile(basepaths{i},[basename,'.session.mat']));
+        classification_DeepSuperficial(session,'basepath',basepaths{i});
+        get_rem_shift('basepath',basepaths{i});
+
+    end
 end
 
 % function get_rem_shift_input(basepath)
