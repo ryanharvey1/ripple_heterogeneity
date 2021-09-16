@@ -33,6 +33,10 @@ basename = basenameFromBasepath(basepath);
 if isempty(lfp)
     lfp = get_deep_ca1_lfp(basepath,passband);
 end
+if isempty(lfp)
+   disp('no ca1 lfp')
+   return
+end
 
 % load your spikes
 if isempty(spikes)
@@ -183,8 +187,16 @@ load(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']))
 
 % find deep ca1 channels to check
 deep_channels = deepSuperficialfromRipple.channel(contains(deepSuperficialfromRipple.channelClass,'Deep'));
-deep_channels = deep_channels(ismember(deep_channels,session.brainRegions.CA1.channels))';
-
+if ~isfield(session.brainRegions,'CA1')
+    lfp = [];
+    return
+end
+try
+    deep_channels = deep_channels(ismember(deep_channels,session.brainRegions.CA1.channels))';
+catch
+    ca1_channels = [session.brainRegions.rCA1.channels, session.brainRegions.lCA1.channels];
+    deep_channels = deep_channels(ismember(deep_channels,ca1_channels))';
+end
 % load cell_metrics to locate deep ca1 channels
 % load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
 
