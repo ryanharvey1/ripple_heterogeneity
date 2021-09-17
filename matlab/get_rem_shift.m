@@ -191,6 +191,10 @@ try
 catch
     deep_channels = deepSuperficialfromRipple.channels(contains(deepSuperficialfromRipple.channelClass,'Deep'));
 end
+if isempty(deep_channels)
+    lfp = [];
+    return
+end
 if ~isfield(session.brainRegions,'CA1')
     lfp = [];
     return
