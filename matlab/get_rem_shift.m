@@ -186,7 +186,11 @@ load(fullfile(basepath,[basename,'.session.mat']))
 load(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']))
 
 % find deep ca1 channels to check
-deep_channels = deepSuperficialfromRipple.channel(contains(deepSuperficialfromRipple.channelClass,'Deep'));
+try
+    deep_channels = deepSuperficialfromRipple.channel(contains(deepSuperficialfromRipple.channelClass,'Deep'));
+catch
+    deep_channels = deepSuperficialfromRipple.channels(contains(deepSuperficialfromRipple.channelClass,'Deep'));
+end
 if ~isfield(session.brainRegions,'CA1')
     lfp = [];
     return
@@ -211,6 +215,10 @@ if isempty(deep_channels)
     keyboard
 end
 % load deep channels
+[r,c] = size(deep_channels);
+if r>c
+    deep_channels = deep_channels';
+end
 lfp = getLFP(deep_channels,'basepath',basepath,'basename',basename);
 
 % get theta power to choose channel
