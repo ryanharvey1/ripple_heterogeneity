@@ -12,7 +12,7 @@ df = readtable('D:\projects\ripple_heterogeneity\swr_pipe_all.csv');
 idx = contains(df.basepath,'Kenji');
 basepaths = unique(df.basepath(idx));
 
-for i = 1:length(basepaths)
+parfor i = 1:length(basepaths)
     
     basepath = basepaths{i};
     basename = basenameFromBasepath(basepath);
@@ -43,10 +43,14 @@ function main(basepath,basename)
         warning('No spike groups exist in the xml. Anatomical groups used instead')
         session.extracellular.spikeGroups.channels = cellfun(@(x) x+1,{sessionInfo_new.AnatGrps.Channels},'un',0); % Spike groups
         session.extracellular.electrodeGroups.channels = cellfun(@(x) x+1,{sessionInfo_new.AnatGrps.Channels},'un',0);
+        session.extracellular.nElectrodeGroups = length(session.extracellular.electrodeGroups.channels);
+        session.extracellular.nSpikeGroups = length(session.extracellular.electrodeGroups.channels);
     end
     % update basename.sessionInfo
     sessionInfo.AnatGrps = sessionInfo_new.AnatGrps;
     sessionInfo.SpkGrps = sessionInfo_new.SpkGrps;
+    sessionInfo.ElecGp = {sessionInfo_new.AnatGrps.Channels};
+    sessionInfo.nElecGps = session.extracellular.nSpikeGroups;
     
     % update cell_metrics
     cell_metrics.general.electrodeGroups = session.extracellular.electrodeGroups.channels; 
