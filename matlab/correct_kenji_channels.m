@@ -9,10 +9,14 @@
 
 df = readtable('D:\projects\ripple_heterogeneity\swr_pipe_all.csv');
 
+date_check_1 = '20-Sep-2021';
+date_check_2 = '21-Sep-2021';
+
 idx = contains(df.basepath,'Kenji');
 basepaths = unique(df.basepath(idx));
 
-parfor i = 1:length(basepaths)
+
+for i = 1:length(basepaths)
     
     basepath = basepaths{i};
     basename = basenameFromBasepath(basepath);
@@ -20,14 +24,23 @@ parfor i = 1:length(basepaths)
     disp([num2str(i),'  ',basepath])
     
     % check to see if file was already ran
-    file = dir(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']));
-    if contains(file.date,date)
+    if check_date(basepath,basename,date_check_1,date_check_2)
         continue
     end
+
     main(basepath,basename)
     
     close all
 end
+
+function datepass = check_date(basepath,basename,date_check_1,date_check_2)
+file = dir(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']));
+image_file = dir(fullfile(basepath,'deepSuperficial_classification_fromRipples.png'));
+
+datepass = [contains(image_file.date,date_check_1) || contains(image_file.date,date_check_2)] &&...
+        [contains(file.date,date_check_1) || contains(file.date,date_check_2)];
+end
+
 function main(basepath,basename)
     load(fullfile(basepath,[basename,'.session.mat']))
     load(fullfile(basepath,[basename,'.sessionInfo.mat']))
