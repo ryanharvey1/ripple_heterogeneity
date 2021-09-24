@@ -6,12 +6,14 @@ if isfield(session.epochs{1},'behavioralParadigm')
         session.epochs{i}.name = [session.epochs{i}.name,'_',session.epochs{i}.behavioralParadigm];
     end
 end
+
+% remove empty epochs
+session.epochs = session.epochs(~cellfun(@isempty,session.epochs));
+% iter and pull out each epoch name
 for i = 1:length(session.epochs)
     epoch{i} = session.epochs{i}.name;
 end
 disp(epoch')
-% idx = find(diff(find(contains(epoch,'sleep')))>1)
-% pre = session.epochs{i}
 
 epochs = {'pre','task','post'};
 
@@ -23,19 +25,26 @@ epochs = {'pre','task','post'};
 %     
 % end
 
-epoch_struct = [];
-[pre_idx,task_idx,post_idx ] = locate_idx_pre_task_post(session);
-if ~isempty(pre_idx)
-    epoch_struct.pre = [session.epochs{pre_idx(1)}.startTime,...
-        session.epochs{pre_idx(2)}.stopTime];
-end
-if ~isempty(task_idx)
-    epoch_struct.task = [session.epochs{task_idx(1)}.startTime,...
-        session.epochs{task_idx(2)}.stopTime];
-end
-if ~isempty(post_idx)
-    epoch_struct.post = [session.epochs{post_idx(1)}.startTime,...
-        session.epochs{post_idx(2)}.stopTime];
+% check if pre/task/post struct already exist
+if any(ismember(epoch,epochs))
+    for i = 1:length(session.epochs)
+        epoch_struct.(session.epochs{i}.name) = [session.epochs{i}.startTime,session.epochs{i}.stopTime];
+    end
+else
+    epoch_struct = [];
+    [pre_idx,task_idx,post_idx ] = locate_idx_pre_task_post(session);
+    if ~isempty(pre_idx)
+        epoch_struct.pre = [session.epochs{pre_idx(1)}.startTime,...
+            session.epochs{pre_idx(2)}.stopTime];
+    end
+    if ~isempty(task_idx)
+        epoch_struct.task = [session.epochs{task_idx(1)}.startTime,...
+            session.epochs{task_idx(2)}.stopTime];
+    end
+    if ~isempty(post_idx)
+        epoch_struct.post = [session.epochs{post_idx(1)}.startTime,...
+            session.epochs{post_idx(2)}.stopTime];
+    end
 end
 % disp('manual for now...sorry')
 % disp('manipulate & run epoch_struct and type dbcont')
@@ -123,7 +132,11 @@ elseif isfield(ripples,'timestamps')
                             'saveMat',false); 
 end
 
-SWRunitMetrics.(epoch_label) = bz_unitSWRmetrics(ripSpk);
+% get average firing rate from entire session in order to to calc gain
+% maybe this should be from each epoch
+avg_rate = spikes.total / (max(cell2mat(spikes.times')) - min(cell2mat(spikes.times')));
+
+SWRunitMetrics.(epoch_label) = unitSWRmetrics(ripSpk,'baseFR',avg_rate');
 
 end
 
