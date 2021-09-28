@@ -5,37 +5,28 @@
 % were designated as REM-shifting cells, whereas those between 120° to 300°
 % (blue) were designated as nonshifting cells.
 
-df = readtable('D:\projects\ripple_heterogeneity\swr_pipe_all.csv');
+df = readtable('D:\projects\ripple_heterogeneity\sessions.csv');
 
+date_thres = '24-Sep-2021';
 basepaths = unique(df.basepath);
 for i = 1:length(basepaths)
     % make input
 %     get_rem_shift_input(basepaths{i})
     disp(basepaths{i})
     basename = basenameFromBasepath(basepaths{i});
+    
     if exist(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']),'file')
-        continue
+        % check date
+        file = dir(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']));
+        if file.datenum >= datenum('24-Sep-2021')
+            continue
+        end
+        % remove file first
+        delete(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']))
     end
-    if ~exist(fullfile(basepaths{i},...
-            [basename,'.deepSuperficialfromRipple.channelinfo.mat']),'file')
-        load(fullfile(basepaths{i},[basename,'.session.mat']));
-        classification_DeepSuperficial(session,'basepath',basepaths{i});
-    end
-    try
-        get_rem_shift('basepath',basepaths{i});
-    catch
-        load(fullfile(basepaths{i},[basename,'.session.mat']));
-        classification_DeepSuperficial(session,'basepath',basepaths{i});
-        get_rem_shift('basepath',basepaths{i});
-
-    end
+    get_rem_shift('basepath',basepaths{i});
 end
 
-% function get_rem_shift_input(basepath)
-% basename = basenameFromBasepath(basepath);
-% 
-% 
-% end
 
 
 
