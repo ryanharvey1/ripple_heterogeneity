@@ -195,29 +195,40 @@ if isempty(deep_channels)
     lfp = [];
     return
 end
-if ~isfield(session.brainRegions,'CA1')
-    lfp = [];
-    return
-end
+
 try
     deep_channels = deep_channels(ismember(deep_channels,session.brainRegions.CA1.channels))';
 catch
-    ca1_channels = [session.brainRegions.rCA1.channels, session.brainRegions.lCA1.channels];
-    deep_channels = deep_channels(ismember(deep_channels,ca1_channels))';
+    try
+        ca1_channels = [session.brainRegions.rCA1.channels, session.brainRegions.lCA1.channels];
+        deep_channels = deep_channels(ismember(deep_channels,ca1_channels))';
+    catch
+        lfp = [];
+        return     
+    end
 end
-% load cell_metrics to locate deep ca1 channels
-% load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
 
-% find deep ca1 channels to check
-% ca1_idx = contains(lower(cell_metrics.brainRegion),'ca1');
-% deep_idx = cell_metrics.CA1depth>0;
-% deep_channels = unique(cell_metrics.maxWaveformCh1(deep_idx & ca1_idx));
+% if isempty(deep_channels)
+%     disp('deep channel not found...')
+%     disp('manually assign deep_channels variable and enter "dbcont"')
+%     keyboard
+% end
 
 if isempty(deep_channels)
-    disp('deep channel not found...')
-    disp('manually assign deep_channels variable and enter "dbcont"')
-    keyboard
+    lfp = [];
+    return  
 end
+% locate highest channels (above pyr)
+% chanMap = generateChannelMap(session);
+% 
+% idx = ismember([session.extracellular.electrodeGroups.channels{:}],deep_channels)
+% 
+% [m,idx] = max(chanMap.ycoords(idx))
+% 
+% deep_channels = find(chanMap.ycoords == max(chanMap.ycoords(idx)));
+
+
+
 % load deep channels
 [r,c] = size(deep_channels);
 if r>c
