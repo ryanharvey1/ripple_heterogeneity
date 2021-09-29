@@ -218,8 +218,9 @@ if isempty(deep_channels)
     lfp = [];
     return  
 end
+
 % locate highest channels (above pyr)
-% chanMap = generateChannelMap(session);
+% chanMap = generateChannelMap(session,'reorder',false);
 % 
 % idx = ismember([session.extracellular.electrodeGroups.channels{:}],deep_channels)
 % 
