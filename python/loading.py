@@ -356,13 +356,16 @@ def load_theta_rem_shift(basepath):
     """
     load_theta_rem_shift: loads matlab structure from get_rem_shift.m
     """
+    try:
+        filename = glob.glob(basepath+os.sep+'*theta_rem_shift.mat')[0]
+    except:
+        # warnings.warn("file does not exist")
+        return pd.DataFrame(),np.nan
 
-    filename = glob.glob(basepath+os.sep+'*theta_rem_shift.mat')[0]
-    
     # check if saved file exists
     if not os.path.exists(filename):
-        warnings.warn("file does not exist")
-        return pd.DataFrame()
+        # warnings.warn("file does not exist")
+        return pd.DataFrame(),np.nan
 
     data = sio.loadmat(filename)
 
