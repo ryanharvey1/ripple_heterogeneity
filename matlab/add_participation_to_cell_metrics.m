@@ -1,6 +1,6 @@
 % add_participation_to_cell_metrics
 
-df = readtable('D:\projects\ripple_heterogeneity\swr_pipe_all.csv');
+df = readtable('D:\projects\ripple_heterogeneity\sessions.csv');
 basepaths = unique(df.basepath);
 
 % find sessions to run
