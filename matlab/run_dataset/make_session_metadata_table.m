@@ -56,4 +56,39 @@ df.task = df_task';
 df.novel = df_novel';
 df.region = df_regions';
 
-df(df.task==1 & df.opto == 1,:)
+% 0=sham, 1=MEC silencing; 2=LEC silencing; 3=prb stm; 4=SWR prolong; 8=problem
+opto_temp = repmat({'none'},length(df.opto),1);
+opto_temp(df.opto == 0) = {'sham'};
+opto_temp(df.opto == 1) = {'mec_silencing'};
+opto_temp(df.opto == 2) = {'lec_silencing'};
+opto_temp(df.opto == 3) = {'prb_stm'};
+opto_temp(df.opto == 4) = {'swr_prolong'};
+opto_temp(df.opto == 8) = {'problem'};
+df.opto = opto_temp;
+
+% 1=linear, 2=cheesboard, 3=Wmaze, 4=Tmaze, 5=Mwheel
+task_temp = repmat({'unknown'},length(df.task),1);
+task_temp(df.task == 1) = {'linear'};
+task_temp(df.task == 2) = {'cheesboard'};
+task_temp(df.task == 3) = {'w_maze'};
+task_temp(df.task == 4) = {'t_maze'};
+task_temp(df.task == 5) = {'m_wheel'};
+df.task = task_temp;
+
+% 0=familiar env, 1=novel env.   THIS NEEDS TO BE CHECKED, THERE ARE SOME NOVEL SES
+novel_temp = repmat({'unknown'},length(df.novel),1);
+novel_temp(df.novel == 0) = {'familiar'};
+novel_temp(df.novel == 1) = {'novel'};
+df.novel = novel_temp;
+
+% 1=only HP, 2=also MEC, 3=also LEC, 4=PFC
+region_temp = repmat({'unknown'},length(df.region),1);
+region_temp(df.region == 1) = {'hp'};
+region_temp(df.region == 2) = {'hp_mec'};
+region_temp(df.region == 3) = {'hp_lec'};
+region_temp(df.region == 4) = {'pfc'};
+df.region = region_temp;
+
+df(contains(df.opto,'mec'),:)
+% df(df.task==1 & df.opto == 1,:)
+
