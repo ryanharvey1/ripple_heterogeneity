@@ -7,6 +7,7 @@ addParameter(p,'binary_class_variable','deepSuperficial',@ischar)
 addParameter(p,'grouping_names',{'Deep','Superficial'},@iscell)
 addParameter(p,'restrict_to_brainregion','CA1',@ischar)
 addParameter(p,'restrict_to_celltype','Pyramidal Cell',@ischar)
+addParameter(p,'force_run',false,@islogical)
 addParameter(p,'savepath',[])
 
 parse(p,varargin{:})
@@ -16,6 +17,7 @@ binary_class_variable = p.Results.binary_class_variable;
 grouping_names = p.Results.grouping_names;
 restrict_to_brainregion = p.Results.restrict_to_brainregion;
 restrict_to_celltype = p.Results.restrict_to_celltype;
+force_run = p.Results.force_run;
 savepath = p.Results.savepath;
 
 
@@ -31,7 +33,7 @@ parfor i = 1:length(basepaths)
     
     file_str = strsplit(basepath,filesep);
     savepath_ = fullfile(savepath,[file_str{end-1},'_',file_str{end},'.csv']);
-    if exist(savepath_,'file')
+    if exist(savepath_,'file') && ~force_run
         continue
     end
     
@@ -62,8 +64,8 @@ ripSpk = load_spikes_and_get_ripSpk(basepath,ripples,...
 % iter through each rip
 A=[];   B=[];   AB=[];
 for e = 1:numel(ripSpk.EventRel)
-    for i = 1:length(ripSpk.EventRel{e})-1
-        for j = 1:length(ripSpk.EventRel{e})-1
+    for i = 1:size(ripSpk.EventRel{e},2)-1
+        for j = 1:size(ripSpk.EventRel{e},2)-1
             [A,B,AB] = get_isi(ripSpk,...
                 cell_metrics,...
                 j,i,e,...
@@ -118,20 +120,20 @@ function [A,B,AB] = get_isi(ripSpk,cell_metrics,j,i,e,A,B,AB,...
 % get_isi: main function to calc isi on sub populations
 
 if j ~= i && ripSpk.EventRel{e}(2,i) ~= ripSpk.EventRel{e}(2,j)
-    if strcmp(grouping_names{1},cell_metrics.(binary_class_variable){ripSpk.EventRel{e}(2,i)}) && ...
-            strcmp(grouping_names{1},cell_metrics.(binary_class_variable){ripSpk.EventRel{e}(2,j)})
+    if strcmp(grouping_names{1},cell_metrics.(binary_class_variable){cell_metrics.UID==ripSpk.EventRel{e}(2,i)}) && ...
+            strcmp(grouping_names{1},cell_metrics.(binary_class_variable){cell_metrics.UID==ripSpk.EventRel{e}(2,j)})
         
         A=cat(1,A,abs(ripSpk.EventRel{e}(1,i)-ripSpk.EventRel{e}(1,j)));
         
-    elseif strcmp(grouping_names{2},cell_metrics.(binary_class_variable){ripSpk.EventRel{e}(2,i)}) && ...
-            strcmp(grouping_names{2},cell_metrics.(binary_class_variable){ripSpk.EventRel{e}(2,j)})
+    elseif strcmp(grouping_names{2},cell_metrics.(binary_class_variable){cell_metrics.UID==ripSpk.EventRel{e}(2,i)}) && ...
+            strcmp(grouping_names{2},cell_metrics.(binary_class_variable){cell_metrics.UID==ripSpk.EventRel{e}(2,j)})
         
         B=cat(1,B,abs(ripSpk.EventRel{e}(1,i)-ripSpk.EventRel{e}(1,j)));
         
-    elseif (strcmp(grouping_names{1},cell_metrics.(binary_class_variable){ripSpk.EventRel{e}(2,i)}) && ...
-            strcmp(grouping_names{2},cell_metrics.(binary_class_variable){ripSpk.EventRel{e}(2,j)})) || ...
-            (strcmp(grouping_names{2},cell_metrics.(binary_class_variable){ripSpk.EventRel{e}(2,i)}) && ...
-            strcmp(grouping_names{1},cell_metrics.(binary_class_variable){ripSpk.EventRel{e}(2,j)}))
+    elseif (strcmp(grouping_names{1},cell_metrics.(binary_class_variable){cell_metrics.UID==ripSpk.EventRel{e}(2,i)}) && ...
+            strcmp(grouping_names{2},cell_metrics.(binary_class_variable){cell_metrics.UID==ripSpk.EventRel{e}(2,j)})) || ...
+            (strcmp(grouping_names{2},cell_metrics.(binary_class_variable){cell_metrics.UID==ripSpk.EventRel{e}(2,i)}) && ...
+            strcmp(grouping_names{1},cell_metrics.(binary_class_variable){cell_metrics.UID==ripSpk.EventRel{e}(2,j)}))
         
         AB=cat(1,AB,abs(ripSpk.EventRel{e}(1,i)-ripSpk.EventRel{e}(1,j)));
     end
