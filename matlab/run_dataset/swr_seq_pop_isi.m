@@ -3,12 +3,14 @@ function swr_seq_pop_isi(varargin)
 p = inputParser;
 addParameter(p,'basepath',[]) % single basepath to run 1 session
 addParameter(p,'df',[]) % data frame with df.basepath
-addParameter(p,'binary_class_variable','deepSuperficial',@ischar)
-addParameter(p,'grouping_names',{'Deep','Superficial'},@iscell)
-addParameter(p,'restrict_to_brainregion','CA1',@ischar)
-addParameter(p,'restrict_to_celltype','Pyramidal Cell',@ischar)
-addParameter(p,'force_run',false,@islogical)
-addParameter(p,'savepath',[])
+addParameter(p,'binary_class_variable','deepSuperficial',@ischar) % variable in cell_metrics that has groups
+addParameter(p,'grouping_names',{'Deep','Superficial'},@iscell) % group names associated with the above
+addParameter(p,'restrict_to_brainregion','CA1',@ischar) % brain region to run on (empty to run all)
+addParameter(p,'restrict_to_celltype','Pyramidal Cell',@ischar) % cell class to run on (empty to run all)
+addParameter(p,'force_run',false,@islogical) % to overwrite results
+addParameter(p,'savepath',[]) % path to save results
+addParameter(p,'parallel',true,@islogical) % run over sessions in parallel
+addParameter(p,'shuffle',false,@islogical) % jitter spike times to make null dist
 
 parse(p,varargin{:})
 basepaths = p.Results.basepath;
@@ -19,38 +21,41 @@ restrict_to_brainregion = p.Results.restrict_to_brainregion;
 restrict_to_celltype = p.Results.restrict_to_celltype;
 force_run = p.Results.force_run;
 savepath = p.Results.savepath;
+parallel = p.Results.parallel;
+shuffle = p.Results.shuffle;
 
-
-if isempty(df)
+if isempty(basepaths)
     df = readtable('D:\projects\ripple_heterogeneity\sessions.csv');
     basepaths = unique(df.basepath);
 end
 
 WaitMessage = parfor_wait(length(basepaths));
-parfor i = 1:length(basepaths)
-    basepath = basepaths{i};
-    disp(basepath)
-    
-    file_str = strsplit(basepath,filesep);
-    savepath_ = fullfile(savepath,[file_str{end-1},'_',file_str{end},'.csv']);
-    if exist(savepath_,'file') && ~force_run
-        continue
+if parallel
+    parfor i = 1:length(basepaths)
+        main(basepaths{i},binary_class_variable,grouping_names,...
+            restrict_to_brainregion,restrict_to_celltype,savepath,force_run,shuffle)
+        WaitMessage.Send;
     end
-    
-    main(basepath,...
-        binary_class_variable,...
-        grouping_names,...
-        restrict_to_brainregion,...
-        restrict_to_celltype,...
-        savepath_)
-    
-    WaitMessage.Send;
+else
+    for i = 1:length(basepaths)
+        main(basepaths{i},binary_class_variable,grouping_names,...
+            restrict_to_brainregion,restrict_to_celltype,savepath,force_run,shuffle)
+        WaitMessage.Send;
+    end
 end
 WaitMessage.Destroy;
 end
 
 function main(basepath,binary_class_variable,grouping_names,...
-    restrict_to_brainregion,restrict_to_celltype,savepath)
+    restrict_to_brainregion,restrict_to_celltype,savepath,force_run,shuffle)
+
+disp(basepath)
+
+file_str = strsplit(basepath,filesep);
+savepath = fullfile(savepath,[file_str{end-1},'_',file_str{end},'.csv']);
+if exist(savepath,'file') && ~force_run
+    return
+end
 
 basename = basenameFromBasepath(basepath);
 
@@ -58,38 +63,68 @@ basename = basenameFromBasepath(basepath);
 load(fullfile(basepath,[basename '.cell_metrics.cellinfo.mat']));
 load(fullfile(basepath,[basename '.ripples.events.mat']));
 
+% make sure there are at least 5 of a each cell category available
+good_to_run = check_unit_counts_per_group(cell_metrics,...
+    restrict_to_brainregion,restrict_to_celltype,...
+    binary_class_variable,grouping_names);
+if ~good_to_run
+    return
+end
+
+% get ripple spikes
 ripSpk = load_spikes_and_get_ripSpk(basepath,ripples,...
     restrict_to_brainregion,restrict_to_celltype);
 
-% iter through each rip
-A=[];   B=[];   AB=[];
-for e = 1:numel(ripSpk.EventRel)
-    for i = 1:size(ripSpk.EventRel{e},2)-1
-        for j = 1:size(ripSpk.EventRel{e},2)-1
-            [A,B,AB] = get_isi(ripSpk,...
-                cell_metrics,...
-                j,i,e,...
-                A,B,AB,...
-                binary_class_variable,...
-                grouping_names);
-        end
+% get group isi distributions of each group and across groups
+[A,B,AB] = calc_isi(ripSpk,cell_metrics,binary_class_variable,...
+    grouping_names);
+
+% get shuffled distributions
+if shuffle
+    [A_shuff,B_shuff,AB_shuff] = shuffle_isi(ripSpk,...
+        cell_metrics,binary_class_variable,grouping_names);
+else
+    A_shuff = NaN;
+    B_shuff = NaN;
+    AB_shuff = NaN;
+end
+% save results as csv to savepath
+save_results(A,B,AB,A_shuff,B_shuff,AB_shuff,grouping_names,savepath)
+end
+
+function good_to_run = check_unit_counts_per_group(cell_metrics,...
+    restrict_to_brainregion,restrict_to_celltype,...
+    binary_class_variable,grouping_names)
+
+good_to_run = false;
+if ~isempty(restrict_to_brainregion) && ~isempty(restrict_to_celltype)
+    idx = contains(cell_metrics.brainRegion,restrict_to_brainregion) &...
+        contains(cell_metrics.putativeCellType,restrict_to_celltype);
+    
+    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 5 &&...
+            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 5
+        good_to_run = true;
+    end
+elseif ~isempty(restrict_to_brainregion) % just restrict brain region
+    idx = contains(cell_metrics.brainRegion,restrict_to_brainregion);
+    
+    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 5 &&...
+            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 5
+        good_to_run = true;
+    end
+elseif ~isempty(restrict_to_celltype) % just restrict cell type
+    idx = contains(cell_metrics.putativeCellType,restrict_to_celltype);
+    
+    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 5 &&...
+            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 5
+        good_to_run = true;
+    end
+else % no restriction
+    if sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{1})) >= 5 &&...
+            sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{2})) >= 5
+        good_to_run = true;
     end
 end
-save_results(A,B,AB,grouping_names,savepath)
-end
-
-function save_results(A,B,AB,grouping_names,savepath)
-
-meanISI = nan(max([length(A),length(B),length(AB)]),3);
-meanISI(1:numel(A),1) = A;
-meanISI(1:numel(B),2) = B;
-meanISI(1:numel(AB),3) = AB;
-
-df = table(meanISI(:,1),meanISI(:,2),meanISI(:,3),...
-    'VariableNames',...
-    {grouping_names{1},grouping_names{2},[grouping_names{1},grouping_names{2}]});
-
-writetable(df,savepath)
 end
 
 function ripSpk = load_spikes_and_get_ripSpk(basepath,ripples,...
@@ -111,8 +146,26 @@ else % no restriction
 end
 
 % make ripSpk struct with spike times per ripple
-ripSpk = getRipSpikes('basepath',basepath,'events',ripples,'spikes',spk,'saveMat',false);
+ripSpk = getRipSpikes('basepath',basepath,'events',ripples,'spikes',spk,...
+    'saveMat',false);
+end
 
+function [A,B,AB] = calc_isi(ripSpk,cell_metrics,binary_class_variable,...
+    grouping_names)
+% iter through each rip
+A=[];   B=[];   AB=[];
+for e = 1:numel(ripSpk.EventRel)
+    for i = 1:size(ripSpk.EventRel{e},2)-1
+        for j = 1:size(ripSpk.EventRel{e},2)-1
+            [A,B,AB] = get_isi(ripSpk,...
+                cell_metrics,...
+                j,i,e,...
+                A,B,AB,...
+                binary_class_variable,...
+                grouping_names);
+        end
+    end
+end
 end
 
 function [A,B,AB] = get_isi(ripSpk,cell_metrics,j,i,e,A,B,AB,...
@@ -138,4 +191,62 @@ if j ~= i && ripSpk.EventRel{e}(2,i) ~= ripSpk.EventRel{e}(2,j)
         AB=cat(1,AB,abs(ripSpk.EventRel{e}(1,i)-ripSpk.EventRel{e}(1,j)));
     end
 end
+end
+
+function [A_shuff_all,B_shuff_all,AB_shuff_all] = shuffle_isi(ripSpk,...
+    cell_metrics,binary_class_variable,grouping_names)
+
+shuff_ripSpk = ripSpk;
+% -0.01 to 0.01 seconds (10ms is ~ the longest ripple cycle)
+min_s = -1/100;
+max_s = 1/100;
+
+A_shuff_all = [];
+B_shuff_all = [];
+AB_shuff_all = [];
+
+% 10 shuffles is enough to de-couple cycle nesting of units
+for shuff_i = 1:10
+    for i = 1:length(ripSpk.EventRel)
+        offset = (max_s-min_s).*rand(1,size(shuff_ripSpk.EventRel{i},2)) + min_s;
+        shuff_ripSpk.EventRel{i}(1,:) = ripSpk.EventRel{i}(1,:) + offset;
+    end
+    [A_shuff,B_shuff,AB_shuff] = calc_isi(shuff_ripSpk,...
+        cell_metrics,...
+        binary_class_variable,...
+        grouping_names);
+    A_shuff_all = [A_shuff_all;A_shuff];
+    B_shuff_all = [B_shuff_all;B_shuff];
+    AB_shuff_all = [AB_shuff_all;AB_shuff];
+end
+end
+
+function save_results(A,B,AB,A_shuff,B_shuff,AB_shuff,grouping_names,savepath)
+
+% nan matrix
+isi = nan(max([length(A),length(B),length(AB),...
+    length(A_shuff),length(B_shuff),length(AB_shuff)]),6);
+
+% fill each column of matrix
+isi(1:numel(A),1) = A;
+isi(1:numel(B),2) = B;
+isi(1:numel(AB),3) = AB;
+isi(1:numel(A_shuff),4) = A_shuff;
+isi(1:numel(B_shuff),5) = B_shuff;
+isi(1:numel(AB_shuff),6) = AB_shuff;
+
+% column names
+varnames = {grouping_names{1},...
+    grouping_names{2},...
+    [grouping_names{1},grouping_names{2}],...
+    [grouping_names{1},'_shuff'],...
+    [grouping_names{2},'_shuff'],...
+    [grouping_names{1},grouping_names{2},'_shuff']};
+
+% make table
+df = table(isi(:,1),isi(:,2),isi(:,3),isi(:,4),isi(:,5),isi(:,6),...
+    'VariableNames',...
+    varnames);
+
+writetable(df,savepath)
 end
