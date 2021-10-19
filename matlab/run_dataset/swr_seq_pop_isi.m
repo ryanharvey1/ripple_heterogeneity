@@ -85,6 +85,11 @@ ripples = restrict_ripples_by_duration(ripples,ripple_duration_restrict);
 ripSpk = load_spikes_and_get_ripSpk(basepath,ripples,...
     restrict_to_brainregion,restrict_to_celltype);
 
+% no units in ripples...skip
+if ~isfield(ripSpk,'UnitEventAbs')
+    return
+end
+
 % restict by number of unique units
 ripSpk = restrict_ripples_unique_units(ripSpk,cell_metrics,grouping_names,...
     binary_class_variable,unique_unit_num);
@@ -115,27 +120,27 @@ if ~isempty(restrict_to_brainregion) && ~isempty(restrict_to_celltype)
     idx = contains(cell_metrics.brainRegion,restrict_to_brainregion) &...
         contains(cell_metrics.putativeCellType,restrict_to_celltype);
     
-    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 5 &&...
-            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 5
+    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 3 &&...
+            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 3
         good_to_run = true;
     end
 elseif ~isempty(restrict_to_brainregion) % just restrict brain region
     idx = contains(cell_metrics.brainRegion,restrict_to_brainregion);
     
-    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 5 &&...
-            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 5
+    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 3 &&...
+            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 3
         good_to_run = true;
     end
 elseif ~isempty(restrict_to_celltype) % just restrict cell type
     idx = contains(cell_metrics.putativeCellType,restrict_to_celltype);
     
-    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 5 &&...
-            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 5
+    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 3 &&...
+            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 3
         good_to_run = true;
     end
 else % no restriction
-    if sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{1})) >= 5 &&...
-            sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{2})) >= 5
+    if sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{1})) >= 3 &&...
+            sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{2})) >= 3
         good_to_run = true;
     end
 end
@@ -143,8 +148,8 @@ end
 
 function ripples = restrict_ripples_by_duration(ripples,ripple_duration_restrict)
 
-keep = ripples.duration > ripple_duration_restrict(1) &...
-    ripples.duration < ripple_duration_restrict(2);
+keep = ripples.duration >= ripple_duration_restrict(1) &...
+    ripples.duration <= ripple_duration_restrict(2);
 
 ripples.timestamps = ripples.timestamps(keep,:);
 ripples.peaks = ripples.peaks(keep,:);
@@ -181,8 +186,8 @@ function ripSpk = restrict_ripples_unique_units(ripSpk,cell_metrics,...
 
 for i = 1:length(ripSpk.EventRel)
     [~,Locb] = ismember(ripSpk.EventRel{i}(2,:),cell_metrics.UID);
-    keep(i) = sum(strcmp(cell_metrics.(binary_class_variable)(Locb), grouping_names{1})) > unique_unit_num &&...
-        sum(strcmp(cell_metrics.(binary_class_variable)(Locb), grouping_names{2})) > unique_unit_num;
+    keep(i) = sum(strcmp(cell_metrics.(binary_class_variable)(Locb), grouping_names{1})) >= unique_unit_num &&...
+        sum(strcmp(cell_metrics.(binary_class_variable)(Locb), grouping_names{2})) >= unique_unit_num;
 end
 
 ripSpk.EventDuration = ripSpk.EventDuration(keep);
