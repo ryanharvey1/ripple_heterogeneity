@@ -11,6 +11,8 @@ addParameter(p,'force_run',false,@islogical) % to overwrite results
 addParameter(p,'savepath',[]) % path to save results
 addParameter(p,'parallel',true,@islogical) % run over sessions in parallel
 addParameter(p,'shuffle',false,@islogical) % jitter spike times to make null dist
+addParameter(p,'unique_unit_num',3,@isint) % min number of unique units per group per ripple
+addParameter(p,'ripple_duration_restrict',[0.05,inf],@isint) % min number of unique units per group per ripple
 
 parse(p,varargin{:})
 basepaths = p.Results.basepath;
@@ -23,6 +25,8 @@ force_run = p.Results.force_run;
 savepath = p.Results.savepath;
 parallel = p.Results.parallel;
 shuffle = p.Results.shuffle;
+unique_unit_num = p.Results.unique_unit_num;
+ripple_duration_restrict = p.Results.ripple_duration_restrict;
 
 if isempty(basepaths)
     df = readtable('D:\projects\ripple_heterogeneity\sessions.csv');
@@ -33,13 +37,15 @@ WaitMessage = parfor_wait(length(basepaths));
 if parallel
     parfor i = 1:length(basepaths)
         main(basepaths{i},binary_class_variable,grouping_names,...
-            restrict_to_brainregion,restrict_to_celltype,savepath,force_run,shuffle)
+            restrict_to_brainregion,restrict_to_celltype,savepath,...
+            force_run,shuffle,unique_unit_num,ripple_duration_restrict)
         WaitMessage.Send;
     end
 else
     for i = 1:length(basepaths)
         main(basepaths{i},binary_class_variable,grouping_names,...
-            restrict_to_brainregion,restrict_to_celltype,savepath,force_run,shuffle)
+            restrict_to_brainregion,restrict_to_celltype,savepath,...
+            force_run,shuffle,unique_unit_num,ripple_duration_restrict)
         WaitMessage.Send;
     end
 end
@@ -47,7 +53,8 @@ WaitMessage.Destroy;
 end
 
 function main(basepath,binary_class_variable,grouping_names,...
-    restrict_to_brainregion,restrict_to_celltype,savepath,force_run,shuffle)
+    restrict_to_brainregion,restrict_to_celltype,savepath,force_run,...
+    shuffle,unique_unit_num,ripple_duration_restrict)
 
 disp(basepath)
 
@@ -71,9 +78,16 @@ if ~good_to_run
     return
 end
 
+% restrict ripples by duration
+ripples = restrict_ripples_by_duration(ripples,ripple_duration_restrict);
+
 % get ripple spikes
 ripSpk = load_spikes_and_get_ripSpk(basepath,ripples,...
     restrict_to_brainregion,restrict_to_celltype);
+
+% restict by number of unique units
+ripSpk = restrict_ripples_unique_units(ripSpk,cell_metrics,grouping_names,...
+    binary_class_variable,unique_unit_num);
 
 % get group isi distributions of each group and across groups
 [A,B,AB] = calc_isi(ripSpk,cell_metrics,binary_class_variable,...
@@ -127,6 +141,18 @@ else % no restriction
 end
 end
 
+function ripples = restrict_ripples_by_duration(ripples,ripple_duration_restrict)
+
+keep = ripples.duration > ripple_duration_restrict(1) &...
+    ripples.duration < ripple_duration_restrict(2);
+
+ripples.timestamps = ripples.timestamps(keep,:);
+ripples.peaks = ripples.peaks(keep,:);
+ripples.amplitude = ripples.amplitude(keep,:);
+ripples.frequency = ripples.frequency(keep,:);
+ripples.duration = ripples.duration(keep,:);
+end
+
 function ripSpk = load_spikes_and_get_ripSpk(basepath,ripples,...
     restrict_to_brainregion,restrict_to_celltype)
 
@@ -148,6 +174,22 @@ end
 % make ripSpk struct with spike times per ripple
 ripSpk = getRipSpikes('basepath',basepath,'events',ripples,'spikes',spk,...
     'saveMat',false);
+end
+
+function ripSpk = restrict_ripples_unique_units(ripSpk,cell_metrics,...
+    grouping_names,binary_class_variable,unique_unit_num)
+
+for i = 1:length(ripSpk.EventRel)
+    [~,Locb] = ismember(ripSpk.EventRel{i}(2,:),cell_metrics.UID);
+    keep(i) = sum(strcmp(cell_metrics.(binary_class_variable)(Locb), grouping_names{1})) > unique_unit_num &&...
+        sum(strcmp(cell_metrics.(binary_class_variable)(Locb), grouping_names{2})) > unique_unit_num;
+end
+
+ripSpk.EventDuration = ripSpk.EventDuration(keep);
+ripSpk.UnitEventAbs = ripSpk.UnitEventAbs(:,keep);
+ripSpk.UnitEventRel = ripSpk.UnitEventRel(:,keep);
+ripSpk.EventAbs = ripSpk.EventAbs(keep);
+ripSpk.EventRel = ripSpk.EventRel(keep);
 end
 
 function [A,B,AB] = calc_isi(ripSpk,cell_metrics,binary_class_variable,...
