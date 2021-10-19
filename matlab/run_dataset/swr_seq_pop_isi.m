@@ -12,7 +12,8 @@ addParameter(p,'savepath',[]) % path to save results
 addParameter(p,'parallel',true,@islogical) % run over sessions in parallel
 addParameter(p,'shuffle',false,@islogical) % jitter spike times to make null dist
 addParameter(p,'unique_unit_num',3,@isint) % min number of unique units per group per ripple
-addParameter(p,'ripple_duration_restrict',[0.05,inf],@isint) % min number of unique units per group per ripple
+addParameter(p,'ripple_duration_restrict',[-inf,inf],@isnumeric) % min max duration of ripple
+addParameter(p,'n_ripple_restrict',100,@isint) % min number of ripples for analysis
 
 parse(p,varargin{:})
 basepaths = p.Results.basepath;
@@ -27,6 +28,7 @@ parallel = p.Results.parallel;
 shuffle = p.Results.shuffle;
 unique_unit_num = p.Results.unique_unit_num;
 ripple_duration_restrict = p.Results.ripple_duration_restrict;
+n_ripple_restrict = p.Results.n_ripple_restrict;
 
 if isempty(basepaths)
     df = readtable('D:\projects\ripple_heterogeneity\sessions.csv');
@@ -38,14 +40,16 @@ if parallel
     parfor i = 1:length(basepaths)
         main(basepaths{i},binary_class_variable,grouping_names,...
             restrict_to_brainregion,restrict_to_celltype,savepath,...
-            force_run,shuffle,unique_unit_num,ripple_duration_restrict)
+            force_run,shuffle,unique_unit_num,ripple_duration_restrict,...
+            n_ripple_restrict)
         WaitMessage.Send;
     end
 else
     for i = 1:length(basepaths)
         main(basepaths{i},binary_class_variable,grouping_names,...
             restrict_to_brainregion,restrict_to_celltype,savepath,...
-            force_run,shuffle,unique_unit_num,ripple_duration_restrict)
+            force_run,shuffle,unique_unit_num,ripple_duration_restrict,...
+            n_ripple_restrict)
         WaitMessage.Send;
     end
 end
@@ -54,7 +58,7 @@ end
 
 function main(basepath,binary_class_variable,grouping_names,...
     restrict_to_brainregion,restrict_to_celltype,savepath,force_run,...
-    shuffle,unique_unit_num,ripple_duration_restrict)
+    shuffle,unique_unit_num,ripple_duration_restrict,n_ripple_restrict)
 
 disp(basepath)
 
@@ -70,10 +74,10 @@ basename = basenameFromBasepath(basepath);
 load(fullfile(basepath,[basename '.cell_metrics.cellinfo.mat']));
 load(fullfile(basepath,[basename '.ripples.events.mat']));
 
-% make sure there are at least 5 of a each cell category available
+% make sure there are at least unique_unit_num of a each cell category available
 good_to_run = check_unit_counts_per_group(cell_metrics,...
     restrict_to_brainregion,restrict_to_celltype,...
-    binary_class_variable,grouping_names);
+    binary_class_variable,grouping_names,unique_unit_num);
 if ~good_to_run
     return
 end
@@ -94,6 +98,10 @@ end
 ripSpk = restrict_ripples_unique_units(ripSpk,cell_metrics,grouping_names,...
     binary_class_variable,unique_unit_num);
 
+if length(ripSpk.EventRel) < savepath
+    return
+end
+
 % get group isi distributions of each group and across groups
 [A,B,AB] = calc_isi(ripSpk,cell_metrics,binary_class_variable,...
     grouping_names);
@@ -113,34 +121,34 @@ end
 
 function good_to_run = check_unit_counts_per_group(cell_metrics,...
     restrict_to_brainregion,restrict_to_celltype,...
-    binary_class_variable,grouping_names)
+    binary_class_variable,grouping_names,unique_unit_num)
 
 good_to_run = false;
 if ~isempty(restrict_to_brainregion) && ~isempty(restrict_to_celltype)
     idx = contains(cell_metrics.brainRegion,restrict_to_brainregion) &...
         contains(cell_metrics.putativeCellType,restrict_to_celltype);
     
-    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 3 &&...
-            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 3
+    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= unique_unit_num &&...
+            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= unique_unit_num
         good_to_run = true;
     end
 elseif ~isempty(restrict_to_brainregion) % just restrict brain region
     idx = contains(cell_metrics.brainRegion,restrict_to_brainregion);
     
-    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 3 &&...
-            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 3
+    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= unique_unit_num &&...
+            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= unique_unit_num
         good_to_run = true;
     end
 elseif ~isempty(restrict_to_celltype) % just restrict cell type
     idx = contains(cell_metrics.putativeCellType,restrict_to_celltype);
     
-    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= 3 &&...
-            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= 3
+    if sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{1})) >= unique_unit_num &&...
+            sum(strcmp(cell_metrics.(binary_class_variable)(idx),grouping_names{2})) >= unique_unit_num
         good_to_run = true;
     end
 else % no restriction
-    if sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{1})) >= 3 &&...
-            sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{2})) >= 3
+    if sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{1})) >= unique_unit_num &&...
+            sum(strcmp(cell_metrics.(binary_class_variable),grouping_names{2})) >= unique_unit_num
         good_to_run = true;
     end
 end
