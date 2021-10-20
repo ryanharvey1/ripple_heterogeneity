@@ -98,7 +98,8 @@ end
 ripSpk = restrict_ripples_unique_units(ripSpk,cell_metrics,grouping_names,...
     binary_class_variable,unique_unit_num);
 
-if length(ripSpk.EventRel) < savepath
+% pass if fewer than allowed ripples
+if length(ripSpk.EventRel) < n_ripple_restrict
     return
 end
 
