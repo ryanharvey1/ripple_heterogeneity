@@ -1,7 +1,7 @@
 function swr_seq_pop_isi(varargin)
 
 p = inputParser;
-addParameter(p,'basepath',[]) % single basepath to run 1 session
+addParameter(p,'basepath',[],@ischar) % single basepath to run 1 session
 addParameter(p,'df',[]) % data frame with df.basepath
 addParameter(p,'binary_class_variable','deepSuperficial',@ischar) % variable in cell_metrics that has groups
 addParameter(p,'grouping_names',{'Deep','Superficial'},@iscell) % group names associated with the above
@@ -14,57 +14,48 @@ addParameter(p,'shuffle',false,@islogical) % jitter spike times to make null dis
 addParameter(p,'unique_unit_num',3,@isint) % min number of unique units per group per ripple
 addParameter(p,'ripple_duration_restrict',[-inf,inf],@isnumeric) % min max duration of ripple
 addParameter(p,'n_ripple_restrict',100,@isint) % min number of ripples for analysis
+addParameter(p,'restrict_ts',[-inf,inf],@isnumeric) % restrict anaysis to time interval
 
 parse(p,varargin{:})
 basepaths = p.Results.basepath;
 df = p.Results.df;
-binary_class_variable = p.Results.binary_class_variable;
-grouping_names = p.Results.grouping_names;
-restrict_to_brainregion = p.Results.restrict_to_brainregion;
-restrict_to_celltype = p.Results.restrict_to_celltype;
-force_run = p.Results.force_run;
-savepath = p.Results.savepath;
 parallel = p.Results.parallel;
-shuffle = p.Results.shuffle;
-unique_unit_num = p.Results.unique_unit_num;
-ripple_duration_restrict = p.Results.ripple_duration_restrict;
-n_ripple_restrict = p.Results.n_ripple_restrict;
+params = p.Results; % store other params for use in main
 
-if isempty(basepaths)
-    df = readtable('D:\projects\ripple_heterogeneity\sessions.csv');
-    basepaths = unique(df.basepath);
+% % if empty basepaths, make it from sessions.csv (specific to Ryan H.)
+% if isempty(basepaths)
+%     df = readtable('D:\projects\ripple_heterogeneity\sessions.csv');
+%     basepaths = unique(df.basepath);
+% end
+
+% convert basepaths to cell array if already not
+if ~iscell(basepaths)
+    basepaths = {basepaths};
 end
 
+% iter through main analysis. parallel or standard
 WaitMessage = parfor_wait(length(basepaths));
 if parallel
     parfor i = 1:length(basepaths)
-        main(basepaths{i},binary_class_variable,grouping_names,...
-            restrict_to_brainregion,restrict_to_celltype,savepath,...
-            force_run,shuffle,unique_unit_num,ripple_duration_restrict,...
-            n_ripple_restrict)
+        main(basepaths{i},params)
         WaitMessage.Send;
     end
 else
     for i = 1:length(basepaths)
-        main(basepaths{i},binary_class_variable,grouping_names,...
-            restrict_to_brainregion,restrict_to_celltype,savepath,...
-            force_run,shuffle,unique_unit_num,ripple_duration_restrict,...
-            n_ripple_restrict)
+        main(basepaths{i},params)
         WaitMessage.Send;
     end
 end
 WaitMessage.Destroy;
 end
 
-function main(basepath,binary_class_variable,grouping_names,...
-    restrict_to_brainregion,restrict_to_celltype,savepath,force_run,...
-    shuffle,unique_unit_num,ripple_duration_restrict,n_ripple_restrict)
+function main(basepath,params)
 
 disp(basepath)
 
 file_str = strsplit(basepath,filesep);
-savepath = fullfile(savepath,[file_str{end-1},'_',file_str{end},'.csv']);
-if exist(savepath,'file') && ~force_run
+savepath = fullfile(params.savepath,[file_str{end-1},'_',file_str{end},'.csv']);
+if exist(savepath,'file') && ~params.force_run
     return
 end
 
@@ -76,18 +67,21 @@ load(fullfile(basepath,[basename '.ripples.events.mat']));
 
 % make sure there are at least unique_unit_num of a each cell category available
 good_to_run = check_unit_counts_per_group(cell_metrics,...
-    restrict_to_brainregion,restrict_to_celltype,...
-    binary_class_variable,grouping_names,unique_unit_num);
+    params.restrict_to_brainregion,params.restrict_to_celltype,...
+    params.binary_class_variable,params.grouping_names,params.unique_unit_num);
 if ~good_to_run
     return
 end
 
+% restrict ripples to epoch
+ripples = eventIntervals(ripples,params.restrict_ts,true);
+
 % restrict ripples by duration
-ripples = restrict_ripples_by_duration(ripples,ripple_duration_restrict);
+ripples = restrict_ripples_by_duration(ripples,params.ripple_duration_restrict);
 
 % get ripple spikes
 ripSpk = load_spikes_and_get_ripSpk(basepath,ripples,...
-    restrict_to_brainregion,restrict_to_celltype);
+    params.restrict_to_brainregion,params.restrict_to_celltype);
 
 % no units in ripples...skip
 if ~isfield(ripSpk,'UnitEventAbs')
@@ -95,29 +89,29 @@ if ~isfield(ripSpk,'UnitEventAbs')
 end
 
 % restict by number of unique units
-ripSpk = restrict_ripples_unique_units(ripSpk,cell_metrics,grouping_names,...
-    binary_class_variable,unique_unit_num);
+ripSpk = restrict_ripples_unique_units(ripSpk,cell_metrics,params.grouping_names,...
+    params.binary_class_variable,params.unique_unit_num);
 
 % pass if fewer than allowed ripples
-if length(ripSpk.EventRel) < n_ripple_restrict
+if length(ripSpk.EventRel) < params.n_ripple_restrict
     return
 end
 
 % get group isi distributions of each group and across groups
-[A,B,AB] = calc_isi(ripSpk,cell_metrics,binary_class_variable,...
-    grouping_names);
+[A,B,AB] = calc_isi(ripSpk,cell_metrics,params.binary_class_variable,...
+    params.grouping_names);
 
 % get shuffled distributions
-if shuffle
+if params.shuffle
     [A_shuff,B_shuff,AB_shuff] = shuffle_isi(ripSpk,...
-        cell_metrics,binary_class_variable,grouping_names);
+        cell_metrics,params.binary_class_variable,params.grouping_names);
 else
     A_shuff = NaN;
     B_shuff = NaN;
     AB_shuff = NaN;
 end
 % save results as csv to savepath
-save_results(A,B,AB,A_shuff,B_shuff,AB_shuff,grouping_names,savepath)
+save_results(A,B,AB,A_shuff,B_shuff,AB_shuff,params.grouping_names,savepath)
 end
 
 function good_to_run = check_unit_counts_per_group(cell_metrics,...
