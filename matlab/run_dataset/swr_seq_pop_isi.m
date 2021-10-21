@@ -5,6 +5,8 @@ addParameter(p,'basepath',[],@ischar) % single basepath to run 1 session
 addParameter(p,'df',[]) % data frame with df.basepath
 addParameter(p,'binary_class_variable','deepSuperficial',@ischar) % variable in cell_metrics that has groups
 addParameter(p,'grouping_names',{'Deep','Superficial'},@iscell) % group names associated with the above
+% cell array with group categories as strings (you still must specify binary_class_variable & grouping_names)
+addParameter(p,'custom_grouping',{},@iscell) 
 addParameter(p,'restrict_to_brainregion','CA1',@ischar) % brain region to run on (empty to run all)
 addParameter(p,'restrict_to_celltype','Pyramidal Cell',@ischar) % cell class to run on (empty to run all)
 addParameter(p,'force_run',false,@islogical) % to overwrite results
@@ -64,6 +66,11 @@ basename = basenameFromBasepath(basepath);
 % load needed data
 load(fullfile(basepath,[basename '.cell_metrics.cellinfo.mat']));
 load(fullfile(basepath,[basename '.ripples.events.mat']));
+
+% add custom_grouping to cell_metrics
+if ~isempty(params.custom_grouping)
+    cell_metrics.(params.binary_class_variable) = params.custom_grouping;
+end
 
 % make sure there are at least unique_unit_num of a each cell category available
 good_to_run = check_unit_counts_per_group(cell_metrics,...

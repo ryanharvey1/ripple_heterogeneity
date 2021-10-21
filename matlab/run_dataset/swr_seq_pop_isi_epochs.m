@@ -1,7 +1,7 @@
 
 % basepath = 'A:\Data\GrosmarkAD\Cicero\Cicero_09172014';
 
-savepath = 'D:\projects\ripple_heterogeneity\swr_seq_isi_deep_sup_rip_dur_80ms';
+savepath = 'D:\projects\ripple_heterogeneity\swr_seq_isi_low_high_partic';
 
 df = readtable('D:\projects\ripple_heterogeneity\sessions.csv');
 df_meta = readtable('D:\projects\ripple_heterogeneity\session_metadata.csv');
@@ -21,6 +21,8 @@ basepaths = unique(df.basepath(idx_row,:));
 
 % basepaths = basepaths(contains(basepaths,'GrosmarkAD'));
 
+particip_thres = [0.096, 0.25]; % based on pre task grosmark pyr ca1
+
 epochs = {'pre','task','post'};
 for ep = 1:length(epochs)
     savepath_ = fullfile(savepath,epochs{ep});
@@ -28,16 +30,25 @@ for ep = 1:length(epochs)
         mkdir(savepath_)
     end
     for basepath = basepaths'
-        load([basepath{1},filesep,basenameFromBasepath(basepath{1}),'.session.mat'])
+        basename = basenameFromBasepath(basepath{1});
+        load([basepath{1},filesep,basename,'.session.mat'])
+        load(fullfile(basepath{1},[basename '.SWRunitMetrics.mat']));
         
         if length(session.epochs) ~= 3
             continue
         end
+        
+        custom_grouping = repmat({'unknown'},1,length(SWRunitMetrics.(epochs{ep}).particip));
+        custom_grouping(SWRunitMetrics.(epochs{ep}).particip < particip_thres(1)) = {'low_particip'};
+        custom_grouping(SWRunitMetrics.(epochs{ep}).particip > particip_thres(2)) = {'high_particip'};
+
         restrict_ts = [session.epochs{ep}.startTime,session.epochs{ep}.stopTime];
 
         swr_seq_pop_isi('basepath',basepath{1},'savepath',savepath_,...
             'parallel',false,'restrict_ts',restrict_ts,...
-            'ripple_duration_restrict',[0.08,inf])
+            'custom_grouping',custom_grouping,...
+            'binary_class_variable','particip',...
+            'grouping_names',{'low_particip','high_particip'})
     end
 end
 
