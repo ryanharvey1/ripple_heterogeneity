@@ -1,31 +1,24 @@
 
-basepath = 'Z:\Data\AYAold\AYA9\day20'
+basepath = 'Z:\Data\GrosmarkAD\Achilles\Achilles_10252013'
 basename = basenameFromBasepath(basepath);
 load(fullfile(basepath,[basename,'.ripples.events.mat']))
 load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
 load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
 load(fullfile(basepath,[basename,'.session.mat']))
+
 fs = session.extracellular.sr;
 channel = ripples.detectorinfo.detectionparms.Channels(1,1);
+
 lfp = getLFP(channel,'basepath',basepath);
 % filter within ripple band
 filtered = bz_Filter(lfp,'passband',[100 250]);
 filtered.unwrapped = unwrap(filtered.phase);
 
 cell_idx = contains(cell_metrics.putativeCellType,'Pyramidal Cell') & ...
-    contains(cell_metrics.brainRegion,'CA1');
+    [contains(cell_metrics.brainRegion,'CA1') |...
+    contains(cell_metrics.brainRegion,'lCA1') |...
+    contains(cell_metrics.brainRegion,'rCA1')] ;
 
-% labels = {};
-% for i = 1:length(spikes.times)
-%     if contains(cell_metrics.deepSuperficial{i},'Superficial')
-%         labels{i} = ones(length(spikes.times{i}),1);
-%     else
-%         labels{i} = ones(length(spikes.times{i}),1)+1;
-%     end
-% end
-% for i = 1:length(spikes.times)
-%     labels{i} = zeros(length(spikes.times{i}),1)+i;
-% end
 for i = 1:length(spikes.times)
     spikes.cycles{i} = interp1(filtered.timestamps,...
         filtered.unwrapped, Restrict(spikes.times{i},ripples.timestamps),...
@@ -37,10 +30,28 @@ labels = cell_metrics.deepSuperficial(cell_idx);
 % UID = cell_metrics.UID(cell_idx);
 
 figure;
+x = mean(mean(ccg(:,contains(labels,'Deep'),contains(labels,'Deep')),3),2);
+plot(t,smoothdata(x,'gaussian',5),'DisplayName','deep');
+hold on
+x = mean(mean(ccg(:,contains(labels,'Superficial'),contains(labels,'Superficial')),3),2);
+plot(t,smoothdata(x,'gaussian',5),'DisplayName','Superficial');
+x = mean(mean(ccg(:,contains(labels,'Deep'),contains(labels,'Superficial')),3),2);
+plot(t,smoothdata(x,'gaussian',5),'DisplayName','deep,sup');
+x = mean(mean(ccg(:,contains(labels,'Superficial'),contains(labels,'Deep')),3),2);
+plot(t,smoothdata(x,'gaussian',5),'DisplayName','sup,deep');
+legend()
+grid('on')
+xlabel('ripple cycles')
+ylabel('rate')
+
+
+figure;
 plot(t,mean(mean(ccg(:,contains(labels,'Deep'),contains(labels,'Deep')),3),2),'DisplayName','deep');
 hold on
 plot(t,mean(mean(ccg(:,contains(labels,'Superficial'),contains(labels,'Superficial')),3),2),'DisplayName','sup');
 plot(t,mean(mean(ccg(:,contains(labels,'Deep'),contains(labels,'Superficial')),3),2),'DisplayName','deep,sup');
+plot(t,mean(mean(ccg(:,contains(labels,'Superficial'),contains(labels,'Deep')),3),2),'DisplayName','sup,deep');
+
 legend()
 grid('on')
 xlabel('ripple cycles')
@@ -57,12 +68,21 @@ x = mean(ccg(:,contains(labels,'Deep'),contains(labels,'Deep')),3)';
 plot(t,mean(x)+nanstd(x)/sqrt(size(x,1)),t,mean(x)-nanstd(x)/sqrt(size(x,1)),'color','r')
 
 
-
-%%
 figure;
 imagesc(mean(ccg,3))
+%%
+% labels = {};
+% for i = 1:length(spikes.times)
+%     if contains(cell_metrics.deepSuperficial{i},'Superficial')
+%         labels{i} = ones(length(spikes.times{i}),1);
+%     else
+%         labels{i} = ones(length(spikes.times{i}),1)+1;
+%     end
+% end
+% for i = 1:length(spikes.times)
+%     labels{i} = zeros(length(spikes.times{i}),1)+i;
+% end
 
-cell_metrics.deepSuperficial(cell_idx)
 
 
 [st,sort_idx] = sort(cat(1,spikes.times{cell_idx}));
