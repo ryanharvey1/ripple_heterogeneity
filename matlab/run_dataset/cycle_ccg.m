@@ -4,7 +4,7 @@ df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 save_path = 'Z:\home\ryanh\projects\ripple_heterogeneity\ccg_deep_sup';
 
 parfor i = 1:length(df.basepath)
-    main_loop(basepath{i},save_path)
+    main_loop(df.basepath{i},save_path)
 end
 
 function main_loop(basepath,save_path)
@@ -26,7 +26,7 @@ load(fullfile(basepath,[basename,'.session.mat']))
 
 fs = session.extracellular.sr;
 channel = ripples.detectorinfo.detectionparms.Channels(1,1);
-lfp = getLFP(channel,'basepath',basepath);
+lfp = getLFP(channel,'basepath',basepath,'basename',basename);
 
 % filter within ripple band
 filtered = bz_Filter(lfp,'passband',[100 250]);
