@@ -25,7 +25,11 @@ load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
 load(fullfile(basepath,[basename,'.session.mat']))
 
 fs = session.extracellular.sr;
-channel = ripples.detectorinfo.detectionparms.Channels(1,1);
+try
+    channel = ripples.detectorinfo.detectionparms.Channels(1,1);
+catch
+    channel = ripples.detectorinfo.detectionparms.channel;
+end
 lfp = getLFP(channel,'basepath',basepath,'basename',basename);
 
 % filter within ripple band
