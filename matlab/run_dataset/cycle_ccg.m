@@ -4,6 +4,7 @@ df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 save_path = 'Z:\home\ryanh\projects\ripple_heterogeneity\ccg_deep_sup';
 
 parfor i = 1:length(df.basepath)
+    disp(df.basepath{i})
     main_loop(df.basepath{i},save_path)
 end
 
@@ -11,7 +12,7 @@ function main_loop(basepath,save_path)
 
 basename = basenameFromBasepath(basepath);
 
-save_file = fullfile(save_path,[animalFromBasepath(basepath),basename]);
+save_file = fullfile(save_path,[animalFromBasepath(basepath),basename,'.mat']);
 if exist(save_file,'file')
    return 
 end
@@ -28,7 +29,19 @@ fs = session.extracellular.sr;
 try
     channel = ripples.detectorinfo.detectionparms.Channels(1,1);
 catch
-    channel = ripples.detectorinfo.detectionparms.channel;
+    try
+        channel = ripples.detectorinfo.detectionparms.channel;
+    catch
+        try
+            channel = ripples.detectorParams.channel;
+        catch
+            try
+                channel = ripples.detectorinfo.detectionparms.ripple_channel;
+            catch
+                disp(['the one who fails: ',basepath])
+            end
+        end
+    end
 end
 lfp = getLFP(channel,'basepath',basepath,'basename',basename);
 
