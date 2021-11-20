@@ -25,7 +25,17 @@ load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
 load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
 load(fullfile(basepath,[basename,'.session.mat']))
 
+cell_idx = contains(cell_metrics.putativeCellType,'Pyramidal Cell') & ...
+    [contains(cell_metrics.brainRegion,'CA1') |...
+    contains(cell_metrics.brainRegion,'lCA1') |...
+    contains(cell_metrics.brainRegion,'rCA1')];
+
+if sum(cell_idx) == 0
+    return
+end
+
 fs = session.extracellular.sr;
+% figure out ripple channel...it can be in many places
 try
     channel = ripples.detectorinfo.detectionparms.Channels(1,1);
 catch
@@ -43,24 +53,25 @@ catch
         end
     end
 end
+
 lfp = getLFP(channel,'basepath',basepath,'basename',basename);
 
 % filter within ripple band
 filtered = bz_Filter(lfp,'passband',[100 250]);
 filtered.unwrapped = unwrap(filtered.phase);
 
-cell_idx = contains(cell_metrics.putativeCellType,'Pyramidal Cell') & ...
-    [contains(cell_metrics.brainRegion,'CA1') |...
-    contains(cell_metrics.brainRegion,'lCA1') |...
-    contains(cell_metrics.brainRegion,'rCA1')] ;
-
 for i = 1:length(spikes.times)
     spikes.cycles{i} = interp1(filtered.timestamps,...
         filtered.unwrapped, Restrict(spikes.times{i},ripples.timestamps),...
         'linear')./(2*pi);
 end
-[ccg,t] = CCG(spikes.cycles(cell_idx),[],...
-    'Fs',fs,'binSize',binSize,'duration',duration,'norm','rate');
+
+try
+    [ccg,t] = CCG(spikes.cycles(cell_idx),[],...
+        'Fs',fs,'binSize',binSize,'duration',duration,'norm','rate');
+catch
+    disp(['the one who fails: ',basepath])
+end
 
 ccg_file.ccg = ccg;
 ccg_file.t = t;
