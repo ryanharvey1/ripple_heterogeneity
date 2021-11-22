@@ -22,13 +22,21 @@ duration = 16;
 
 load(fullfile(basepath,[basename,'.ripples.events.mat']))
 load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
-load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
 load(fullfile(basepath,[basename,'.session.mat']))
+load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
+
+try
+    bad_unit = zeros(1,length(cell_metrics.UID));
+    bad_unit(ismember(cell_metrics.UID,cell_metrics.tags.Bad)) = 1;
+catch
+    bad_unit = zeros(1,length(cell_metrics.UID));
+end
 
 cell_idx = contains(cell_metrics.putativeCellType,'Pyramidal Cell') & ...
     [contains(cell_metrics.brainRegion,'CA1') |...
     contains(cell_metrics.brainRegion,'lCA1') |...
-    contains(cell_metrics.brainRegion,'rCA1')];
+    contains(cell_metrics.brainRegion,'rCA1')] &...
+    ~bad_unit;
 
 if sum(cell_idx) == 0
     return
