@@ -560,6 +560,7 @@ def load_epoch(basepath):
     data = sio.loadmat(filename)
 
     name = []
+    environment = []
     df_temp = pd.DataFrame()
     df_save = pd.DataFrame()
     for epoch in data['session']['epochs'][0][0][0]:
@@ -573,6 +574,11 @@ def load_epoch(basepath):
                 df_temp[dn] = ""
         df_save = df_save.append(df_temp,ignore_index=True)
         name.append(epoch[0]['name'][0][0])
+        try:
+            environment.append(epoch[0]['environment'][0][0])
+        except:
+            environment.append('unknown')
     df_save['name'] = name
+    df_save['environment'] = environment
 
     return df_save
