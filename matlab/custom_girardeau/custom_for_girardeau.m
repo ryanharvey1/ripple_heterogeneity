@@ -108,12 +108,16 @@ for i = 1:length(files)
                 % make new .session
                 session = sessionTemplate(basepath,'basename',basename,'showGUI',false);
                 % iter through .cat.evt and use those epochs to fill .session
-                for e = 1:(length(events.description)/2)
+                session.epochs = [];
+                ep = 1;
+                for e = 1:2:(length(events.description))
                     times = events.time(e:e+1);
-                    session.epochs{e}.startTime = times(1);
-                    session.epochs{e}.stopTime = times(2);
+                    session.epochs{ep}.startTime = times(1);
+                    session.epochs{ep}.stopTime = times(2);
                     name = strsplit(events.description{e},'-');
-                    session.epochs{e}.name = name{end};
+                    session.epochs{ep}.name = name{end};
+                    disp(session.epochs{ep}.name)
+                    ep = ep+1;
                 end
             end
         else
@@ -122,12 +126,16 @@ for i = 1:length(files)
             % make new .session
             session = sessionTemplate(basepath,'basename',basename,'showGUI',false);
             % iter through .cat.evt and use those epochs to fill .session
-            for e = 1:(length(events.description)/2)
+            session.epochs = [];
+            ep = 1;
+            for e = 1:2:(length(events.description))
                 times = events.time(e:e+1);
-                session.epochs{e}.startTime = times(1);
-                session.epochs{e}.stopTime = times(2);
+                session.epochs{ep}.startTime = times(1);
+                session.epochs{ep}.stopTime = times(2);
                 name = strsplit(events.description{e},'-');
-                session.epochs{e}.name = name{end};
+                session.epochs{ep}.name = name{end};
+                disp(session.epochs{ep}.name)
+                ep = ep+1;
             end
         end
         % save .session
