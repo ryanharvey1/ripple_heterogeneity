@@ -122,6 +122,9 @@ def session_loop(basepath,save_path):
     # restrict cell metrics                      
     cell_metrics = cell_metrics[restrict_idx]
 
+    if cell_metrics.shape[0] == 0:
+        return
+
     # behavioral epochs
     epoch_df = loading.load_epoch(basepath)
     # some epochs will have repeating back to back sessions that are actually the same session
@@ -137,7 +140,12 @@ def session_loop(basepath,save_path):
 
     # get ripple epochs
     ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
-    st_unit = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
+    
+    try:
+        st_unit = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
+    except:
+        # if only 1 cell, try this
+        st_unit = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx][0], fs=fs_dat)
 
     # unit_mat = get_ripple_fr(st_unit[ripple_epochs],ripple_epochs)
     unit_mat = get_participation(st_unit[ripple_epochs],ripple_epochs)
