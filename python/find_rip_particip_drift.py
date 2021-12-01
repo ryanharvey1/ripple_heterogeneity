@@ -122,17 +122,22 @@ def session_loop(basepath,save_path):
     # restrict cell metrics                      
     cell_metrics = cell_metrics[restrict_idx]
 
-    # get ripple epochs
-    ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
-    st_unit = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
-
     # behavioral epochs
     epoch_df = loading.load_epoch(basepath)
     # some epochs will have repeating back to back sessions that are actually the same session
     epoch_df = functions.compress_repeated_epochs(epoch_df)
 
+    # make sure there are enough epochs
+    epoch_types = epoch_df.environment.unique()
+    if ~(sum(epoch_types != 'sleep') > 1):
+        return
+
     behavioral_epochs = nel.EpochArray([np.array([epoch_df.startTime,
                                                     epoch_df.stopTime]).T])
+
+    # get ripple epochs
+    ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
+    st_unit = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
 
     # unit_mat = get_ripple_fr(st_unit[ripple_epochs],ripple_epochs)
     unit_mat = get_participation(st_unit[ripple_epochs],ripple_epochs)
@@ -144,7 +149,7 @@ def session_loop(basepath,save_path):
     df_save = find_drift(unit_mat_binned,epoch_df) 
 
     df_save['basepath'] = basepath
-    
+
     df_save.to_csv(save_file)
 
 def participation_run(df,save_path,parallel=True):
