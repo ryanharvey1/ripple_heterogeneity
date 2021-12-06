@@ -140,7 +140,7 @@ def session_loop(basepath,save_path):
 
     # get ripple epochs
     ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
-    
+
     try:
         st_unit = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
     except:
@@ -157,6 +157,8 @@ def session_loop(basepath,save_path):
     df_save = find_drift(unit_mat_binned,epoch_df) 
 
     df_save['basepath'] = basepath
+    # df_save['UID'] = cell_metrics.UID
+    # df_save['firingrate'] = cell_metrics.firingRate
 
     df_save.to_csv(save_file)
 
