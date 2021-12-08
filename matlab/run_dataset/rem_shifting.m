@@ -5,25 +5,25 @@
 % were designated as REM-shifting cells, whereas those between 120° to 300°
 % (blue) were designated as nonshifting cells.
 
-df = readtable('D:\projects\ripple_heterogeneity\sessions.csv');
+df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 
-date_thres = '24-Sep-2021';
+% date_thres = '24-Sep-2021';
 basepaths = unique(df.basepath);
-for i = 1:length(basepaths)
+parfor i = 1:length(basepaths)
     % make input
 %     get_rem_shift_input(basepaths{i})
     disp(basepaths{i})
     basename = basenameFromBasepath(basepaths{i});
     
-    if exist(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']),'file')
-        % check date
-        file = dir(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']));
-        if file.datenum >= datenum('24-Sep-2021')
-            continue
-        end
-        % remove file first
-        delete(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']))
-    end
+%     if exist(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']),'file')
+%         % check date
+%         file = dir(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']));
+%         if file.datenum >= datenum('24-Sep-2021')
+%             continue
+%         end
+%         % remove file first
+%         delete(fullfile(basepaths{i},[basename,'.theta_rem_shift.mat']))
+%     end
     get_rem_shift('basepath',basepaths{i});
 end
 
