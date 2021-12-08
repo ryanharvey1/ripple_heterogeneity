@@ -1,8 +1,8 @@
 % recover_missing_mec_lec_waveforms
+% mec and lec waveforms are sometimes seperate within clusteringG folder
 
 df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\swr_pipe_all.csv');
 basepaths = unique(df(contains(df.animal,'AYA'),:).basepath);
-
 
 for i = 1:length(basepaths)
     basepath = basepaths{i};
@@ -52,8 +52,6 @@ for i = 1:length(basepaths)
         keyboard
         save(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'spikes')
         channel_mapping('basepath',basepath)
-        
-
     end
 end
 
@@ -87,17 +85,4 @@ for i = 1:length(basepaths)
         
         save(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'cell_metrics')
     end
-%     if any(isnan(cell_metrics.waveforms.filt_zscored))
-%         load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
-%         load(fullfile(basepath,[basename, '.session.mat']));
-% 
-%         cell_metrics = ProcessCellMetrics('basepath',basepath,...
-%             'showGUI',false,...
-%             'spikes',spikes,...
-%             'getWaveformsFromDat',false,...
-%             'manualAdjustMonoSyn',false,...
-%             'session',session,'forceReload',true);
-%         
-%         save(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'cell_metrics')
-%     end
 end
