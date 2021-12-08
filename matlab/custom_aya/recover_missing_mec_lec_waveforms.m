@@ -71,6 +71,13 @@ for i = 1:length(basepaths)
         load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
         load(fullfile(basepath,[basename, '.session.mat']));
 
+        for s = 1:length(spikes.times)
+            spikes.times{s} = unique(spikes.times{s});
+            spikes.total(s) = length(spikes.times{s});
+        end
+        spikes = get_spindices(spikes);
+        save(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'spikes')
+
         cell_metrics = ProcessCellMetrics('basepath',basepath,...
             'showGUI',false,...
             'spikes',spikes,...
