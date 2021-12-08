@@ -393,6 +393,7 @@ def load_theta_rem_shift(basepath):
 
     df = pd.DataFrame()
 
+    df["UID"] = data['rem_shift_data']['UID'][0][0][0]
     df["circ_dist"] = data['rem_shift_data']['circ_dist'][0][0][0]
     df["rem_shift"] = data['rem_shift_data']['rem_shift'][0][0][0]
     df["non_rem_shift"] = data['rem_shift_data']['non_rem_shift'][0][0][0]
