@@ -1,8 +1,8 @@
 % recover_missing_mec_lec_waveforms
 % mec and lec waveforms are sometimes seperate within clusteringG folder
 
-df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\swr_pipe_all.csv');
-basepaths = unique(df(contains(df.animal,'AYA'),:).basepath);
+df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
+basepaths = unique(df(contains(df.basepath,'AYA'),:).basepath);
 
 for i = 1:length(basepaths)
     basepath = basepaths{i};
@@ -22,9 +22,7 @@ for i = 1:length(basepaths)
             load(fullfile(files(sk).folder,files(sk).name))
             shank_idx = str2double(extractAfter(files(sk).folder,'shk'));            
             spikes.filtWaveform_all(spikes.shankID == shank_idx) = av_waveform{shank_idx};
-            
-            spikes.filtWaveform(spikes.shankID == shank_idx) = av_waveform{shank_idx};
-            
+                        
             UID = spikes.UID(spikes.shankID == shank_idx);
 
             for cell_i = 1:length(av_waveform{shank_idx})
