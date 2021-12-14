@@ -471,3 +471,31 @@ def compress_repeated_epochs(epoch_df):
 
         results = results.append(temp_df,ignore_index=True)
     return results    
+
+def spatial_information(ratemap,occupancy):
+    """
+    spatial_information
+    input:
+        ratemap: 1 or 2d binned firing rate
+        occupancy: binned occupancy same dim as ratemap
+    output: 
+        spatial information of a cell (bits/spike)
+
+    See Adrien Peyrache 2008 Methods
+
+    Ryan H
+    """ 
+
+    ratemap = ratemap.copy()
+    occupancy = occupancy.copy()
+
+    ratemap = ratemap.ravel()
+    occupancy = occupancy.ravel()
+
+    #  normalize to probability
+    occupancy = occupancy/np.nansum(occupancy)
+    f = np.nansum(occupancy*ratemap)
+    ratemap = ratemap/f
+    ix = ratemap != 0
+    SB = (occupancy[ix]*ratemap[ix])*np.log2(ratemap[ix])
+    return np.nansum(SB)
