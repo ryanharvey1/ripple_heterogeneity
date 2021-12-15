@@ -528,9 +528,9 @@ def load_animal_behavior(basepath):
     except:
         df['z'] = np.nan
     try:
-        df['linerized'] = data['behavior']['position'][0][0]['linerized'][0][0][0]
+        df['linearized'] = data['behavior']['position'][0][0]['linearized'][0][0][0]
     except:
-        df['linerized'] = np.nan
+        df['linearized'] = np.nan
 
     df['speed'] = data['behavior']['speed'][0][0][0]
     df['acceleration'] = data['behavior']['acceleration'][0][0][0]
