@@ -472,7 +472,7 @@ def compress_repeated_epochs(epoch_df):
         results = results.append(temp_df,ignore_index=True)
     return results    
 
-def spatial_information(ratemap,occupancy):
+def spatial_information(ratemap_,occupancy_):
     """
     spatial_information
     input:
@@ -486,8 +486,8 @@ def spatial_information(ratemap,occupancy):
     Ryan H
     """ 
 
-    ratemap = ratemap.copy()
-    occupancy = occupancy.copy()
+    ratemap = ratemap_.copy()
+    occupancy = occupancy_.copy()
 
     ratemap = ratemap.ravel()
     occupancy = occupancy.ravel()
