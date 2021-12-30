@@ -4,7 +4,7 @@ force_rerun = false;
 
 re_run_if_before = '17-Aug-2021 11:00:00';
 
-load('A:\Data\Kenji\ElePosition.mat')
+load('Z:\Data\Kenji\ElePosition.mat')
 shank_region = ElePosition(:,6:end);
 for i = 1:size(shank_region,1)
     for j = 1:size(shank_region,2)
@@ -23,7 +23,7 @@ idx = any(strcmp(shank_region,'ca1') |...
 sessions = ElePosition(idx,2);
 
 
-data_path = 'A:\Data\Kenji\';
+data_path = 'Z:\Data\Kenji\';
 
 % if isempty(gcp('nocreate'))
 %     parpool(4)
