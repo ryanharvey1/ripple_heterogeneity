@@ -1,38 +1,16 @@
 % re_run_kenji_again
-force_rerun = false;
-
-re_run_if_before = '17-Aug-2021 11:00:00';
-
-load('Z:\Data\Kenji\ElePosition.mat')
-shank_region = ElePosition(:,6:end);
-for i = 1:size(shank_region,1)
-    for j = 1:size(shank_region,2)
-        shank_region{i,j}=lower(shank_region{i,j});
-    end
-end
-
-idx = any(strcmp(shank_region,'ca1') |...
-    strcmp(shank_region,'ca1c') |...
-    strcmp(shank_region,'ca') |...
-    strcmp(shank_region,'ca3') |...
-    strcmp(shank_region,'ca2') |...
-    strcmp(shank_region,'dg') |...
-    strcmp(shank_region,'dgca3'),2);
-
-sessions = ElePosition(idx,2);
 
 
-data_path = 'Z:\Data\Kenji\';
+df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
+basepaths = unique(df.basepath);
+basepaths = basepaths(contains(basepaths,'Kenji'));
 
-% if isempty(gcp('nocreate'))
-%     parpool(4)
-% end
-WaitMessage = parfor_wait(length(sessions),'Waitbar',false);
+
+WaitMessage = parfor_wait(length(basepaths),'Waitbar',false);
 % loop through each session
-parfor i = 1:length(sessions)
-    basename = sessions{i};
-    basepath = [data_path,basename];
-    disp(basepath)
+for i = 1:length(basepaths)
+    basepath = basepaths{i};
+    basename = basenameFromBasepath(basepath);
     
     if ~exist(fullfile(basepath,[basename,'_old.xml']),'file')
         continue
