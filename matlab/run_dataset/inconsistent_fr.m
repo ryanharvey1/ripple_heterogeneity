@@ -31,6 +31,9 @@ for i = 1:length(basepaths)
         
         prop_zero(cell_i) = zerofrsum/total_bins;
     end
+    if ~isfield(cell_metrics,'tags')
+        cell_metrics.tags.Bad = [];
+    end
     if ~isfield(cell_metrics.tags,'Bad')
         cell_metrics.tags.Bad = [];
     end
