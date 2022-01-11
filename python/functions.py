@@ -8,6 +8,24 @@ import glob
 from scipy.signal import find_peaks
 import sys,os
 from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+
+def set_plotting_defaults():
+    tex_fonts = {
+    #     # Use LaTeX to write all text
+        "font.family": "serif",
+        # Use 10pt font in plots
+        "axes.labelsize": 10,
+        "font.size": 10,
+        # Make the legend/label fonts a little smaller
+        "legend.fontsize": 8,
+        "xtick.labelsize": 8,
+        "ytick.labelsize": 8,
+        "svg.fonttype": 'none'
+    }
+    plt.style.use('seaborn-paper')
+    plt.rcParams.update(tex_fonts)
 
 
 def set_size(width, fraction=1, subplots=(1, 1)):
