@@ -12,7 +12,7 @@ import multiprocessing
 from joblib import Parallel, delayed
 
 def load_basic_data(basepath):
-    nChannels, fs, fs_dat, shank_to_channel = functions.loadXML(basepath)
+    nChannels, fs, fs_dat, shank_to_channel = loading.loadXML(basepath)
     ripples = loading.load_ripples_events(basepath)
     cell_metrics,data = loading.load_cell_metrics(basepath)
     return cell_metrics,data,ripples,fs_dat
