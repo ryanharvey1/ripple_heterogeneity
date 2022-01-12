@@ -17,13 +17,13 @@ def load_basic_data(basepath):
     cell_metrics,data = loading.load_cell_metrics(basepath)
     return cell_metrics,data,ripples,fs_dat
 
-def get_z_t(st):
+def get_z_t(st,ds=0.001):
     '''
     To increase the temporal resolution beyond the bin-size used to identify the assembly patterns,
     z(t) was obtained by convolving the spike-train of each neuron with a kernel-function
     '''
     # bin to 1ms
-    z_t = st.bin(ds=0.001)
+    z_t = st.bin(ds=ds)
     # make binary
     z_t.data[z_t.data > 1] = 1
     # gaussian kernel to match the bin-size used to identify the assembly patterns
