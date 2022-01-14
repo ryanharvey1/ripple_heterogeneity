@@ -130,6 +130,14 @@ def get_group_cor_vectors(df,temp_df,basepath):
         non_member_deep_sup
         )
 
+def get_participation(st,ripple_epochs):
+    # get participation prob.
+    # make matrix n rows (units) by n cols (ripple epochs)
+    unit_mat = np.zeros((st.n_units,ripple_epochs.n_intervals))
+    for i,event in enumerate(st):
+        unit_mat[:,i] = event.n_events
+    return unit_mat 
+
 def get_pairwise_corrs(basepath):
 
     cell_metrics,data,ripples,fs_dat = assembly_run.load_basic_data(basepath)
@@ -145,9 +153,10 @@ def get_pairwise_corrs(basepath):
     st_unit = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
     ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
     st_unit_rip = st_unit[ripple_epochs]
-    bst = st_unit_rip.bin(ds=0.001)
 
-    rho,pval,c = pairwise_corr(bst.data)
+    spk_count_rip = get_participation(st_unit_rip,ripple_epochs)
+
+    rho,pval,c = pairwise_corr(spk_count_rip)
 
     temp_df = pd.DataFrame()
     temp_df['ref'] = c[:,0]
