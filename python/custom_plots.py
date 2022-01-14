@@ -1,3 +1,5 @@
+from matplotlib.figure import Figure
+from matplotlib.pyplot import axes
 import numpy as np 
 import seaborn as sns
 from matplotlib.ticker import AutoMinorLocator
@@ -7,36 +9,73 @@ def ecdf(x):
     ys = np.linspace(0,1,len(xs))
     return xs, ys
 
-def plot_ecdf(var:str,df,column_label,sublayer:str,ax,group_colors:dict,label=""):
-        y = df[(df[column_label] == sublayer)]
-        if y.empty == False:
-            xs, ys = ecdf(y[var])
-            ax.plot(
-                xs,
-                ys,
-                color=group_colors[y[column_label].iloc[0]],
-                linewidth=1,
-                label=label
-                )
+def plot_ecdf(
+    var:str,
+    df,
+    column_label,
+    label_:str,
+    ax:axes,
+    group_colors:dict,
+    label="",
+    rasterized=False,
+    linewidth=1
+    ):
+    y = df[(df[column_label] == label_)]
+    if y.empty == False:
+        xs, ys = ecdf(y[var])
+        ax.plot(
+            xs,
+            ys,
+            color=group_colors[y[column_label].iloc[0]],
+            linewidth=linewidth,
+            label=label,
+            rasterized=rasterized
+            )
 
-def plot_box(df,x:str,var:str,ax,fig,group_colors:dict,title='',x_offset = .2):
+def plot_box(
+    df,
+    x:str,
+    var:str,
+    ax:axes,
+    fig:Figure,
+    group_colors:dict,
+    title='',
+    x_offset=.2,
+    y_offset=.03,
+    width_ratio=2.5,
+    height_ratio=1.5,
+    boxwidth=.6,
+    saturation=1,
+    fliersize=.5,
+    showfliers=True
+):
     '''
     Function to overlay box plots to the right of my custom ecdf plots
     '''
+    # find plotting position
     pos1 = ax.get_position()
-    pos2 = [pos1.x0 + x_offset, pos1.y0+.03,  pos1.width / 2.5, pos1.height / 1.5] 
+    pos2 = [pos1.x0 + x_offset,
+            pos1.y0 + y_offset,
+            pos1.width/width_ratio,
+            pos1.height/height_ratio]
+    # create axes
     ax3 = fig.add_axes(pos2)
+    # set up colors
     sns.set_palette(sns.color_palette(group_colors.values()))
+    # plot boxes
     g=sns.boxplot(x=x,
-                    y=var,
-                    hue=x,
-                    data=df,
-                    width=.6,
-                    ax=ax3,
-                    saturation=1,
-                    fliersize=.5,
-                    hue_order=group_colors.keys(),
-                    dodge=False)
+                y=var,
+                hue=x,
+                data=df,
+                width=boxwidth,
+                ax=ax3,
+                saturation=saturation,
+                showfliers = showfliers,
+                fliersize=fliersize,
+                hue_order=group_colors.keys(),
+                dodge=False
+                )
+    # make aesthetics adjustments
     ax3.axes.get_xaxis().set_ticks([])
     g.set(xlabel=None)
     g.set(ylabel=None)
