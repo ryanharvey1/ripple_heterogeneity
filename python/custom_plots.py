@@ -70,9 +70,10 @@ def plot_box(
                 width=boxwidth,
                 ax=ax3,
                 saturation=saturation,
-                showfliers = showfliers,
+                showfliers=showfliers,
                 fliersize=fliersize,
-                hue_order=group_colors.keys(),
+                hue_order=list(group_colors.keys()),
+                order=list(group_colors.keys()),
                 dodge=False
                 )
     # make aesthetics adjustments
