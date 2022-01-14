@@ -583,3 +583,17 @@ def load_epoch(basepath):
     df_save['environment'] = environment
 
     return df_save
+
+def get_animal_id(basepath):
+    """ return animal ID from basepath using basename.session.mat"""
+
+    filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
+
+    # check if saved file exists
+    if not os.path.exists(filename):
+        warnings.warn("file does not exist")
+        return pd.DataFrame()
+
+    # load file
+    data = sio.loadmat(filename)
+    return data['session'][0][0]['animal'][0][0]['name'][0]
