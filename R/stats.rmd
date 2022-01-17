@@ -1,0 +1,84 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+data <- read.csv('Z:/home/ryanh/projects/ripple_heterogeneity/assembly_unit_corrs/results/df.csv')
+
+data$basepath = factor(data$basepath)
+data$name = factor(data$name)
+data$label = factor(data$label)
+data$membership = factor(data$membership)
+
+summary(data)
+
+```
+```{r}
+
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+
+```
+
+```{r}
+library(ggplot2)
+
+p<-ggplot(data, aes(x=name, y=rho, color=membership)) +
+  geom_boxplot()
+p
+
+```
+
+```{r}
+hist(data$rho,100)
+hist(sqrt(data$rho + 1),100)
+```
+
+```{r}
+data$rho_trans <- log10(data$rho+10)
+
+
+m1 = lmer(rho_trans ~ membership + (1 | name/basepath), data = data,REML=FALSE)
+summary(m1)
+
+```
+
+```{r}
+plot(m1)
+
+qqnorm(resid(m1))
+qqline(resid(m1))
+```
+
+```{r}
+
+
+
+```
+
+```{r}
+plot(rho_trans ~ membership, data = data)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
