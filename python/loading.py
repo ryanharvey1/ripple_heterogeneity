@@ -597,3 +597,9 @@ def get_animal_id(basepath):
     # load file
     data = sio.loadmat(filename)
     return data['session'][0][0]['animal'][0][0]['name'][0]
+
+def load_basic_data(basepath):
+    nChannels, fs, fs_dat, shank_to_channel = loadXML(basepath)
+    ripples = load_ripples_events(basepath)
+    cell_metrics,data = load_cell_metrics(basepath)
+    return cell_metrics,data,ripples,fs_dat
