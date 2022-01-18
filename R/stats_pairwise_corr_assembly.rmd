@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "stats_pairwise_corr_assembly"
 output: html_document
 ---
 
@@ -15,7 +15,6 @@ data$basepath = factor(data$basepath)
 data$name = factor(data$name)
 data$label = factor(data$label)
 data$membership = factor(data$membership)
-# data$assembly_id <- factor(paste(data$basepath,as.character(data$assembly_id)))
 data$assembly_id <- factor(as.character(data$assembly_id))
 
 summary(data)
