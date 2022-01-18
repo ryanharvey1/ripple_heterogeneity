@@ -44,6 +44,18 @@ def get_group_cor_vectors(df,temp_df,basepath):
     non_member_sup = []
     member_deep_sup = []
     non_member_deep_sup = []
+    
+    assembly_id = {}   
+    assembly_id['deep'] = []
+    assembly_id['sup'] = []
+    assembly_id['member'] = []
+    assembly_id['non_member'] = []
+    assembly_id['member_deep'] = []
+    assembly_id['member_sup'] = []
+    assembly_id['non_member_deep'] = []
+    assembly_id['non_member_sup'] = []
+    assembly_id['member_deep_sup'] = []
+    assembly_id['non_member_deep_sup'] = []
 
     for assembly_n in df[df.basepath == basepath].assembly_n.unique():
         current_df = df[(df.basepath == basepath) & (df.assembly_n == assembly_n)]
@@ -106,6 +118,18 @@ def get_group_cor_vectors(df,temp_df,basepath):
             (temp_df.deepSuperficial_ref == 'Superficial') & 
             (temp_df.deepSuperficial_target == 'Deep'))].rho.values
         )  
+
+        assembly_id['deep'].append([assembly_n] * len(deep[-1]))
+        assembly_id['sup'].append([assembly_n] * len(sup[-1]))
+        assembly_id['member'].append([assembly_n] * len(member_rho[-1]))
+        assembly_id['non_member'].append([assembly_n] * len(non_member_rho[-1]))
+        assembly_id['member_deep'].append([assembly_n] * len(member_deep[-1]))
+        assembly_id['member_sup'].append([assembly_n] * len(member_sup[-1]))
+        assembly_id['non_member_deep'].append([assembly_n] * len(non_member_deep[-1]))
+        assembly_id['non_member_sup'].append([assembly_n] * len(non_member_sup[-1]))
+        assembly_id['member_deep_sup'].append([assembly_n] * len(member_deep_sup[-1]))
+        assembly_id['non_member_deep_sup'].append([assembly_n] * len(non_member_deep_sup[-1]))
+
     deep = np.hstack(deep)
     sup = np.hstack(sup)
     member = np.hstack(member_rho)
@@ -116,6 +140,9 @@ def get_group_cor_vectors(df,temp_df,basepath):
     non_member_sup = np.hstack(non_member_sup)
     member_deep_sup = np.hstack(member_deep_sup)
     non_member_deep_sup = np.hstack(non_member_deep_sup)
+    
+    for key_ in assembly_id.keys():
+        assembly_id[key_] = np.hstack(assembly_id[key_])
 
     return (
         deep,
@@ -127,7 +154,8 @@ def get_group_cor_vectors(df,temp_df,basepath):
         non_member_deep,
         non_member_sup,
         member_deep_sup,
-        non_member_deep_sup
+        non_member_deep_sup,
+        assembly_id
         )
 
 def get_participation(st,ripple_epochs):
@@ -184,7 +212,8 @@ def get_and_organize_pairwise_corrs(basepath,df):
         non_member_deep,
         non_member_sup,
         member_deep_sup,
-        non_member_deep_sup
+        non_member_deep_sup,
+        assembly_id
     ) = get_group_cor_vectors(df,temp_df,basepath)
 
     df_save = pd.DataFrame()
@@ -216,6 +245,21 @@ def get_and_organize_pairwise_corrs(basepath,df):
             ['non_member_sup']*len(non_member_sup),
             ['member_deep_sup']*len(member_deep_sup),
             ['non_member_deep_sup']*len(non_member_deep_sup)
+        ]
+        )
+
+    df_save['assembly_id'] = np.hstack(
+        [
+            assembly_id['deep'],
+            assembly_id['sup'],
+            assembly_id['member'],
+            assembly_id['non_member'],
+            assembly_id['member_deep'],
+            assembly_id['member_sup'],
+            assembly_id['non_member_deep'],
+            assembly_id['non_member_sup'],
+            assembly_id['member_deep_sup'],
+            assembly_id['non_member_deep_sup']
         ]
         )
     df_save['basepath'] = basepath
