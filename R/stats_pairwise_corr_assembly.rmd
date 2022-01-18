@@ -23,10 +23,10 @@ summary(data)
 
 ```{r}
 
-data$assembly_id
+# data$assembly_id
 ```
 
-# make var for simple effect
+## make var for simple effect
 ```{r}
 
 data$simple_effect = "unknown"
