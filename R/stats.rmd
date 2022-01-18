@@ -9,16 +9,24 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
-data <- read.csv('Z:/home/ryanh/projects/ripple_heterogeneity/assembly_unit_corrs_v2/results/df.csv')
+data <- read.csv('Z:/home/ryanh/projects/ripple_heterogeneity/assembly_unit_corrs/results/df.csv')
 
 data$basepath = factor(data$basepath)
 data$name = factor(data$name)
 data$label = factor(data$label)
 data$membership = factor(data$membership)
+# data$assembly_id <- factor(paste(data$basepath,as.character(data$assembly_id)))
+data$assembly_id <- factor(as.character(data$assembly_id))
 
 summary(data)
 
 ```
+
+```{r}
+
+data$assembly_id
+```
+
 # make var for simple effect
 ```{r}
 
@@ -64,7 +72,8 @@ hist(sqrt(data$rho + 1),100)
 ```
 
 ```{r}
-data$rho_trans <- log(data$rho+2)
+data$rho_trans <- log(data$rho+1)
+data$rho_trans <- data$rho
 
 
 m1 = lmer(rho_trans ~ membership + (1 | name/basepath), data = data,REML=FALSE)
@@ -82,22 +91,16 @@ qqline(resid(m1))
 
 
 ```{r}
-
-# testDispersion(m1)
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
-
-
 ```
 
 
 ```{r}
 plot(simulationOutput)
-
 ```
 
 ```{r}
 plot(rho_trans ~ membership, data = data)
-
 ```
 
 
@@ -113,7 +116,7 @@ data_2 = data[!data$simple_effect == "unknown",]
 
 data_2$rho_trans = log(data_2$rho+1)
 
-m1 = lmer(rho_trans ~ simple_effect + (1 | name/basepath), data = data_2,REML=FALSE)
+m1 = lmer(rho_trans ~ simple_effect + (1 | name/basepath/assembly_id), data = data_2,REML=FALSE)
 summary(m1)
 
 ```
@@ -126,7 +129,10 @@ qqnorm(resid(m1))
 qqline(resid(m1))
 ```
 
+```{r}
+plot(rho_trans ~ simple_effect, data = data_2)
 
+```
 
 ```{r}
 
@@ -143,6 +149,41 @@ plot(simulationOutput)
 
 ```
 
+```{r}
+unique(data_2$name)
+unique(data_2$basepath)
 
+```
 
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
 
