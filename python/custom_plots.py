@@ -90,9 +90,29 @@ def plot_box(
     return ax3
 
 def set_equal_axis_range(ax1,ax2):
+    """
+    Makes x and y min and max the same between two plots
+    """
     axis_x_values = np.hstack(np.array((ax1.get_xlim(),ax2.get_xlim())))
     axis_y_values = np.hstack(np.array((ax1.get_ylim(),ax2.get_ylim())))
     ax1.set_xlim(axis_x_values.min(),axis_x_values.max())
     ax1.set_ylim(axis_y_values.min(),axis_y_values.max())
     ax2.set_xlim(axis_x_values.min(),axis_x_values.max())
     ax2.set_ylim(axis_y_values.min(),axis_y_values.max())
+
+def restore_natural_scale(ax,min_,max_,n_steps=4,x_axis=True,y_axis=True):
+    """
+    takes x and y ax that are in log10 and puts them into natural scale
+
+    By default, it adjusts both x and y, but you can run this on a single
+    axis or two times if you have different scales for x and y
+    """
+    ticks = np.linspace(min_,max_,n_steps)
+
+    if x_axis:
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(np.round(10**ticks,3))
+
+    if y_axis:
+        ax.set_yticks(ticks)
+        ax.set_yticklabels(np.round(10**ticks,3))
