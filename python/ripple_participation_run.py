@@ -138,6 +138,10 @@ def session_loop(basepath,save_path):
 
     # behavioral epochs
     epoch_df = loading.load_epoch(basepath)
+    
+    if not ('behavioralParadigm' in epoch_df.columns):
+        epoch_df['behavioralParadigm'] = 'unknown'
+
     # some epochs will have repeating back to back sessions that are actually the same session
     epoch_df = compress_repeated_epochs(epoch_df)
 
