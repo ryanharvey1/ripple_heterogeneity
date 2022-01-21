@@ -141,9 +141,9 @@ def session_loop(basepath,save_path):
     pos = nel.AnalogSignalArray(data=np.array([beh_df.x,beh_df.y]),
                                 timestamps=beh_df.time,
                                 fs=1/statistics.mode(np.diff(beh_df.time)))
-                                
+
     # smooth position over 100ms                          
-    pos.smooth(sigma=.100,inplace=True)
+    # pos.smooth(sigma=.100,inplace=True)
 
     # iter over epochs
     spatial_infos = []
