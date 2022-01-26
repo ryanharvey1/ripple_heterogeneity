@@ -106,7 +106,7 @@ def get_group_cor_vectors(df,temp_df,basepath):
         member_deep_sup.append(
             temp_df[(np.in1d(temp_df.UID_ref,member_uid)) &
             (np.in1d(temp_df.UID_target,member_uid)) &
-            ((temp_df.deepSuperficial_ref == 'deep_rem_shift') & 
+            ((temp_df.layer_rem_shift_ref == 'deep_rem_shift') & 
             (temp_df.layer_rem_shift_target == 'sup_non_rem_shift') | 
             (temp_df.layer_rem_shift_ref == 'sup_non_rem_shift') & 
             (temp_df.layer_rem_shift_target == 'deep_rem_shift'))].rho.values
