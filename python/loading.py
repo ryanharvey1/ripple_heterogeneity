@@ -212,7 +212,7 @@ def load_cell_metrics(basepath):
 
     # add data from general metrics        
     df['basename'] = data['cell_metrics']['general'][0][0]['basename'][0][0][0]
-    df['basepath'] = data['cell_metrics']['general'][0][0]['basepath'][0][0][0]
+    df['basepath'] = basepath
     df['sex'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['sex'][0][0][0]
     df['species'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['species'][0][0][0]
     df['strain'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['strain'][0][0][0]
