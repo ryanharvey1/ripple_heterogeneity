@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
-data <- read.csv('Z:/home/ryanh/projects/ripple_heterogeneity/assembly_unit_corrs/results/df.csv')
+data <- read.csv('Z:/home/ryanh/projects/ripple_heterogeneity/assembly_unit_corrs_rem_shift/results/df.csv')
 
 data$basepath = factor(data$basepath)
 data$name = factor(data$name)
@@ -115,7 +115,7 @@ data_2 = data[!data$simple_effect == "unknown",]
 
 data_2$rho_trans = log(data_2$rho+1)
 
-m1 = lmer(rho_trans ~ simple_effect + (1 | name/basepath/assembly_id), data = data_2,REML=FALSE)
+m1 = lmer(rho_trans ~ simple_effect + (1 | name/assembly_id), data = data_2,REML=FALSE)
 summary(m1)
 
 ```
