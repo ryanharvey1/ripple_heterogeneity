@@ -53,8 +53,17 @@ if ~isempty(behavior.position.x)
     
     save(fullfile(basepath,[basename,'.animal.behavior.mat']),'behavior')
 end
-% figure;
-% plot(behavior.position.x,behavior.position.y)
-% figure;
-% plot(behavior.position.x,behavior.position.y)
+% for ep = 1:length(session.epochs)
+%     if ~contains(session.epochs{ep}.environment,'sleep')
+%         disp(session.epochs{ep}.environment)
+%         start = session.epochs{ep}.startTime;
+%         stop = session.epochs{ep}.stopTime;
+%         idx = behavior.time >= start & behavior.time <= stop;
+%         figure;
+%         plot(behavior.position.x(idx),behavior.position.y(idx))
+%     end
+% end
 end
+
+
+
