@@ -1,4 +1,4 @@
-function good_idx = manual_trackerjumps(ts,x,y,StartofRec,EndofRec,basepath)
+function good_idx = manual_trackerjumps(ts,x,y,StartofRec,EndofRec,basepath,varargin)
 % manual_trackerjumps: Allows you to manually cut out xy coordinates that
 % are outside the bounds of your maze. These can be caused by unplugs or
 % if the rat jumps out. If you do not remove these points, your ratemap
@@ -15,7 +15,12 @@ function good_idx = manual_trackerjumps(ts,x,y,StartofRec,EndofRec,basepath)
 % Ryan E Harvey (2018)
 
 % 1 for elminating the points outside drawn shape & 0 for inside
-restic_dir=1;
+p = inputParser;
+addParameter(p,'darkmode',true,@islogical);
+addParameter(p,'restic_dir',1,@isnumeric);
+parse(p,varargin{:});
+darkmode = p.Results.darkmode;
+restic_dir = p.Results.restic_dir;
 
 savets=[];
 for i=1:length(StartofRec)
@@ -24,7 +29,7 @@ for i=1:length(StartofRec)
     ytemp=y(ts>=StartofRec(i) & ts<=EndofRec(i));
     tstemp=ts(ts>=StartofRec(i) & ts<=EndofRec(i));
     % use the gui to cut out points
-    [~,~,in]=restrictMovement(xtemp,ytemp,restic_dir);
+    [~,~,in]=restrictMovement(xtemp,ytemp,restic_dir,darkmode);
     % save the ts where the tracker error exists
     savets=[savets,tstemp(in)];
 end
@@ -36,7 +41,7 @@ basename = basenameFromBasepath(basepath);
 save(fullfile(basepath,[basename,'.restrictxy.mat']),'good_idx')
 end
 
-function [x,y,in]=restrictMovement(x,y,direction)
+function [x,y,in]=restrictMovement(x,y,direction,darkmode)
 % restrictMovement allows you to draw a line around xy coordinates in order
 % to eliminate certain points you don't want...ie when the rat jumps out of
 % maze or tracker errors. 
@@ -62,12 +67,20 @@ if nargin<3
 end
 
 % set up figure
-fig=figure;plot(x,y,'Color',[1,1,1,0.2]);hold on
-title('Click around the points you want to keep')
-xlabel('X')
-ylabel('Y')
-axis equal
-darkBackground(gcf,[0.1 0.1 0.1],[0.7 0.7 0.7])
+if darkmode
+    fig=figure;plot(x,y,'Color',[1,1,1,0.2]);hold on
+    title('Click around the points you want to keep')
+    xlabel('X')
+    ylabel('Y')
+    axis equal
+    darkBackground(gcf,[0.1 0.1 0.1],[0.7 0.7 0.7])
+else
+    fig=figure;plot(x,y,'Color',[0,0,0,0.2]);hold on
+    title('Click around the points you want to keep')
+    xlabel('X')
+    ylabel('Y')
+    axis equal
+end
 disp('PRESS "ENTER" TO EXIT')
 i=1;
 
