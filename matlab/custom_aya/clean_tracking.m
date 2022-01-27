@@ -1,17 +1,19 @@
 df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 % df = df(contains(df.basepath,'AYAold'),:);
 % df = df(contains(df.basepath,'GrosmarkAD'),:);
-df = df(~contains(df.basepath,'GirardeauG') &...
-            ~contains(df.basepath,'Kenji'),:);
+% df = df(~contains(df.basepath,'GirardeauG') &...
+%             ~contains(df.basepath,'Kenji'),:);
 
+% df = df(~contains(df.basepath,'GirardeauG'),:);
+restrict_points = false;
 
 for i = 1:length(unique(df.basepath))
     basepath = df.basepath{i};
     disp(basepath)
-    main(basepath)
+    main(basepath,restrict_points)
 end
 
-function main(basepath)
+function main(basepath,restrict_points)
 basename = basenameFromBasepath(basepath);
 
 if exist(fullfile(basepath,[basename,'.restrictxy.mat']),'file')
@@ -26,7 +28,10 @@ if exist(fullfile(basepath,[basename,'.restrictxy.mat']),'file')
     save(fullfile(basepath,[basename,'.animal.behavior.mat']),'behavior')
     return
 end
-
+if restrict_points
+else
+    return
+end
 load(fullfile(basepath,[basename,'.session.mat']))
 load(fullfile(basepath,[basename,'.animal.behavior.mat']))
 
@@ -46,7 +51,7 @@ if ~isempty(behavior.position.x)
         behavior.position.y,...
         start,...
         stop,...
-        basepath);
+        basepath,'darkmode',false);
     
     behavior.position.x(~good_idx) = NaN;
     behavior.position.y(~good_idx) = NaN;
