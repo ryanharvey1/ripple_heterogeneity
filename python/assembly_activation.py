@@ -43,6 +43,8 @@ def session_loop_activation(basepath,save_path,save_path_assembly):
     assembly_act = []
     for ep in beh_epochs:
         z_mat,ts = assembly_run.get_z_t(st_unit_rip[ep],ds=0.002)
+        
+        z_mat[np.isnan(z_mat)] = 0
 
         assembly_act.append( 
                             nel.AnalogSignalArray(
