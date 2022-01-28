@@ -20,34 +20,46 @@ def get_epoched_values(st_unit,st_unit_rip,st_unit_no_rip,ep,ripple_epochs,state
 
     if state_epoch == False:
         unit_mat = get_participation(st_unit_rip[ep],
-                                            ripple_epochs[ep])
+                                        ripple_epochs[ep])
         participation_prob = np.sum(unit_mat,axis=1) / unit_mat.shape[1]
+        try:
+            avg_fr_not_rip = st_unit_no_rip[ep].n_spikes / ep[~ripple_epochs].duration
+        except:
+            avg_fr_not_rip = np.nan
+        try:
+            avg_fr_in_rip = st_unit_rip[ep].n_spikes / st_unit_rip[ep].support.duration
+        except:
+            avg_fr_in_rip = np.nan
 
-        avg_fr_not_rip = st_unit_no_rip[ep].n_spikes / ep[~ripple_epochs].duration
-        avg_fr_in_rip = st_unit_rip[ep].n_spikes / st_unit_rip[ep].support.duration
         n_spikes = st_unit[ep].n_spikes
     else:
-        unit_mat = get_participation(st_unit_rip[ep][state_epoch],
+        try:
+            unit_mat = get_participation(st_unit_rip[ep][state_epoch],
                                             ripple_epochs[ep][state_epoch])
-        participation_prob = np.sum(unit_mat,axis=1) / unit_mat.shape[1]
+            participation_prob = np.sum(unit_mat,axis=1) / unit_mat.shape[1]
+        except:
+            participation_prob = np.nan
 
         try:
             avg_fr_not_rip = (st_unit_no_rip[ep][state_epoch].n_spikes /
                                 ep[~ripple_epochs][state_epoch].duration)
         except:
             avg_fr_not_rip = np.nan
+
         try:    
             avg_fr_in_rip = (st_unit_rip[ep][state_epoch].n_spikes /
                                 st_unit_rip[ep][state_epoch].support.duration)
         except:
             avg_fr_in_rip = np.nan
+
         try:
             n_spikes = st_unit[ep][state_epoch].n_spikes
         except:
             n_spikes = np.nan
 
-    if participation_prob.shape[0] == 0:
-        participation_prob = np.nan
+        if not np.isnan(participation_prob):
+            if participation_prob.shape[0] == 0:
+                participation_prob = np.nan
 
     return participation_prob,avg_fr_not_rip,avg_fr_in_rip,n_spikes
 
