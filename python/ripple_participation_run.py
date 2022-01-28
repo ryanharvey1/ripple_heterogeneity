@@ -50,9 +50,6 @@ def main_analysis(basepath,cell_metrics,st_unit,ripple_epochs,behavioral_epochs,
             avg_fr_in_rip = np.nan
             n_spikes = np.nan
 
-        # if ripple_epochs[ep].n_intervals < 50:
-        #     participation_prob = np.nan
-
         # package results and previously saved metrics
         temp_save['UID'] = cell_metrics.UID
         temp_save['basepath'] = basepath
