@@ -1,7 +1,7 @@
 import loading
 
-# basepath = r'Z:\Data\OMLproject\OML11\day16'
-basepath = r'Z:\Data\Kenji\ec013.152_157'
+basepath = r'Z:\Data\OMLproject\OML11\day16'
+# basepath = r'Z:\Data\Kenji\ec013.152_157'
 
 nChannels, fs, fs_dat, shank_to_channel = loading.loadXML(basepath)
 
