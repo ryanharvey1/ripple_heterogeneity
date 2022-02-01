@@ -263,3 +263,54 @@ def spatial_information(ratemap_,occupancy_):
     ix = ratemap != 0
     SB = (occupancy[ix]*ratemap[ix])*np.log2(ratemap[ix])
     return np.nansum(SB)
+
+def Otsu(vector):
+    """
+    The Otsu method for splitting data into two groups.
+    This is somewhat equivalent to kmeans(vector,2), but while the kmeans implementation
+    finds a local minimum and may therefore produce different results each time,
+    the Otsu implementation is guaranteed to find the best division every time.
+
+    input: 
+        vector: arbitrary vector
+    output:
+        group: binary class
+        threshold: threshold used for classification
+        em: effectiveness metric
+
+    From Raly
+    """
+    sorted = np.sort(vector)
+    n = len(vector)
+    intraClassVariance = [np.nan]*n
+    for i in np.arange(n):
+        p = (i+1)/n
+        p0 = 1 - p
+        intraClassVariance[i] = p*np.var(sorted[0:i+1]) + p0*np.var(sorted[i+1:])
+    
+    minIntraVariance = np.nanmin(intraClassVariance)
+    idx = np.nanargmin(intraClassVariance)
+    threshold = sorted[idx]
+    group = (vector > threshold)
+    
+    em = 1 - (minIntraVariance/np.var(vector))
+
+    return group,threshold,em
+
+def find_sig_assemblies(patterns):
+    is_member = []
+    keep_assembly = []
+    for pat in patterns:
+        isMember,_,_ = Otsu(np.abs(pat))
+        is_member.append(isMember)
+
+        if any(pat[isMember] < 0) & any(pat[isMember] > 0):
+            keep_assembly.append(False)
+        elif sum(isMember) == 0:
+            keep_assembly.append(False)
+        else:
+            keep_assembly.append(True)
+
+    is_member = np.array(is_member)
+
+    return patterns[keep_assembly],is_member[keep_assembly],keep_assembly,is_member
