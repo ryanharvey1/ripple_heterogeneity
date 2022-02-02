@@ -25,7 +25,7 @@ def get_z_t(st,ds=0.001):
     # zscore
     return stats.zscore(z_t.data,axis=1), z_t.bin_centers
 
-def main_analysis(st,ripple_epochs,behavioral_epochs,epoch_df,nrem_epochs,wake_epochs,dt=0.005):
+def main_analysis(st,ripple_epochs,behavioral_epochs,epoch_df,nrem_epochs,wake_epochs,dt=0.010):
 
     # spike times within ripples
     st_rip = st[ripple_epochs]
