@@ -54,9 +54,9 @@ def main_analysis(st,ripple_epochs,behavioral_epochs,epoch_df,nrem_epochs,wake_e
 
     # package all results in dict
     results = {}
-    results['patterns_inside_ripples'] = patterns
-    results['significance_inside_ripples'] = significance
-    results['zactmat_inside_ripples'] = zactmat
+    results['patterns'] = patterns
+    results['significance'] = significance
+    results['zactmat'] = zactmat
 
     return results
 
