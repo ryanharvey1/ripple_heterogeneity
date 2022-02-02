@@ -9,6 +9,7 @@ from scipy.signal import find_peaks
 import sys,os
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+from numba import jit
 
 
 def set_plotting_defaults():
@@ -111,7 +112,7 @@ def linearize_position(x,y):
 
     return x,y
 
-
+@jit(nopython=True)
 def crossCorr(t1, t2, binsize, nbins):
     ''' 
         Fast crossCorr 
@@ -169,6 +170,15 @@ def compute_AutoCorrs(spks, binsize = 0.001, nbins = 100):
     # And don't forget to replace the 0 ms for 0
     autocorrs.loc[0] = 0.0
     return autocorrs
+
+def compute_psth(spikes,event,bin_width=0.002,n_bins=100):
+
+    times = np.arange(0, bin_width*(n_bins+1), bin_width) - (n_bins*bin_width)/2	
+    ccg = pd.DataFrame(index = times, columns = np.arange(len(spikes)))
+    # Now we can iterate over spikes
+    for i,s in enumerate(spikes):		
+        ccg[i] = crossCorr(event, s, bin_width, n_bins)
+    return ccg
 
 def BurstIndex_Royer_2012(autocorrs):
     # calc burst index from royer 2012
