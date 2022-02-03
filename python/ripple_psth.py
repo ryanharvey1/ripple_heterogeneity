@@ -10,7 +10,7 @@ import multiprocessing
 from joblib import Parallel, delayed
 
 
-def main_analysis(st,ripples,behavioral_epochs,epoch_df,nrem_epochs,wake_epochs,dt=0.010):
+def main_analysis(st,ripples,behavioral_epochs,epoch_df,nrem_epochs,wake_epochs):
 
     # iter through each behavioral epoch
     ccg = []
@@ -21,7 +21,7 @@ def main_analysis(st,ripples,behavioral_epochs,epoch_df,nrem_epochs,wake_epochs,
         else:
             temp_st = st[wake_epochs][ep]
 
-        ccg.append(functions.compute_psth(temp_st.data,ripples.peaks.values,bin_width=0.002,n_bins=100))
+        ccg.append(functions.compute_psth(temp_st.data,ripples.peaks.values))
     
     return ccg
 
