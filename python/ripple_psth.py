@@ -45,9 +45,6 @@ def session_loop(basepath,save_path):
     if cell_metrics.shape[0] == 0:
         return
         
-    # get ripple epochs
-    # ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
-
     # get spike train array
     try:
         st = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
