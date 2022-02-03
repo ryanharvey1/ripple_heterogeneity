@@ -1,12 +1,5 @@
 import numpy as np
 import pandas as pd
-# import hdf5storage
-# import h5py
-import scipy.io as sio
-import glob
-
-from scipy.signal import find_peaks
-import sys,os
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from numba import jit
