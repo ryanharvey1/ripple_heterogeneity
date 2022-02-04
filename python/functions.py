@@ -3,7 +3,9 @@ import pandas as pd
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from numba import jit
-
+from numba import int8
+from numba.typed import List
+from numba import typeof
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -317,3 +319,36 @@ def find_sig_assemblies(patterns):
     is_member = np.array(is_member)
 
     return patterns[keep_assembly],is_member[keep_assembly],keep_assembly,is_member
+
+@jit(nopython=True)
+def get_participation_(st,event_starts,event_stops):
+    unit_mat = np.zeros((len(st),len(event_starts)),dtype=int8)
+    for rip in range(len(event_starts)):
+        for i,s in enumerate(st):
+            idx = (s >= event_starts[rip]) & (s <= event_stops[rip])
+            unit_mat[i,rip] = sum(idx) > 0
+    return unit_mat 
+
+def fix_array_or_list(l, dtype=None):
+    if isinstance(l, np.ndarray):
+        return l
+    if not l:
+        raise ValueError("List must contain at least one element")
+    if dtype is None:
+        dt = typeof(l[0])
+    else:
+        dt = dtype
+    new_list = List.empty_list(dt)
+    for x in l:
+        new_list.append(x)
+    return new_list
+
+def get_participation(st,event_starts,event_stops):
+    """
+    get participation prob.
+    make matrix n rows (units) by n cols (ripple epochs)
+    Input:
+        st: spike train nelpy object that is epoched by ripples
+        ripple_epochs: ripple events in nelpy epoch object 
+    """
+    return get_participation_(fix_array_or_list(list(st)),event_starts,event_stops)
