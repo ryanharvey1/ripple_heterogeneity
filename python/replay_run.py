@@ -338,40 +338,17 @@ def get_features(bst_placecells,
 
     return traj_dist,traj_speed,traj_step,replay_type,dist_rat_start,dist_rat_end,position
 
-def linearize_position(beh_df,epoch_df):
-    # make linear track linear
-    for ep in epoch_df.itertuples():
-        if ep.environment == 'linear':
-            x = beh_df[beh_df['time'].between(ep.startTime, ep.stopTime)].x
-            y = beh_df[beh_df['time'].between(ep.startTime, ep.stopTime)].y
-
-            if np.isnan(x).sum() == len(x):
-                continue
-            
-            x,y = functions.linearize_position(x,y)
-
-            beh_df.loc[beh_df['time'].between(ep.startTime, ep.stopTime),'x'] = x
-            beh_df.loc[beh_df['time'].between(ep.startTime, ep.stopTime),'y'] = y
-    return beh_df
-
 def handle_behavior(basepath,epoch_df):
     beh_df = loading.load_animal_behavior(basepath)
 
-    if (np.isnan(beh_df.x).all()):
-        beh_df.x = beh_df.linearized
-        beh_df.y = np.zeros_like(beh_df.x)
+    beh_df = beh_df[~np.isnan(beh_df.linearized)]
 
-    # make linear track linear
-    beh_df = linearize_position(beh_df,epoch_df)
-
-    beh_df = beh_df[~np.isnan(beh_df.x)]
-
-    pos = nel.AnalogSignalArray(data=np.array(beh_df.x),
+    pos = nel.AnalogSignalArray(data=np.array(beh_df.linearized),
                                 timestamps=beh_df.time,
                                 fs=1/statistics.mode(np.diff(beh_df.time)))
     return pos
 
-def run_all(basepath,traj_shuff=1500,verbose=False):
+def run_all(basepath,traj_shuff=1500,ds_run=0.5,ds_50ms=0.05):
     """
     Main function that conducts the replay analysis
     """
@@ -403,9 +380,7 @@ def run_all(basepath,traj_shuff=1500,verbose=False):
     beh_epochs = nel.EpochArray([np.array([epoch_df.startTime,epoch_df.stopTime]).T])
 
     pos = handle_behavior(basepath,epoch_df)
-
     pos = pos[beh_epochs[0]]
-    st = st_all[beh_epochs[0]]
 
     # compute and smooth speed
     speed1 = nel.utils.ddt_asa(pos, smooth=True, sigma=0.1, norm=True)
@@ -414,11 +389,10 @@ def run_all(basepath,traj_shuff=1500,verbose=False):
     run_epochs = nel.utils.get_run_epochs(speed1, v1=4, v2=4)
 
     # restrict spike trains to those epochs during which the animal was running
-    st_run = st[run_epochs] 
-    ds_run = 0.5 
-    ds_50ms = 0.05
+    st_run = st_all[beh_epochs[0]][run_epochs] 
+    
     # smooth and re-bin:
-    # sigma = 0.3 # 300 ms spike smoothing
+    # 300 ms spike smoothing
     bst_run = st_run.bin(ds=ds_50ms).smooth(sigma=0.3 , inplace=True).rebin(w=ds_run/ds_50ms)
 
     sigma = 3 # smoothing std dev in cm
@@ -438,10 +412,9 @@ def run_all(basepath,traj_shuff=1500,verbose=False):
     idx = (st_run.n_events >= 100) & (tc.ratemap.max(axis=1) >= 1) & (ratio>=1.5)
     unit_ids_to_keep = (np.where(idx)[0]+1).squeeze().tolist()
 
-    sta_placecells = st._unit_subset(unit_ids_to_keep)
+    sta_placecells = st_all._unit_subset(unit_ids_to_keep)
     tc = tc._unit_subset(unit_ids_to_keep)
     total_units = sta_placecells.n_active
-    # tc.reorder_units(inplace=True)
     
     # access decoding accuracy on behavioral time scale 
     decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(bst_run.loc[:,unit_ids_to_keep],
@@ -469,7 +442,7 @@ def run_all(basepath,traj_shuff=1500,verbose=False):
     # restrict bst to instances with >= 5 active units and < 50% inactive bins
     idx = (n_active >= 5) & (inactive_bin_prop < .5)
     bst_placecells = bst_placecells[np.where(idx)[0]]
-    # restrict df to instances with >= 5 active units
+    # restrict to instances with >= 5 active units
     n_active = n_active[idx]
     inactive_bin_prop = inactive_bin_prop[idx]
 
@@ -536,7 +509,6 @@ def run_all(basepath,traj_shuff=1500,verbose=False):
     results['decoding_r2_pval'] = decoding_r2_pval
     results['decoding_median_error'] = median_error
     results['total_units'] = total_units
-    
 
     return results
 
