@@ -1,23 +1,15 @@
 import numpy as np
-# import struct
 
 import nelpy as nel
 import nelpy.plotting as npl
-
-import matplotlib.pyplot as plt
+from nelpy.analysis import replay
 
 import os
-# import sys
-import functions
 import matplotlib.pyplot as plt
 
 import pandas as pd
-import itertools
 import statistics 
-# import math
 from scipy import stats
-from nelpy.analysis import replay
-from nelpy.decoding import get_mode_pth_from_array
 
 import multiprocessing
 from joblib import Parallel, delayed
@@ -25,9 +17,6 @@ from joblib import Parallel, delayed
 import statsmodels.api as sm
 import pickle
 import copy
-from sklearn.isotonic import IsotonicRegression
-from scipy.special import cotdg
-import warnings
 import loading
 
 
@@ -56,7 +45,6 @@ def pooled_incoherent_shuffle_bst(bst):
 def decode_and_shuff(bst, tc, pos, n_shuffles=500):
     """
     """
-    
     rvalue, median_error = decode_and_score(bst, tc, pos)
 
     scores = np.zeros(bst.n_epochs)
@@ -91,18 +79,6 @@ def weighted_correlation(posterior, time, place_bin_centers):
 
     return _corr(time[:, np.newaxis],
                  place_bin_centers[np.newaxis, :], posterior)
-
-def convert_polar_to_slope_intercept(
-    n_pixels_from_center, projection_angle, center_pixel
-):
-    """ From Eric Denovellis """
-    velocity = -cotdg(-projection_angle)
-    start_position = (
-        n_pixels_from_center / np.sin(-np.deg2rad(projection_angle))
-        - velocity * center_pixel[0]
-        + center_pixel[1]
-    )
-    return start_position, velocity
 
 def score_array(posterior):
     """
@@ -239,29 +215,6 @@ def get_scores(bst, posterior, bdries, n_shuffles=1000,dt=0.02,dp=3,max_position
         w_corr_pval_time_swap,
         w_corr_pval_col_cycle
     )
-
-def map_estimate(posterior, place_bin_centers):
-    """ From Eric Denovellis """
-    posterior[np.isnan(posterior)] = 0.0
-    return place_bin_centers[posterior.argmax(axis=1)].squeeze()
-
-def isotonic_regression(posterior, time, place_bin_centers):
-    """ From Eric Denovellis """
-    place_bin_centers = place_bin_centers.squeeze()
-    posterior[np.isnan(posterior)] = 0.0
-
-    map_ = map_estimate(posterior, place_bin_centers)
-    map_probabilities = np.max(posterior, axis=1)
-
-    regression = IsotonicRegression(increasing='auto').fit(
-        X=time,
-        y=map_,
-        sample_weight=map_probabilities,
-    )
-
-    prediction = regression.predict(time)
-
-    return prediction
 
 def get_features(bst_placecells,
                  posteriors,
@@ -424,6 +377,7 @@ def run_all(basepath,traj_shuff=1500,ds_run=0.5,ds_50ms=0.05):
     # check decoding quality against chance distribution
     _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
     
+    # get ready to decode replay
     # restrict to events at least 80ms
     ripples = ripples[ripples.duration >= 0.08]
     
@@ -446,7 +400,7 @@ def run_all(basepath,traj_shuff=1500,ds_run=0.5,ds_50ms=0.05):
     n_active = n_active[idx]
     inactive_bin_prop = inactive_bin_prop[idx]
 
-    # decode each event
+    # decode each ripple event
     posteriors, bdries, mode_pth, mean_pth = nel.decoding.decode1D(bst_placecells,
                                                                     tc,
                                                                     xmin=np.nanmin(pos.data),
