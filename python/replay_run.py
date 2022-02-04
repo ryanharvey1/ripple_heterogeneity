@@ -301,7 +301,15 @@ def handle_behavior(basepath,epoch_df):
                                 fs=1/statistics.mode(np.diff(beh_df.time)))
     return pos
 
-def run_all(basepath,traj_shuff=1500,ds_run=0.5,ds_50ms=0.05):
+def run_all(
+    basepath, # basepath to session
+    traj_shuff=1500, # number of shuffles to determine sig replay
+    ds_run=0.5,
+    ds_50ms=0.05,
+    s_binsize=3, # spatial bins in tuning curve
+    speed_thres=4, # running threshold to determine tuning curves
+    min_rip_dur=0.08 # min ripple duration for replay
+):
     """
     Main function that conducts the replay analysis
     """
@@ -339,7 +347,7 @@ def run_all(basepath,traj_shuff=1500,ds_run=0.5,ds_50ms=0.05):
     speed1 = nel.utils.ddt_asa(pos, smooth=True, sigma=0.1, norm=True)
  
     # find epochs where the animal ran > 4cm/sec
-    run_epochs = nel.utils.get_run_epochs(speed1, v1=4, v2=4)
+    run_epochs = nel.utils.get_run_epochs(speed1, v1=speed_thres, v2=speed_thres)
 
     # restrict spike trains to those epochs during which the animal was running
     st_run = st_all[beh_epochs[0]][run_epochs] 
@@ -351,7 +359,7 @@ def run_all(basepath,traj_shuff=1500,ds_run=0.5,ds_50ms=0.05):
     sigma = 3 # smoothing std dev in cm
     tc = nel.TuningCurve1D(bst=bst_run, 
                             extern=pos,
-                            n_extern=40,
+                            n_extern=int((np.nanmax(pos.data)-np.nanmin(pos.data))/s_binsize),
                             extmin=np.nanmin(pos.data),
                             extmax=np.nanmax(pos.data),
                             sigma=sigma,
@@ -378,8 +386,8 @@ def run_all(basepath,traj_shuff=1500,ds_run=0.5,ds_50ms=0.05):
     _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
     
     # get ready to decode replay
-    # restrict to events at least 80ms
-    ripples = ripples[ripples.duration >= 0.08]
+    # restrict to events at least xxms
+    ripples = ripples[ripples.duration >= min_rip_dur]
     
     # make epoch object
     ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
