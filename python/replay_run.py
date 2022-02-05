@@ -24,7 +24,7 @@ def decode_and_score(bst, tc, pos):
     # access decoding accuracy on behavioral time scale 
     posteriors, lengths, mode_pth, mean_pth = nel.decoding.decode1D(bst,
                                                                     tc,
-                                                                    xmin=0,
+                                                                    xmin=np.nanmin(pos.data),
                                                                     xmax=np.nanmax(pos.data))
     actual_pos = pos(bst.bin_centers)
     slope, intercept, rvalue, pvalue, stderr = stats.linregress(actual_pos, mode_pth)
@@ -171,66 +171,19 @@ def shuff(posterior_array,time,place_bin_centers,dt,dp):
     
     return w_corr_time_swap,w_corr_col_cycle
 
-def get_scores(bst, posterior, bdries, n_shuffles=1000,dt=0.02,dp=3,max_position=120,verbose=False):
-    """
-    runs score_array on observed data and then conducts a shuffle analysis using
-    two types of procedures (time swap and column cycle).
-    
-    Will run through each epoch in your binned spike train
-    """
-
-    place_bin_edges = np.arange(0, max_position + dp, dp)
-    place_bin_centers = place_bin_edges[:-1] + np.diff(place_bin_edges) / 2
-        
-    w_corr_scores = np.zeros(bst.n_epochs)
-    w_corr_pval_time_swap = np.zeros(bst.n_epochs)
-    w_corr_pval_col_cycle = np.zeros(bst.n_epochs) 
-    
-    # get n cores to know how many jobs to run  
-    num_cores = multiprocessing.cpu_count()         
-    
-    for idx in range(bst.n_epochs):
-        if verbose:
-            print('event: ',str(idx))
-            
-        posterior_array = posterior[:, bdries[idx]:bdries[idx+1]]
-
-        time = bst[idx].bin_centers
-        w_corr_scores[idx] = weighted_correlation(posterior_array.T, time, place_bin_centers)
-            
-        (
-            w_corr_time_swap,
-            w_corr_col_cycle
-        ) = zip(*Parallel(n_jobs=num_cores)(delayed(shuff)(posterior_array.T,
-                                                           time,
-                                                           place_bin_centers,
-                                                           dt,
-                                                           dp) for i in range(n_shuffles)))
-        
-        _,w_corr_pval_time_swap[idx] = get_significant_events(w_corr_scores[idx], np.expand_dims(w_corr_time_swap, axis=1))
-        _,w_corr_pval_col_cycle[idx] = get_significant_events(w_corr_scores[idx], np.expand_dims(w_corr_col_cycle, axis=1))
-        
-    return (
-        w_corr_scores,
-        w_corr_pval_time_swap,
-        w_corr_pval_col_cycle
-    )
-
 def get_features(bst_placecells,
                  posteriors,
                  bdries,
                  mode_pth,
                  pos,
                  figs=False,
-                 max_position=120,
-                 dt=0.02,
                  dp=3):
     """
     Using the posterior probability matrix, calculate several features on spatial trajectory
     and detects if the trajectory is foward or reverse depending on the rat's current position
     """
     
-    place_bin_edges = np.arange(0, max_position + dp, dp)
+    place_bin_edges = np.arange(np.nanmin(pos.data[0]), np.nanmax(pos.data[0]) + dp, dp)
     place_bin_centers = place_bin_edges[:-1] + np.diff(place_bin_edges) / 2
     
     traj_dist = []
@@ -261,14 +214,24 @@ def get_features(bst_placecells,
         # get mean step size 
         traj_step.append(np.nanmean(dy))
         
+        # check if current event is outside beh epoch
+        if all(x.max() < pos.abscissa_vals) | all(x.min() > pos.abscissa_vals):
+            replay_type.append(np.nan)
+            dist_rat_start.append(np.nan)
+            dist_rat_end.append(np.nan)
+            continue
+
         rat_event_pos = np.interp(x,pos.abscissa_vals,pos.data[0])
         rat_x_position = np.nanmean(rat_event_pos)
 
         # get dist of the start & end of trajectory to rat
         dist_rat_start.append(rat_x_position - y[0])
         dist_rat_end.append(rat_x_position - y[-1])
+
         # what side of the track is the rat on ? 
-        side = np.argmin(np.abs([0,120] - rat_x_position))
+        min_max_env = [np.nanmin(pos.data[0]),np.nanmax(pos.data[0])]
+        side = np.argmin(np.abs(min_max_env- rat_x_position))
+
         if (side == 1) & (velocity < 0):
             replay_type.append('forward')
         elif (side == 1) & (velocity > 0):
