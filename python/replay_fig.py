@@ -108,4 +108,4 @@ def plot_all_replay(
         npl.utils.clear_left_right(axRaster)
         npl.utils.clear_right(axRaster)
         npl.utils.clear_top_bottom(axRaster)
-    return ax
+    return ax,fig
