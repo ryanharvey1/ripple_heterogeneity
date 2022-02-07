@@ -370,6 +370,7 @@ def run_all(
     # restrict to instances with >= 5 active units
     n_active = n_active[idx]
     inactive_bin_prop = inactive_bin_prop[idx]
+    ripples = ripples[idx]
 
     # decode each ripple event
     posteriors, bdries, mode_pth, mean_pth = nel.decoding.decode1D(bst_placecells,
@@ -411,7 +412,7 @@ def run_all(
     results['mode_pth'] = mode_pth
     results['position'] = position
     
-    temp_df = pd.DataFrame()
+    temp_df = ripples.copy()
     # add event by event metrics to df
     temp_df['n_active'] = n_active
     temp_df['inactive_bin_prop'] = inactive_bin_prop
