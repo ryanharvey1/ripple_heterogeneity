@@ -65,7 +65,7 @@ def plot_all_replay(
                     linestyle=':',
                     color='0.8')
 
-        # ax.vlines(np.cumsum(bst.lengths)-pixel_width, *ax.get_ylim(), lw=1)
+        ax.vlines(np.cumsum(bst.lengths)-pixel_width, *ax.get_ylim(), lw=1,color='0.2')
 
         ax.set_xlim(-pixel_width, bst.lengths.sum()-pixel_width)
 
@@ -76,7 +76,7 @@ def plot_all_replay(
         if idx is not None:
             ax.set_xticklabels(idx)
         else:
-            # ax.set_xticklabels(np.arange(bst.n_epochs))
+            ax.set_xticklabels(np.arange(bst.n_epochs))
             ax.set_xticklabels('')
 
         npl.utils.no_xticks(ax)
@@ -95,7 +95,7 @@ def plot_all_replay(
                                 bst.n_bins+1)
 
         axRaster.vlines(bin_edges, *ax.get_ylim(), lw=1, linestyle=':', color='0.8')
-        # axRaster.vlines(bin_edges[np.cumsum(bst.lengths)], *ax.get_ylim(), lw=1, color='0.2')
+        axRaster.vlines(bin_edges[np.cumsum(bst.lengths)], *ax.get_ylim(), lw=1, color='0.2')
 
         npl.utils.no_xticks(axRaster)
         npl.utils.no_xticklabels(axRaster)
