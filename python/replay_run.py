@@ -271,7 +271,11 @@ def run_all(
     ds_50ms=0.05,
     s_binsize=3, # spatial bins in tuning curve
     speed_thres=4, # running threshold to determine tuning curves
-    min_rip_dur=0.08 # min ripple duration for replay
+    min_rip_dur=0.08, # min ripple duration for replay
+    place_cell_min_rate=1,
+    place_cell_min_spks=100,
+    place_cell_peak_mean_ratio=1.5,
+    replay_binsize=0.02
 ):
     """
     Main function that conducts the replay analysis
@@ -333,7 +337,11 @@ def run_all(
     mean_firing_rates = tc.mean(axis=1)
     ratio = peak_firing_rates/mean_firing_rates
   
-    idx = (st_run.n_events >= 100) & (tc.ratemap.max(axis=1) >= 1) & (ratio>=1.5)
+    idx = (
+        (st_run.n_events >= place_cell_min_spks) &
+        (tc.ratemap.max(axis=1) >= place_cell_min_rate) &
+        (ratio >= place_cell_peak_mean_ratio)
+    )
     unit_ids_to_keep = (np.where(idx)[0]+1).squeeze().tolist()
 
     sta_placecells = st_all._unit_subset(unit_ids_to_keep)
@@ -353,14 +361,14 @@ def run_all(
     _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
     
     # get ready to decode replay
-    # restrict to events at least xxms
+    # restrict to events at least xx s long
     ripples = ripples[ripples.duration >= min_rip_dur]
     
     # make epoch object
     ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
 
-    # bin data into 20ms 
-    bst_placecells = sta_placecells[ripple_epochs].bin(ds=0.02)
+    # bin data for replay (20ms default) 
+    bst_placecells = sta_placecells[ripple_epochs].bin(ds=replay_binsize)
 
     # count units per event
     n_active = [bst.n_active for bst in bst_placecells]
