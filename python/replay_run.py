@@ -339,12 +339,16 @@ def run_all(
     sta_placecells = st_all._unit_subset(unit_ids_to_keep)
     tc = tc._unit_subset(unit_ids_to_keep)
     total_units = sta_placecells.n_active
-    
+    bst_run = bst_run.loc[:,unit_ids_to_keep]
+
+    # restrict cell_metrics to place cells
+    cell_metrics = cell_metrics[idx]
+
     # access decoding accuracy on behavioral time scale 
-    decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(bst_run.loc[:,unit_ids_to_keep],
+    decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(bst_run,
                                                                         tc,
                                                                         pos,
-                                                                        n_shuffles=1000)
+                                                                        n_shuffles=traj_shuff)
     # check decoding quality against chance distribution
     _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
     
@@ -404,8 +408,12 @@ def run_all(
     # package data into results dictionary
     results = {}
 
+    results['cell_metrics'] = cell_metrics
+
     results['sta_placecells'] = sta_placecells
     results['bst_placecells'] = bst_placecells
+    results['bst_run'] = bst_run
+    results['pos'] = pos
     results['tc'] = tc
     results['posteriors'] = posteriors
     results['bdries'] = bdries
