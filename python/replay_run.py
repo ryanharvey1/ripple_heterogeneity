@@ -272,10 +272,11 @@ def run_all(
     s_binsize=3, # spatial bins in tuning curve
     speed_thres=4, # running threshold to determine tuning curves
     min_rip_dur=0.08, # min ripple duration for replay
-    place_cell_min_rate=1,
-    place_cell_min_spks=100,
-    place_cell_peak_mean_ratio=1.5,
-    replay_binsize=0.02
+    place_cell_min_rate=1, # min peak rate of tuning curve
+    place_cell_min_spks=100, # at least 100 spikes while running above speed_thres
+    place_cell_peak_mean_ratio=1.5, # peak firing rate / mean firing rate
+    replay_binsize=0.02, # bin size to decode replay
+    tuning_curve_sigma=3 # 3 cm sd of smoothing on tuning curve
 ):
     """
     Main function that conducts the replay analysis
@@ -323,13 +324,12 @@ def run_all(
     # 300 ms spike smoothing
     bst_run = st_run.bin(ds=ds_50ms).smooth(sigma=0.3 , inplace=True).rebin(w=ds_run/ds_50ms)
 
-    sigma = 3 # smoothing std dev in cm
     tc = nel.TuningCurve1D(bst=bst_run, 
                             extern=pos,
                             n_extern=int((np.nanmax(pos.data)-np.nanmin(pos.data))/s_binsize),
                             extmin=np.nanmin(pos.data),
                             extmax=np.nanmax(pos.data),
-                            sigma=sigma,
+                            sigma=tuning_curve_sigma,
                             min_duration=0)
 
     # locate pyr cells with >= 100 spikes, peak rate >= 1 Hz, peak/mean ratio >=1.5
