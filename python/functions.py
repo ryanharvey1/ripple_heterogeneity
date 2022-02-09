@@ -352,3 +352,37 @@ def get_participation(st,event_starts,event_stops):
         ripple_epochs: ripple events in nelpy epoch object 
     """
     return get_participation_(fix_array_or_list(list(st)),event_starts,event_stops)
+
+def get_significant_events(scores, shuffled_scores, q=95):
+    """Return the significant events based on percentiles.
+    NOTE: The score is compared to the distribution of scores obtained
+    using the randomized data and a Monte Carlo p-value can be computed
+    according to: p = (r+1)/(n+1), where r is the number of
+    randomizations resulting in a score higher than (ETIENNE EDIT: OR EQUAL TO?)
+    the real score and n is the total number of randomizations performed.
+    Parameters
+    ----------
+    scores : array of shape (n_events,)
+    shuffled_scores : array of shape (n_shuffles, n_events)
+    q : float in range of [0,100]
+        Percentile to compute, which must be between 0 and 100 inclusive.
+    Returns
+    -------
+    sig_event_idx : array of shape (n_sig_events,)
+        Indices (from 0 to n_events-1) of significant events.
+    pvalues :
+    """
+
+    n, _ = shuffled_scores.shape
+    r = np.sum(abs(shuffled_scores).T >= abs(scores), axis=0)
+    pvalues = (r+1)/(n+1)
+
+    # set nan scores to 1
+    pvalues[np.isnan(scores)] = 1
+    
+    sig_event_idx = np.argwhere(scores > np.percentile(
+        shuffled_scores,
+        axis=0,
+        q=q)).squeeze()
+
+    return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues)
