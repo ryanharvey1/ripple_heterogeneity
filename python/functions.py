@@ -372,9 +372,12 @@ def get_significant_events(scores, shuffled_scores, q=95):
         Indices (from 0 to n_events-1) of significant events.
     pvalues :
     """
+    # check shape and correct if needed
+    if shuffled_scores.shape[1] != len(scores):
+        shuffled_scores = shuffled_scores.T
 
     n, _ = shuffled_scores.shape
-    r = np.sum(abs(shuffled_scores).T >= abs(scores), axis=0)
+    r = np.sum(abs(shuffled_scores) >= abs(scores), axis=0)
     pvalues = (r+1)/(n+1)
 
     # set nan scores to 1
