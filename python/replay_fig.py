@@ -14,7 +14,12 @@ def plot_all_replay(
                     title_str=None,
                     vmax=.1,
                     fraction=.25,
-                    ratio=(3,1)
+                    ratio=(3,1),
+                    raster_lw=1.5,
+                    raster_lh=0.95,
+                    custom_raster_color=False,
+                    color_scale_vector=[],
+                    rasterized_heatmap=False
                     ):
 
     if idx is not None:
@@ -48,14 +53,14 @@ def plot_all_replay(
                         y=np.arange(np.round(tc.bins.max())),
                         data=posterior,
                         cmap=plt.cm.bone_r,
-                        ax=ax)
+                        ax=ax,rasterized=rasterized_heatmap)
         else:
             npl.imagesc(x=np.arange(bst.n_bins),
                         y=np.arange(np.round(tc.bins.max())),
                         data=posterior,
                         cmap=plt.cm.bone_r,
                         ax=ax,
-                        vmax=vmax)
+                        vmax=vmax,rasterized=rasterized_heatmap)
 
         npl.utils.no_yticks(ax)
 
@@ -87,7 +92,14 @@ def plot_all_replay(
         divider = make_axes_locatable(ax)
         axRaster = divider.append_axes("top", size=1, pad=0)
 
-        npl.rasterplot(st_cut, vertstack=True, ax=axRaster, lh=1.25)
+        if custom_raster_color:
+            norm = plt.Normalize()
+            colors = plt.cm.cool(norm(color_scale_vector))
+            for i,series_ids in enumerate(st_cut.series_ids):
+                npl.rasterplot(st_cut[:,series_ids], color=colors[i,:], vertstack=True, ax=axRaster, lh=raster_lh,lw=raster_lw)
+        else:
+            npl.rasterplot(st_cut, vertstack=True, ax=axRaster, lh=raster_lh,lw=raster_lw)
+    
         axRaster.set_xlim(st_cut.support.time.squeeze())
         
         bin_edges = np.linspace(st_cut.support.time[0,0],
