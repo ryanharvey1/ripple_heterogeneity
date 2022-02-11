@@ -256,6 +256,8 @@ def get_features(bst_placecells,
 
 def handle_behavior(basepath,epoch_df):
     beh_df = loading.load_animal_behavior(basepath)
+    # make min pos 0
+    beh_df.linearized = beh_df.linearized - np.nanmin(beh_df.linearized)
 
     beh_df = beh_df[~np.isnan(beh_df.linearized)]
 
