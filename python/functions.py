@@ -389,3 +389,368 @@ def get_significant_events(scores, shuffled_scores, q=95):
         q=q)).squeeze()
 
     return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues)
+
+def FindLapsNSMAadapted(Vts,Vdata,newLapThreshold=15):
+    # %
+    # % [laps, Vhs] = FindLaps_HorseShoe(V,newLapThreshold);
+    # %
+    # % Find Laps in "Horseshoe-Geometry" of a circular track
+    # %
+    # % INPUT:
+    # % V    ...  tsd of angular position in [0,360] degree range, with horsehoe
+    # %           opening at 0 degrees.
+    # %
+    # % newLapThreshold ... OPTIONAL endpoint proximity threshold in percent of track length (default = 15%);
+    # %                     whenever rat enters the proximity zone of e.g. 15% of tracklength near a horseshoe end, a new lap
+    # %                     is started and the maximum (or minimum) is searched
+    # %                     for a Lap-Top (around 360 end)  or Lap-Bottom (around 0 end).
+    # %
+    # % OUTPUT:
+    # % laps  .... 1*nLaps struct array with fields
+    # %   laps(i).start_ts  ... start timestamp of i-th lap (in 0.1 millisec
+    # %                              NSMA units)
+    # %   laps(i).pos       ... the value of input position V (in circle geometry not horseshoe!) at lap start point (in degrees)
+    # %   laps(i).start_idx ... the index of the new lap start frame in input V tsd
+    # %   laps(i).direction ... +1/-1 for up/down laps (with increasing/decreasing position in angle degrees)
+    # %
+    # %  Vhs ....  tsd nFrames*1 vector of position in horseshoe geometry, where
+    # %               negative direction laps are ranging from [-360,0] and positive direction
+    # %               laps are ranging from [0 360]. NOTE: there are discontinuous jumps at
+    # %               the horseshoe turn points around 0 degrees and around
+    # %               360/-360 degrees. NOTE2: nFrames = length(Data(V))
+    # %
+    # %
+    # %   Author: PL
+    # %   Version: 0.9  05/12/2005
+    # %   edited by Ryan Harvey to work with standard linear track
+
+
+    TL = np.abs(np.nanmax(Vdata) - np.nanmin(Vdata))   #% track length in degrees
+    th1= np.nanmin(Vdata) + TL*newLapThreshold / 100 #        % lower threshold for lower horeshoe end (degrees)
+    th2 = np.nanmax(Vdata) - TL*newLapThreshold / 100 #      % upper threshold for upper horseshoe end (degrees)
+
+
+    # % loop over all frames
+    laps = pd.DataFrame()
+    laps.loc[0,'start_ts'] = Vts[0]
+    laps.loc[0,'pos'] = Vdata[0]
+    laps.loc[0,'start_idx'] = 1
+    laps.loc[0,'direction'] = 0
+    iLap = 0
+
+    newUpThCross = 1     #% flag for new lap top search
+    newDownThCross = 1    # % flag for new lap top search
+    for i in range(len(Vdata)):
+        if Vdata[i] < th1:   # % search for min
+            if newUpThCross == 1:  #     % start a new lap
+                newUpThCross = 0
+                newDownThCross = 1
+                iLap = iLap + 1
+                laps.loc[iLap,'start_ts'] = Vts[i]
+                laps.loc[iLap,'pos'] = Vdata[i]
+                laps.loc[iLap,'start_idx'] = i
+                laps.loc[iLap,'direction'] = 1
+            
+            if Vdata[i] < laps.iloc[iLap].pos:     # % record new min if any
+                laps.loc[iLap,'start_ts'] = Vts[i]
+                laps.loc[iLap,'pos'] = Vdata[i]
+                laps.loc[iLap,'start_idx'] = i
+        
+        if Vdata[i] > th2:  # % search for max
+            if newDownThCross: #      % start a new lap
+                newUpThCross = 1
+                newDownThCross = 0
+                iLap = iLap + 1
+                laps.loc[iLap,'start_ts'] = Vts[i]
+                laps.loc[iLap,'pos'] = Vdata[i]
+                laps.loc[iLap,'start_idx'] = i
+                laps.loc[iLap,'direction'] = -1
+            
+            if Vdata[i] > laps.iloc[iLap].pos:     #  % record new min if any
+                laps.loc[iLap,'start_ts'] = Vts[i]
+                laps.loc[iLap,'pos'] = Vdata[i]
+                laps.loc[iLap,'start_idx'] = i
+
+    # % fix direction of first lap which was unknown above
+    # % make first lap direction opposite of second lap's direction (laps alternate!)
+    laps.iloc[0].direction = -laps.iloc[1].direction
+
+    # % make sure laps cross the halfway point
+    middle = np.nanmedian(np.arange(np.nanmin(Vdata),np.nanmax(Vdata)))
+    i = 0
+    while True:
+        try:
+            positions = np.arange(laps.iloc[i].pos,laps.iloc[i+1].pos)
+        except:
+            positions = [np.nan,np.nan]
+        if (any(positions > middle) == True) & (any(positions < middle) == False):
+            laps = laps.drop(laps.index[i+1])
+        i = i+1
+        if i+1 >= len(laps.pos):
+            if len(laps.pos) < iLap:
+                laps.iloc[0].direction = -laps.iloc[1].direction
+            break
+
+    return laps
+
+def peakdetz(v, delta, lookformax=1, backwards=0):
+    # %PEAKDET Detect peaks in a vector
+    # %        [MAXTAB, MINTAB] = PEAKDETZ(V, DELTA, lookformax, backwards) finds 
+    # %        the local maxima and minima ("peaks") in the vector V.
+    # %        A point is considered a maximum peak if it has the maximal
+    # %        value, and was preceded (to the left) by a value lower by
+    # %        DELTA. MAXTAB and MINTAB consists of two columns. Column 1
+    # %        contains indices in V, and column 2 the found values.
+    # %
+    # % Eli Billauer, 3.4.05 (Explicitly not copyrighted).
+    # % This function is released to the public domain; Any use is allowed.
+    # %
+    # % ZN edit 04/2010: added option to specify looking for troughs or peaks
+    # % first (lookformax variable: if 1, will look for peaks first, if 0 will
+    # % look for troughs; default is look for peaks); and option to go backwards
+    # % (so that find last instance of a peak/trough value instead of the first
+    # % instance: backwards variable: if 1 will go backwards, if 0 or absent, 
+    # % will go forwards); and changed it so that last min/max value will be 
+    # % assigned
+
+    maxtab = []
+    mintab = []
+
+    v = v[:] #% Just in case this wasn't a proper vector
+
+    if len(delta[:]) > 1:
+        print('Input argument DELTA must be a scalar')
+        return
+
+    if delta <= 0:
+        print('Input argument DELTA must be positive')
+        return
+
+    if backwards == 0:
+        inc = 1
+        first = 1
+        last = len(v)
+    elif backwards:
+        inc = -1
+        first = len(v)
+        last = 1
+
+    mn = np.inf
+    mx = -np.inf
+    mnpos = np.nan
+    mxpos = np.nan
+
+    for ii in np.arange(first,last,inc):
+        this = v[ii]
+        if this > mx:
+            mx = this
+            mxpos = ii
+        if this < mn:
+            mn = this
+            mnpos = ii
+    
+        if lookformax:
+            if (this < mx-delta) | ((ii==last) & (len(mintab)>0) &( mx-delta>mintab[-1,1])):
+                maxtab = np.concatenate([maxtab , mxpos, mx])
+                mn = this
+                mnpos = ii
+                lookformax = 0
+        else:
+            if (this > mn+delta) | ((ii==last) & (len(maxtab)>0) & (mn+delta<maxtab[-1,1])):
+                mintab = np.concatenate([maxtab , mxpos, mx])
+                mx = this
+                mxpos = ii
+                lookformax = 1
+
+    if len([mintab,maxtab])==0:
+        if lookformax:
+            if mx-mn>delta:
+                maxtab=[mxpos, mx]
+            
+        else:
+            if mx-mn>delta:
+                mintab=[mnpos, mn]
+    return maxtab, mintab
+
+def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
+    # % [startgoodlaps, stopgoodlaps, laps] = 
+    # %        FindGoodLaps(V_rest,laps,edgethresh,completeprop,plotlaps,posbins)
+    # %
+    # % find and eliminate laps which have too many NaNs (because rat was off 
+    # % track), and parts of laps where rat turns around in middle of track
+    # % 
+    # % inputs: V_rest: V coordinates of rat with off track periods masked out 
+    # %                 (as NaNs)
+    # %         laps: struct with lap start and end times (generated by
+    # %               FindLaps_Horseshoe)
+    # %         edgethresh: threshold for detection of a turn around point 
+    # %                     (proportion of length of track) (default = 0.1)
+    # %         completeprop: the amount of lap that can be missing (NaNs) to
+    # %                       still be considered a lap (default = 0.2).
+    # %         plotlaps: flag for making plots of each lap, and pause for user
+    # %                   to hit key to continue (default = 1)
+    # %         posbins: number of bins to divide the track into to determine
+    # %                  position coverage percentage; at 60frames/s want at 
+    # %                  least 2cm/bin (default = 50bins; this works for 100+ cm 
+    # %                  track, as long as V_rest is in cm)
+    # % outputs: startgoodlaps, stopgoodlaps: start and stop times of good lap 
+    # %                                       periods
+    # %          laps: a new laps struct, with the bad laps removed
+    # %
+    # % ZN 04/2011
+
+    if edgethresh > 1:    # % in case edgethresh is input as a percentage instead of a proportion
+        edgethresh = edgethresh / 100
+
+    if completeprop > 1:     # % in case completeprop is input as a percentage instead of a proportion
+        completeprop = completeprop / 100
+
+    bottomend = np.nanmin(V_rest)
+    topend = np.nanmax(V_rest)
+    bins = np.arange(bottomend,topend,(topend-bottomend)/posbins)
+    delta = (topend - bottomend)*edgethresh   #  % threshold for peak/trough detection
+    startgoodlaps = []
+    stopgoodlaps = []
+
+    l = 0
+    while l <= len(laps):
+        #% select out just this lap
+        if l == len(laps):
+            endoflap = ts[-1]
+        else:
+            endoflap = laps.iloc[l+1].start_ts
+        
+        v = V_rest[np.where(ts == laps.iloc[l].start_ts):np.where(ts == endoflap)]
+        t = ts[np.where(ts==laps.iloc[l].start_ts):np.where(ts==endoflap)]
+
+        #% find turn around points during this lap
+        lookformax = laps.iloc[l].direction == 1
+        peak,trough = peakdetz(v, delta, lookformax, 0)
+        
+        if lookformax:
+        #% find the direct path from bottomend to topend (or mark lap for
+        #% deleting if the turn around points are not in those ranges)
+            if len(trough)>0:
+                #% find the last trough in range of bottomend (start of lap)
+                gt = len(trough)
+                while ((gt>0) & (trough(gt,2) >= 2*delta + bottomend)):
+                    gt=gt-1
+                
+                #% assign the next peak after that trough as the end of the lap
+                #% (or mark lap for deleting, if that peak is not at topend)
+                if gt == 0:
+                    if (peak[1,2] > topend-2*delta):
+                        t = t[1:peak(1,1)]
+                        v = v[1:peak(1,1)]
+                    else:
+                        #% this marks the lap for deleting
+                        t = t[1:5]
+                        v = v[1:5]
+                else:
+                    et = len(peak)
+                    if (gt+1 > et):
+                        gt=0
+                        t=t[1:2]
+                        v=v[1:2]
+                    else:
+                        t=t[trough[gt,1]:peak[gt+1,1]]
+                        v=v[trough[gt,1]:peak[gt+1,1]]
+                
+            else:
+            #% make sure peak exists and is in range of topend
+                if len(peak) == 0:
+                    if len(t) > 2:
+                        t=t[1:2]
+                        v=v[1:2]
+                elif peak(1,2) < topend-2*delta:
+                    #% this marks the lap for deleting
+                    if len(t) > 5:
+                        t=t[1:5]
+                        v=v[1:5]
+                 
+        else: # % if lookformax
+        #% find the direct path from topend to bottomend (or mark lap for
+        #% deleting if the turn around points are not in those ranges)
+            if len(peak) > 0:
+            #% find the last peak in range of topend (start of lap)
+                gt = len(peak)
+                while (gt>0) & (peak[gt,2]<=topend-2*delta):
+                    gt=gt-1
+                # % assign the next trough after that peak as the end of the lap
+                # % (or mark lap for deleting, if that trough is not at bottomend)
+                if gt==0:
+                    if trough(1,2)<bottomend+2*delta:
+                        t=t[1:trough(1,1)]
+                        v=v[1:trough(1,1)]
+                    else:
+                        # % this marks the lap for deleting
+                        t=t[1:5]
+                        v=v[1:5]
+                    
+                else:
+                    et = len(trough)
+                    if gt+1 > et:
+                        t=t[1:2]
+                        v=v[1:2]
+                        gt=0
+                    else:
+                        t=t[peak[gt,1]:trough[gt+1,1]]
+                        v=v[peak[gt,1]:trough[gt+1,1]]
+             
+            else: #% if ~isempty(peak)
+                #% make sure trough exists and is in range of bottomend
+                if len(trough) == 0:
+                 
+                    if len(t)>2:
+                        t = t[1:2]
+                        v = v[1:2]
+                    
+                elif trough(1,2) > bottomend+2*delta:
+                    #% this marks the lap for deleting
+                    if len(t) > 5:
+                        t = t[1:5]
+                        v = v[1:5]
+                     
+        vcovered,_ = np.histogram(v,bins=bins)
+
+        if len(v) < 3:
+        #% eliminate the lap if it is non-existent (as is sometimes the case for lap 1)
+            laps.drop(laps.index[l])
+         
+        #% eliminate the lap if >completeprop of it is NaNs or if it has been marked for
+        #% deleting above
+        elif (len(v) < 6) | (sum(vcovered==0)>completeprop*posbins):
+            laps.drop(laps.index[l])
+            #% remove the other lap from the lap pair
+            if l % 2 == 0:
+                #% delete previous lap from laps
+                laps.drop(laps.index[l-1])
+             
+                #% change goodlaps markers to delete previous lap from laps
+                if len(stopgoodlaps) > 0:
+                    if 'lastlapend' not in locals() | (startgoodlaps[-1] > lastlapend):
+                        startgoodlaps[-1] = []
+                        stopgoodlaps[-1] = []
+                    else:
+                        stopgoodlaps[-1] = lastlapend
+                    
+                l=l-1
+            elif l<=len(laps) & l > 1:
+                #% delete next lap from laps
+                laps.drop(laps.index[l])
+              
+        else: #% if lap is good
+            #% store last lap end just in case have to delete this lap with next lap
+            if len(stopgoodlaps) > 0:
+                lastlapend = stopgoodlaps(-1)
+            
+            # % add this lap to goodlaps
+            if (len(stopgoodlaps)>0) & (stopgoodlaps[-1]==t[1]):
+                stopgoodlaps[-1] = t[-1]
+            else:
+                startgoodlaps = [startgoodlaps, t[1]]
+                stopgoodlaps = [stopgoodlaps, t[-1]]
+            
+            l = l+1
+  
+    return startgoodlaps,stopgoodlaps,laps
