@@ -391,35 +391,39 @@ def get_significant_events(scores, shuffled_scores, q=95):
 
     return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues)
 
-def find_laps(Vts,Vdata,newLapThreshold=15):
+def find_laps(Vts,Vdata,newLapThreshold=15,good_laps=True):
     """
-    % Find Laps in linear track 
-    %
-    % INPUT:
-    % Vts: timestamps
-    % Vdata: x coords 
-    %
-    % newLapThreshold ... OPTIONAL endpoint proximity threshold in percent of track length (default = 15%);
-    %                     whenever rat enters the proximity zone of e.g. 15% of tracklength near a end, a new lap
-    %                     is started and the maximum (or minimum) is searched
-    %                     for a Lap-Top  or Lap-Bottom (around 0 end).
-    %
-    % OUTPUT:
-    % laps  .... 1*nLaps struct array with fields
-    %   laps(i).start_ts  ... start timestamp of i-th lap
-    %   laps(i).pos       ... the value of input position V at lap start point
-    %   laps(i).start_idx ... the index of the new lap start frame in input V 
-    %   laps(i).direction ... +1/-1 for up/down laps 
-    %
-    %   Author: PL
-    %   Version: 0.9  05/12/2005
-    %   edited by Ryan Harvey to work with standard linear track
-    %   edited for python by Ryan h 2022
+    Find Laps in linear track 
+
+    INPUT:
+    Vts: timestamps
+    Vdata: x coords 
+
+    newLapThreshold: endpoint proximity threshold in percent of track length (default = 15%);
+                    whenever rat enters the proximity zone of e.g. 15% of tracklength near a end, a new lap
+                    is started and the maximum (or minimum) is searched
+                    for a Lap-Top  or Lap-Bottom (around 0 end).
+
+    good_laps: run find_good_laps to remove laps with excess nans and 
+                parts of laps where rat turns around in middle of track
+
+    OUTPUT:
+    laps  .... 1*nLaps struct array with fields
+    laps(i).start_ts  ... start timestamp of i-th lap
+    laps(i).pos       ... the value of input position V at lap start point
+    laps(i).start_idx ... the index of the new lap start frame in input V 
+    laps(i).direction ... +1/-1 for up/down laps 
+
+    From NSMA toolbox
+    Author: PL
+    Version: 0.9  05/12/2005
+    edited by Ryan Harvey to work with standard linear track
+    edited for use in python by Ryan h 2022
     """
 
-    TL = np.abs(np.nanmax(Vdata) - np.nanmin(Vdata))   #% track length in degrees
-    th1= np.nanmin(Vdata) + TL*newLapThreshold / 100 #        % lower threshold for lower horeshoe end (degrees)
-    th2 = np.nanmax(Vdata) - TL*newLapThreshold / 100 #      % upper threshold for upper horseshoe end (degrees)
+    TL = np.abs(np.nanmax(Vdata) - np.nanmin(Vdata))   #% track length
+    th1= np.nanmin(Vdata) + TL*newLapThreshold / 100 #        % lower threshold for lower end
+    th2 = np.nanmax(Vdata) - TL*newLapThreshold / 100 #      % upper threshold for upper end
 
     # % loop over all frames
     laps = pd.DataFrame()
@@ -482,6 +486,9 @@ def find_laps(Vts,Vdata,newLapThreshold=15):
                 laps.iloc[0].direction = -laps.iloc[1].direction
             break
 
+    if good_laps:
+        laps = find_good_laps(Vts,Vdata,laps)
+
     return laps
 
 def peakdetz(v, delta, lookformax=1, backwards=0):
@@ -505,7 +512,7 @@ def peakdetz(v, delta, lookformax=1, backwards=0):
     % will go forwards); and changed it so that last min/max value will be 
     % assigned
 
-    edited for python by Ryan H 2022
+    edited for use in python by Ryan H 2022
     """
 
     maxtab = []
@@ -595,12 +602,11 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
     %                  position coverage percentage; at 60frames/s want at 
     %                  least 2cm/bin (default = 50bins; this works for 100+ cm 
     %                  track, as long as V_rest is in cm)
-    % outputs: startgoodlaps, stopgoodlaps: start and stop times of good lap 
-    %                                       periods
+    % outputs: 
     %          laps: a new laps struct, with the bad laps removed
     %
     % ZN 04/2011
-    Edited for python by Ryan H 2022
+    Edited for use in python by Ryan H 2022
     """
 
     if edgethresh > 1:    # % in case edgethresh is input as a percentage instead of a proportion
@@ -760,4 +766,4 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
             
             l = l+1
   
-    return startgoodlaps,stopgoodlaps,laps
+    return laps
