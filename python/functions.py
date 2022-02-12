@@ -6,6 +6,7 @@ from numba import jit
 from numba import int8
 from numba.typed import List
 from numba import typeof
+import sys
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -390,45 +391,35 @@ def get_significant_events(scores, shuffled_scores, q=95):
 
     return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues)
 
-def FindLapsNSMAadapted(Vts,Vdata,newLapThreshold=15):
-    # %
-    # % [laps, Vhs] = FindLaps_HorseShoe(V,newLapThreshold);
-    # %
-    # % Find Laps in "Horseshoe-Geometry" of a circular track
-    # %
-    # % INPUT:
-    # % V    ...  tsd of angular position in [0,360] degree range, with horsehoe
-    # %           opening at 0 degrees.
-    # %
-    # % newLapThreshold ... OPTIONAL endpoint proximity threshold in percent of track length (default = 15%);
-    # %                     whenever rat enters the proximity zone of e.g. 15% of tracklength near a horseshoe end, a new lap
-    # %                     is started and the maximum (or minimum) is searched
-    # %                     for a Lap-Top (around 360 end)  or Lap-Bottom (around 0 end).
-    # %
-    # % OUTPUT:
-    # % laps  .... 1*nLaps struct array with fields
-    # %   laps(i).start_ts  ... start timestamp of i-th lap (in 0.1 millisec
-    # %                              NSMA units)
-    # %   laps(i).pos       ... the value of input position V (in circle geometry not horseshoe!) at lap start point (in degrees)
-    # %   laps(i).start_idx ... the index of the new lap start frame in input V tsd
-    # %   laps(i).direction ... +1/-1 for up/down laps (with increasing/decreasing position in angle degrees)
-    # %
-    # %  Vhs ....  tsd nFrames*1 vector of position in horseshoe geometry, where
-    # %               negative direction laps are ranging from [-360,0] and positive direction
-    # %               laps are ranging from [0 360]. NOTE: there are discontinuous jumps at
-    # %               the horseshoe turn points around 0 degrees and around
-    # %               360/-360 degrees. NOTE2: nFrames = length(Data(V))
-    # %
-    # %
-    # %   Author: PL
-    # %   Version: 0.9  05/12/2005
-    # %   edited by Ryan Harvey to work with standard linear track
-
+def find_laps(Vts,Vdata,newLapThreshold=15):
+    """
+    % Find Laps in linear track 
+    %
+    % INPUT:
+    % Vts: timestamps
+    % Vdata: x coords 
+    %
+    % newLapThreshold ... OPTIONAL endpoint proximity threshold in percent of track length (default = 15%);
+    %                     whenever rat enters the proximity zone of e.g. 15% of tracklength near a end, a new lap
+    %                     is started and the maximum (or minimum) is searched
+    %                     for a Lap-Top  or Lap-Bottom (around 0 end).
+    %
+    % OUTPUT:
+    % laps  .... 1*nLaps struct array with fields
+    %   laps(i).start_ts  ... start timestamp of i-th lap
+    %   laps(i).pos       ... the value of input position V at lap start point
+    %   laps(i).start_idx ... the index of the new lap start frame in input V 
+    %   laps(i).direction ... +1/-1 for up/down laps 
+    %
+    %   Author: PL
+    %   Version: 0.9  05/12/2005
+    %   edited by Ryan Harvey to work with standard linear track
+    %   edited for python by Ryan h 2022
+    """
 
     TL = np.abs(np.nanmax(Vdata) - np.nanmin(Vdata))   #% track length in degrees
     th1= np.nanmin(Vdata) + TL*newLapThreshold / 100 #        % lower threshold for lower horeshoe end (degrees)
     th2 = np.nanmax(Vdata) - TL*newLapThreshold / 100 #      % upper threshold for upper horseshoe end (degrees)
-
 
     # % loop over all frames
     laps = pd.DataFrame()
@@ -494,33 +485,39 @@ def FindLapsNSMAadapted(Vts,Vdata,newLapThreshold=15):
     return laps
 
 def peakdetz(v, delta, lookformax=1, backwards=0):
-    # %PEAKDET Detect peaks in a vector
-    # %        [MAXTAB, MINTAB] = PEAKDETZ(V, DELTA, lookformax, backwards) finds 
-    # %        the local maxima and minima ("peaks") in the vector V.
-    # %        A point is considered a maximum peak if it has the maximal
-    # %        value, and was preceded (to the left) by a value lower by
-    # %        DELTA. MAXTAB and MINTAB consists of two columns. Column 1
-    # %        contains indices in V, and column 2 the found values.
-    # %
-    # % Eli Billauer, 3.4.05 (Explicitly not copyrighted).
-    # % This function is released to the public domain; Any use is allowed.
-    # %
-    # % ZN edit 04/2010: added option to specify looking for troughs or peaks
-    # % first (lookformax variable: if 1, will look for peaks first, if 0 will
-    # % look for troughs; default is look for peaks); and option to go backwards
-    # % (so that find last instance of a peak/trough value instead of the first
-    # % instance: backwards variable: if 1 will go backwards, if 0 or absent, 
-    # % will go forwards); and changed it so that last min/max value will be 
-    # % assigned
+    """
+    %PEAKDET Detect peaks in a vector
+    %        [MAXTAB, MINTAB] = PEAKDETZ(V, DELTA, lookformax, backwards) finds 
+    %        the local maxima and minima ("peaks") in the vector V.
+    %        A point is considered a maximum peak if it has the maximal
+    %        value, and was preceded (to the left) by a value lower by
+    %        DELTA. MAXTAB and MINTAB consists of two columns. Column 1
+    %        contains indices in V, and column 2 the found values.
+    %
+    % Eli Billauer, 3.4.05 (Explicitly not copyrighted).
+    % This function is released to the public domain; Any use is allowed.
+    %
+    % ZN edit 04/2010: added option to specify looking for troughs or peaks
+    % first (lookformax variable: if 1, will look for peaks first, if 0 will
+    % look for troughs; default is look for peaks); and option to go backwards
+    % (so that find last instance of a peak/trough value instead of the first
+    % instance: backwards variable: if 1 will go backwards, if 0 or absent, 
+    % will go forwards); and changed it so that last min/max value will be 
+    % assigned
+
+    edited for python by Ryan H 2022
+    """
 
     maxtab = []
     mintab = []
 
-    v = v[:] #% Just in case this wasn't a proper vector
+    v = np.asarray(v)
 
+    if not np.isscalar(delta):
+        sys.exit('Input argument delta must be a scalar')
+    
     if delta <= 0:
-        print('Input argument DELTA must be positive')
-        return
+        sys.exit('Input argument delta must be positive')
 
     if backwards == 0:
         inc = 1
@@ -552,7 +549,7 @@ def peakdetz(v, delta, lookformax=1, backwards=0):
                 idx = mx-delta>mintab
 
             if (this < mx-delta) | ((ii==last) & (len(mintab)>0) & idx):
-                maxtab = np.concatenate([maxtab , mxpos, mx])
+                maxtab.append((mxpos, mx))
                 mn = this
                 mnpos = ii
                 lookformax = 0
@@ -562,47 +559,49 @@ def peakdetz(v, delta, lookformax=1, backwards=0):
             except:
                 idx = mx-delta>maxtab
             if (this > mn+delta) | ((ii==last) & (len(maxtab)>0) & idx):
-                mintab = np.concatenate([maxtab , mxpos, mx])
+                mintab.append((mnpos, mn))
                 mx = this
                 mxpos = ii
                 lookformax = 1
 
-    if len([mintab,maxtab])==0:
+    if (len(maxtab)==0) & (len(mintab)==0):
         if lookformax:
             if mx-mn>delta:
-                maxtab=[mxpos, mx]
-            
+                maxtab = [mxpos, mx]
         else:
             if mx-mn>delta:
                 mintab = [mnpos, mn]
     return maxtab, mintab
 
-def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
-    # % [startgoodlaps, stopgoodlaps, laps] = 
-    # %        FindGoodLaps(V_rest,laps,edgethresh,completeprop,plotlaps,posbins)
-    # %
-    # % find and eliminate laps which have too many NaNs (because rat was off 
-    # % track), and parts of laps where rat turns around in middle of track
-    # % 
-    # % inputs: V_rest: V coordinates of rat with off track periods masked out 
-    # %                 (as NaNs)
-    # %         laps: struct with lap start and end times (generated by
-    # %               FindLaps_Horseshoe)
-    # %         edgethresh: threshold for detection of a turn around point 
-    # %                     (proportion of length of track) (default = 0.1)
-    # %         completeprop: the amount of lap that can be missing (NaNs) to
-    # %                       still be considered a lap (default = 0.2).
-    # %         plotlaps: flag for making plots of each lap, and pause for user
-    # %                   to hit key to continue (default = 1)
-    # %         posbins: number of bins to divide the track into to determine
-    # %                  position coverage percentage; at 60frames/s want at 
-    # %                  least 2cm/bin (default = 50bins; this works for 100+ cm 
-    # %                  track, as long as V_rest is in cm)
-    # % outputs: startgoodlaps, stopgoodlaps: start and stop times of good lap 
-    # %                                       periods
-    # %          laps: a new laps struct, with the bad laps removed
-    # %
-    # % ZN 04/2011
+def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
+    """
+    % [startgoodlaps, stopgoodlaps, laps] = 
+    %        find_good_laps(V_rest,laps,edgethresh,completeprop,posbins)
+    %
+    % find and eliminate laps which have too many NaNs (because rat was off 
+    % track), and parts of laps where rat turns around in middle of track
+    % 
+    % inputs: V_rest: V coordinates of rat with off track periods masked out 
+    %                 (as NaNs)
+    %         laps: struct with lap start and end times (generated by
+    %               find_laps)
+    %         edgethresh: threshold for detection of a turn around point 
+    %                     (proportion of length of track) (default = 0.1)
+    %         completeprop: the amount of lap that can be missing (NaNs) to
+    %                       still be considered a lap (default = 0.2).
+    %         plotlaps: flag for making plots of each lap, and pause for user
+    %                   to hit key to continue (default = 1)
+    %         posbins: number of bins to divide the track into to determine
+    %                  position coverage percentage; at 60frames/s want at 
+    %                  least 2cm/bin (default = 50bins; this works for 100+ cm 
+    %                  track, as long as V_rest is in cm)
+    % outputs: startgoodlaps, stopgoodlaps: start and stop times of good lap 
+    %                                       periods
+    %          laps: a new laps struct, with the bad laps removed
+    %
+    % ZN 04/2011
+    Edited for python by Ryan H 2022
+    """
 
     if edgethresh > 1:    # % in case edgethresh is input as a percentage instead of a proportion
         edgethresh = edgethresh / 100
@@ -618,7 +617,7 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
     stopgoodlaps = []
 
     l = 0
-    while l <= len(laps):
+    while l < len(laps)-1:
         #% select out just this lap
         if l == len(laps):
             endoflap = ts[-1]
@@ -667,7 +666,7 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                     if len(t) > 2:
                         t=t[0:2]
                         v=v[0:2]
-                elif peak(1,2) < topend-2*delta:
+                elif peak[1] < topend-2*delta:
                     #% this marks the lap for deleting
                     if len(t) > 5:
                         t=t[0:5]
@@ -691,7 +690,6 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                         # % this marks the lap for deleting
                         t=t[0:5]
                         v=v[0:5]
-                    
                 else:
                     et = len(trough)
                     if gt+1 > et:
@@ -710,7 +708,7 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                         t = t[0:2]
                         v = v[0:2]
                     
-                elif trough(1,2) > bottomend+2*delta:
+                elif trough[1] > bottomend+2*delta:
                     #% this marks the lap for deleting
                     if len(t) > 5:
                         t = t[0:5]
@@ -747,14 +745,18 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
         else: #% if lap is good
             #% store last lap end just in case have to delete this lap with next lap
             if len(stopgoodlaps) > 0:
-                lastlapend = stopgoodlaps(-1)
+                lastlapend = stopgoodlaps[-1]
             
             # % add this lap to goodlaps
-            if (len(stopgoodlaps)>0) & (stopgoodlaps[-1]==t[1]):
+            try:
+                idx = stopgoodlaps[-1]==t[0]
+            except:
+                idx = stopgoodlaps == t[0]
+            if (len(stopgoodlaps)>0) & (idx):
                 stopgoodlaps[-1] = t[-1]
             else:
-                startgoodlaps = [startgoodlaps, t[1]]
-                stopgoodlaps = [stopgoodlaps, t[-1]]
+                startgoodlaps.append(t[0])
+                stopgoodlaps.append(t[-1])
             
             l = l+1
   
