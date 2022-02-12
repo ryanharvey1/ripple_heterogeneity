@@ -518,22 +518,18 @@ def peakdetz(v, delta, lookformax=1, backwards=0):
 
     v = v[:] #% Just in case this wasn't a proper vector
 
-    if len(delta[:]) > 1:
-        print('Input argument DELTA must be a scalar')
-        return
-
     if delta <= 0:
         print('Input argument DELTA must be positive')
         return
 
     if backwards == 0:
         inc = 1
-        first = 1
+        first = 0
         last = len(v)
     elif backwards:
         inc = -1
         first = len(v)
-        last = 1
+        last = 0
 
     mn = np.inf
     mx = -np.inf
@@ -550,13 +546,22 @@ def peakdetz(v, delta, lookformax=1, backwards=0):
             mnpos = ii
     
         if lookformax:
-            if (this < mx-delta) | ((ii==last) & (len(mintab)>0) &( mx-delta>mintab[-1,1])):
+            try:
+                idx = mx-delta>mintab[-1]
+            except:
+                idx = mx-delta>mintab
+
+            if (this < mx-delta) | ((ii==last) & (len(mintab)>0) & idx):
                 maxtab = np.concatenate([maxtab , mxpos, mx])
                 mn = this
                 mnpos = ii
                 lookformax = 0
         else:
-            if (this > mn+delta) | ((ii==last) & (len(maxtab)>0) & (mn+delta<maxtab[-1,1])):
+            try:
+                idx = mx-delta>maxtab[-1]
+            except:
+                idx = mx-delta>maxtab
+            if (this > mn+delta) | ((ii==last) & (len(maxtab)>0) & idx):
                 mintab = np.concatenate([maxtab , mxpos, mx])
                 mx = this
                 mxpos = ii
@@ -569,7 +574,7 @@ def peakdetz(v, delta, lookformax=1, backwards=0):
             
         else:
             if mx-mn>delta:
-                mintab=[mnpos, mn]
+                mintab = [mnpos, mn]
     return maxtab, mintab
 
 def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
@@ -607,7 +612,7 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
 
     bottomend = np.nanmin(V_rest)
     topend = np.nanmax(V_rest)
-    bins = np.arange(bottomend,topend,(topend-bottomend)/posbins)
+    bins = np.arange(bottomend,topend+(topend-bottomend)/posbins,(topend-bottomend)/posbins)
     delta = (topend - bottomend)*edgethresh   #  % threshold for peak/trough detection
     startgoodlaps = []
     stopgoodlaps = []
@@ -620,8 +625,8 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
         else:
             endoflap = laps.iloc[l+1].start_ts
         
-        v = V_rest[np.where(ts == laps.iloc[l].start_ts):np.where(ts == endoflap)]
-        t = ts[np.where(ts==laps.iloc[l].start_ts):np.where(ts==endoflap)]
+        v = V_rest[np.where(ts == laps.iloc[l].start_ts)[0][0]:np.where(ts == endoflap)[0][0]]
+        t = ts[np.where(ts==laps.iloc[l].start_ts)[0][0]:np.where(ts==endoflap)[0][0]]
 
         #% find turn around points during this lap
         lookformax = laps.iloc[l].direction == 1
@@ -630,7 +635,7 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
         if lookformax:
         #% find the direct path from bottomend to topend (or mark lap for
         #% deleting if the turn around points are not in those ranges)
-            if len(trough)>0:
+            if len(trough) > 0:
                 #% find the last trough in range of bottomend (start of lap)
                 gt = len(trough)
                 while ((gt>0) & (trough(gt,2) >= 2*delta + bottomend)):
@@ -640,18 +645,18 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                 #% (or mark lap for deleting, if that peak is not at topend)
                 if gt == 0:
                     if (peak[1,2] > topend-2*delta):
-                        t = t[1:peak(1,1)]
-                        v = v[1:peak(1,1)]
+                        t = t[0:peak[0]]
+                        v = v[0:peak[0]]
                     else:
                         #% this marks the lap for deleting
-                        t = t[1:5]
-                        v = v[1:5]
+                        t = t[0:5]
+                        v = v[0:5]
                 else:
                     et = len(peak)
                     if (gt+1 > et):
-                        gt=0
-                        t=t[1:2]
-                        v=v[1:2]
+                        gt = 0
+                        t=t[0:2]
+                        v=v[0:2]
                     else:
                         t=t[trough[gt,1]:peak[gt+1,1]]
                         v=v[trough[gt,1]:peak[gt+1,1]]
@@ -660,13 +665,13 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
             #% make sure peak exists and is in range of topend
                 if len(peak) == 0:
                     if len(t) > 2:
-                        t=t[1:2]
-                        v=v[1:2]
+                        t=t[0:2]
+                        v=v[0:2]
                 elif peak(1,2) < topend-2*delta:
                     #% this marks the lap for deleting
                     if len(t) > 5:
-                        t=t[1:5]
-                        v=v[1:5]
+                        t=t[0:5]
+                        v=v[0:5]
                  
         else: # % if lookformax
         #% find the direct path from topend to bottomend (or mark lap for
@@ -680,18 +685,18 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                 # % (or mark lap for deleting, if that trough is not at bottomend)
                 if gt==0:
                     if trough(1,2)<bottomend+2*delta:
-                        t=t[1:trough(1,1)]
-                        v=v[1:trough(1,1)]
+                        t=t[1:trough[0]]
+                        v=v[1:trough[0]]
                     else:
                         # % this marks the lap for deleting
-                        t=t[1:5]
-                        v=v[1:5]
+                        t=t[0:5]
+                        v=v[0:5]
                     
                 else:
                     et = len(trough)
                     if gt+1 > et:
-                        t=t[1:2]
-                        v=v[1:2]
+                        t=t[0:2]
+                        v=v[0:2]
                         gt=0
                     else:
                         t=t[peak[gt,1]:trough[gt+1,1]]
@@ -702,20 +707,20 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                 if len(trough) == 0:
                  
                     if len(t)>2:
-                        t = t[1:2]
-                        v = v[1:2]
+                        t = t[0:2]
+                        v = v[0:2]
                     
                 elif trough(1,2) > bottomend+2*delta:
                     #% this marks the lap for deleting
                     if len(t) > 5:
-                        t = t[1:5]
-                        v = v[1:5]
+                        t = t[0:5]
+                        v = v[0:5]
                      
         vcovered,_ = np.histogram(v,bins=bins)
 
         if len(v) < 3:
         #% eliminate the lap if it is non-existent (as is sometimes the case for lap 1)
-            laps.drop(laps.index[l])
+            laps = laps.drop(laps.index[l])
          
         #% eliminate the lap if >completeprop of it is NaNs or if it has been marked for
         #% deleting above
@@ -724,7 +729,7 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
             #% remove the other lap from the lap pair
             if l % 2 == 0:
                 #% delete previous lap from laps
-                laps.drop(laps.index[l-1])
+                laps = laps.drop(laps.index[l-1])
              
                 #% change goodlaps markers to delete previous lap from laps
                 if len(stopgoodlaps) > 0:
@@ -737,7 +742,7 @@ def NSMAFindGoodLaps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                 l=l-1
             elif l<=len(laps) & l > 1:
                 #% delete next lap from laps
-                laps.drop(laps.index[l])
+                laps = laps.drop(laps.index[l])
               
         else: #% if lap is good
             #% store last lap end just in case have to delete this lap with next lap
