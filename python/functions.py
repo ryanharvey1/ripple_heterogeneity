@@ -7,6 +7,7 @@ from numba import int8
 from numba.typed import List
 from numba import typeof
 import sys
+import nelpy as nel
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -391,7 +392,8 @@ def get_significant_events(scores, shuffled_scores, q=95):
 
     return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues)
 
-def find_laps(Vts,Vdata,newLapThreshold=15,good_laps=True):
+def find_laps(Vts,Vdata,newLapThreshold=15,good_laps=True,
+                edgethresh=0.1,completeprop=0.2,posbins=50):
     """
     Find Laps in linear track 
 
@@ -420,7 +422,7 @@ def find_laps(Vts,Vdata,newLapThreshold=15,good_laps=True):
     edited by Ryan Harvey to work with standard linear track
     edited for use in python by Ryan h 2022
     """
-
+    
     TL = np.abs(np.nanmax(Vdata) - np.nanmin(Vdata))   #% track length
     th1= np.nanmin(Vdata) + TL*newLapThreshold / 100 #        % lower threshold for lower end
     th2 = np.nanmax(Vdata) - TL*newLapThreshold / 100 #      % upper threshold for upper end
@@ -487,7 +489,12 @@ def find_laps(Vts,Vdata,newLapThreshold=15,good_laps=True):
             break
 
     if good_laps:
-        laps = find_good_laps(Vts,Vdata,laps)
+        laps = find_good_laps(Vts,
+                            Vdata,
+                            laps,
+                            edgethresh=edgethresh,
+                            completeprop=completeprop,
+                            posbins=posbins)
 
     return laps
 
@@ -767,3 +774,38 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
             l = l+1
   
     return laps
+
+def get_linear_track_lap_epochs(ts,x,newLapThreshold=15,
+                                good_laps=True,edgethresh=0.1,
+                                completeprop=0.2,posbins=50):
+
+    """
+    get_linear_track_lap_epochs: def that calls find_laps and outputs nelpy epochs
+        for out and inbound running directions
+    """
+    laps = find_laps(np.array(ts),
+                    np.array(x),
+                    newLapThreshold=newLapThreshold,
+                    good_laps=good_laps,
+                    edgethresh=edgethresh,
+                    completeprop=completeprop,
+                    posbins=posbins)    
+
+    outbound_start = []
+    outbound_stop = []
+    inbound_start = []
+    inbound_stop = []
+
+    for i in range(len(laps)-1):
+        if laps.iloc[i].direction == 1:
+            outbound_start.append(laps.iloc[i].start_ts)
+            outbound_stop.append(laps.iloc[i+1].start_ts)
+
+        if laps.iloc[i].direction == -1:
+            inbound_start.append(laps.iloc[i].start_ts)
+            inbound_stop.append(laps.iloc[i+1].start_ts)
+
+    outbound_epochs = nel.EpochArray([np.array([outbound_start,outbound_stop]).T])
+    inbound_epochs = nel.EpochArray([np.array([inbound_start,inbound_stop]).T])
+    
+    return outbound_epochs,inbound_epochs
