@@ -462,8 +462,6 @@ def run_all(
         temp_df['traj_speed'] = traj_speed
         temp_df['traj_step'] = traj_step
         temp_df['replay_type'] = replay_type
-        temp_df['dist_rat_start'] = dist_rat_start
-        temp_df['dist_rat_end'] = dist_rat_end
         results[direction_str[dir_i]]['df'] = temp_df
 
         results[direction_str[dir_i]]['session'] = basepath
