@@ -537,17 +537,19 @@ def peakdetz(v, delta, lookformax=1, backwards=0):
         inc = 1
         first = 0
         last = len(v)
+        iter_ = np.arange(first,last,inc)
     elif backwards:
         inc = -1
         first = len(v)
         last = 0
+        iter_ = np.arange(first,last,inc)
 
     mn = np.inf
     mx = -np.inf
     mnpos = np.nan
     mxpos = np.nan
 
-    for ii in np.arange(first,last,inc):
+    for ii in iter_:
         this = v[ii]
         if this > mx:
             mx = this
@@ -562,17 +564,17 @@ def peakdetz(v, delta, lookformax=1, backwards=0):
             except:
                 idx = mx-delta>mintab
 
-            if (this < mx-delta) | ((ii==last) & (len(mintab)>0) & idx):
+            if (this < mx-delta) | ((ii==last-1) & (len(mintab)>0) & idx):
                 maxtab.append((mxpos, mx))
                 mn = this
                 mnpos = ii
                 lookformax = 0
         else:
             try:
-                idx = mx-delta>maxtab[-1]
+                idx = mx-delta<maxtab[-1]
             except:
-                idx = mx-delta>maxtab
-            if (this > mn+delta) | ((ii==last) & (len(maxtab)>0) & idx):
+                idx = mx-delta<maxtab
+            if (this > mn+delta) | ((ii==last-1) & (len(maxtab)>0) & idx):
                 mintab.append((mnpos, mn))
                 mx = this
                 mxpos = ii
@@ -776,7 +778,7 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
     return laps
 
 def get_linear_track_lap_epochs(ts,x,newLapThreshold=15,
-                                good_laps=True,edgethresh=0.1,
+                                good_laps=False,edgethresh=0.1,
                                 completeprop=0.2,posbins=50):
 
     """
