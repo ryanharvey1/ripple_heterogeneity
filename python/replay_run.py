@@ -236,6 +236,8 @@ def get_features(bst_placecells,
             replay_type.append('reverse')
         elif (velocity < 0) & (outbound == False):
             replay_type.append('forward')
+        else:
+            replay_type.append('unknown')
 
     return traj_dist,traj_speed,traj_step,replay_type,position
 
@@ -362,6 +364,9 @@ def run_all(
 
     # iter through both running directions
     results = {}
+    results['outbound_epochs'] = {}
+    results['inbound_epochs'] = {}
+
     direction_str = ['outbound_epochs','inbound_epochs']
     for dir_i,dir_epoch in enumerate([outbound_epochs,inbound_epochs]):
 
@@ -406,7 +411,7 @@ def run_all(
         # restrict to instances with >= 5 active units
         n_active = n_active[idx]
         inactive_bin_prop = inactive_bin_prop[idx]
-        ripples = ripples[idx]
+        current_ripples = ripples[idx]
 
         # decode each ripple event
         posteriors, bdries, mode_pth, mean_pth = nel.decoding.decode1D(bst_placecells,
@@ -448,7 +453,7 @@ def run_all(
         results[direction_str[dir_i]]['mode_pth'] = mode_pth
         results[direction_str[dir_i]]['position'] = position
         
-        temp_df = ripples.copy()
+        temp_df = current_ripples.copy()
         # add event by event metrics to df
         temp_df['n_active'] = n_active
         temp_df['inactive_bin_prop'] = inactive_bin_prop
