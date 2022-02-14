@@ -4,6 +4,8 @@ import nelpy as nel
 import nelpy.plotting as npl
 from nelpy.analysis import replay
 
+import functions
+
 import os
 import matplotlib.pyplot as plt
 
@@ -254,17 +256,26 @@ def get_features(bst_placecells,
 
     return traj_dist,traj_speed,traj_step,replay_type,dist_rat_start,dist_rat_end,position
 
-def handle_behavior(basepath,epoch_df):
+def handle_behavior(basepath,epoch_df,beh_epochs):
     beh_df = loading.load_animal_behavior(basepath)
-    # make min pos 0
-    beh_df.linearized = beh_df.linearized - np.nanmin(beh_df.linearized)
 
-    beh_df = beh_df[~np.isnan(beh_df.linearized)]
-
+    # find linear track
+    idx = np.where(epoch_df.environment == 'linear')[0]
+    beh_epochs_linear = beh_epochs[idx]
+    # make position array
     pos = nel.AnalogSignalArray(data=np.array(beh_df.linearized),
-                                timestamps=beh_df.time,
-                                fs=1/statistics.mode(np.diff(beh_df.time)))
-    return pos
+                            timestamps=beh_df.time,
+                            fs=1/statistics.mode(np.diff(beh_df.time)))
+    # only include linear track                        
+    pos = pos[beh_epochs_linear]      
+
+    # make min pos 0
+    pos.data = pos.data - np.nanmin(pos.data)
+
+    # get outbound and inbound epochs
+    outbound_epochs,inbound_epochs = functions.get_linear_track_lap_epochs(pos.abscissa_vals, pos.data[0])
+
+    return pos,outbound_epochs,inbound_epochs
 
 def run_all(
     basepath, # basepath to session
@@ -310,8 +321,7 @@ def run_all(
     epoch_df = epoch_df[(epoch_df.stopTime - epoch_df.startTime)/60 > 5]
     beh_epochs = nel.EpochArray([np.array([epoch_df.startTime,epoch_df.stopTime]).T])
 
-    pos = handle_behavior(basepath,epoch_df)
-    pos = pos[beh_epochs[0]]
+    pos,outbound_epochs,inbound_epochs = handle_behavior(basepath,epoch_df,beh_epochs)
 
     # compute and smooth speed
     speed1 = nel.utils.ddt_asa(pos, smooth=True, sigma=0.1, norm=True)
