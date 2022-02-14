@@ -178,7 +178,6 @@ def get_features(bst_placecells,
                  bdries,
                  mode_pth,
                  pos,
-                 figs=False,
                  dp=3):
     """
     Using the posterior probability matrix, calculate several features on spatial trajectory
@@ -195,6 +194,19 @@ def get_features(bst_placecells,
     dist_rat_start = []
     dist_rat_end = []
     position = []
+
+    # find direction of movement from position
+    x_slope = []
+    for p in pos:
+        good_idx = ~np.isnan(p.data[0])
+        cur_x = p.data[0][good_idx]
+        b1,_,_,_,_ = stats.linregress(np.arange(len(cur_x)), cur_x)
+        x_slope.append(b1)
+    # if the majority (>.5) of laps have x coords that increase (positive slopes)
+    if np.mean(np.array(x_slope)>0) > .5:
+        outbound = True
+    else:
+        outbound = False
 
     for idx in range(bst_placecells.n_epochs):
 
@@ -216,45 +228,16 @@ def get_features(bst_placecells,
         # get mean step size 
         traj_step.append(np.nanmean(dy))
         
-        # check if current event is outside beh epoch
-        if all(x.max() < pos.abscissa_vals) | all(x.min() > pos.abscissa_vals):
-            replay_type.append(np.nan)
-            dist_rat_start.append(np.nan)
-            dist_rat_end.append(np.nan)
-            continue
-
-        rat_event_pos = np.interp(x,pos.abscissa_vals,pos.data[0])
-        rat_x_position = np.nanmean(rat_event_pos)
-
-        # get dist of the start & end of trajectory to rat
-        dist_rat_start.append(rat_x_position - y[0])
-        dist_rat_end.append(rat_x_position - y[-1])
-
-        # what side of the track is the rat on ? 
-        min_max_env = [np.nanmin(pos.data[0]),np.nanmax(pos.data[0])]
-        side = np.argmin(np.abs(min_max_env- rat_x_position))
-
-        if (side == 1) & (velocity < 0):
+        if (velocity > 0) & (outbound == True):
             replay_type.append('forward')
-        elif (side == 1) & (velocity > 0):
+        elif (velocity < 0) & (outbound == True):
             replay_type.append('reverse')
-        elif (side == 0) & (velocity < 0):
+        elif (velocity > 0) & (outbound == False):
             replay_type.append('reverse')
-        elif (side == 0) & (velocity > 0):
+        elif (velocity < 0) & (outbound == False):
             replay_type.append('forward')
-        else:
-            replay_type.append(np.nan)
 
-        if figs:
-            fig = plt.figure(figsize=(4,3))
-            ax = plt.gca()
-            npl.plot(x,rat_event_pos,"^",color='brown',linewidth=10,ax=ax)
-            ax.plot(x,y,'k',linewidth=2)
-            ax.scatter(x[0],y[0],color='g')
-            ax.scatter(x[-1],y[-1],color='r')
-            ax.set_title(replay_type[idx])
-
-    return traj_dist,traj_speed,traj_step,replay_type,dist_rat_start,dist_rat_end,position
+    return traj_dist,traj_speed,traj_step,replay_type,position
 
 def handle_behavior(basepath,epoch_df,beh_epochs):
     beh_df = loading.load_animal_behavior(basepath)
@@ -276,6 +259,54 @@ def handle_behavior(basepath,epoch_df,beh_epochs):
     outbound_epochs,inbound_epochs = functions.get_linear_track_lap_epochs(pos.abscissa_vals, pos.data[0])
 
     return pos,outbound_epochs,inbound_epochs
+
+def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,ds_run,s_binsize,tuning_curve_sigma):
+    # compute and smooth speed
+    speed1 = nel.utils.ddt_asa(pos[dir_epoch], smooth=True, sigma=0.1, norm=True)
+ 
+    # find epochs where the animal ran > 4cm/sec
+    run_epochs = nel.utils.get_run_epochs(speed1, v1=speed_thres, v2=speed_thres)
+
+    # restrict spike trains to those epochs during which the animal was running
+    st_run = st_all[dir_epoch][run_epochs] 
+    
+    # smooth and re-bin:
+    # 300 ms spike smoothing
+    bst_run = st_run.bin(ds=ds_50ms).smooth(sigma=0.3 , inplace=True).rebin(w=ds_run/ds_50ms)
+
+    n_bins = int((np.nanmax(pos[dir_epoch].data)-np.nanmin(pos[dir_epoch].data))/s_binsize)
+
+    tc = nel.TuningCurve1D(bst=bst_run, 
+                            extern=pos[dir_epoch],
+                            n_extern=n_bins,
+                            extmin=np.nanmin(pos[dir_epoch].data),
+                            extmax=np.nanmax(pos[dir_epoch].data),
+                            sigma=tuning_curve_sigma,
+                            min_duration=0)
+    return tc,st_run,bst_run
+
+def restrict_to_place_cells(tc,st_run,bst_run,st_all,cell_metrics,place_cell_min_spks,place_cell_min_rate,place_cell_peak_mean_ratio):
+    # locate pyr cells with >= 100 spikes, peak rate >= 1 Hz, peak/mean ratio >=1.5
+    peak_firing_rates = tc.max(axis=1)
+    mean_firing_rates = tc.mean(axis=1)
+    ratio = peak_firing_rates/mean_firing_rates
+  
+    idx = (
+        (st_run.n_events >= place_cell_min_spks) &
+        (tc.ratemap.max(axis=1) >= place_cell_min_rate) &
+        (ratio >= place_cell_peak_mean_ratio)
+    )
+    unit_ids_to_keep = (np.where(idx)[0]+1).squeeze().tolist()
+
+    sta_placecells = st_all._unit_subset(unit_ids_to_keep)
+    tc = tc._unit_subset(unit_ids_to_keep)
+    total_units = sta_placecells.n_active
+    bst_run = bst_run.loc[:,unit_ids_to_keep]
+
+    # restrict cell_metrics to place cells
+    cell_metrics_ = cell_metrics[idx]
+
+    return sta_placecells,tc,bst_run,cell_metrics_,total_units
 
 def run_all(
     basepath, # basepath to session
@@ -316,153 +347,130 @@ def run_all(
 
     epoch_df = loading.load_epoch(basepath)
     # remove sleep and wheel running
-    epoch_df = epoch_df[(epoch_df.environment != 'sleep') & (epoch_df.environment != 'wheel')]
+    # epoch_df = epoch_df[(epoch_df.environment != 'sleep') & (epoch_df.environment != 'wheel')]
     # remove sessions < 5 minutes
     epoch_df = epoch_df[(epoch_df.stopTime - epoch_df.startTime)/60 > 5]
     beh_epochs = nel.EpochArray([np.array([epoch_df.startTime,epoch_df.stopTime]).T])
 
     pos,outbound_epochs,inbound_epochs = handle_behavior(basepath,epoch_df,beh_epochs)
 
-    # compute and smooth speed
-    speed1 = nel.utils.ddt_asa(pos, smooth=True, sigma=0.1, norm=True)
- 
-    # find epochs where the animal ran > 4cm/sec
-    run_epochs = nel.utils.get_run_epochs(speed1, v1=speed_thres, v2=speed_thres)
-
-    # restrict spike trains to those epochs during which the animal was running
-    st_run = st_all[beh_epochs[0]][run_epochs] 
-    
-    # smooth and re-bin:
-    # 300 ms spike smoothing
-    bst_run = st_run.bin(ds=ds_50ms).smooth(sigma=0.3 , inplace=True).rebin(w=ds_run/ds_50ms)
-
-    tc = nel.TuningCurve1D(bst=bst_run, 
-                            extern=pos,
-                            n_extern=int((np.nanmax(pos.data)-np.nanmin(pos.data))/s_binsize),
-                            extmin=np.nanmin(pos.data),
-                            extmax=np.nanmax(pos.data),
-                            sigma=tuning_curve_sigma,
-                            min_duration=0)
-
-    # locate pyr cells with >= 100 spikes, peak rate >= 1 Hz, peak/mean ratio >=1.5
-    peak_firing_rates = tc.max(axis=1)
-    mean_firing_rates = tc.mean(axis=1)
-    ratio = peak_firing_rates/mean_firing_rates
-  
-    idx = (
-        (st_run.n_events >= place_cell_min_spks) &
-        (tc.ratemap.max(axis=1) >= place_cell_min_rate) &
-        (ratio >= place_cell_peak_mean_ratio)
-    )
-    unit_ids_to_keep = (np.where(idx)[0]+1).squeeze().tolist()
-
-    sta_placecells = st_all._unit_subset(unit_ids_to_keep)
-    tc = tc._unit_subset(unit_ids_to_keep)
-    total_units = sta_placecells.n_active
-    bst_run = bst_run.loc[:,unit_ids_to_keep]
-
-    # restrict cell_metrics to place cells
-    cell_metrics = cell_metrics[idx]
-
-    # access decoding accuracy on behavioral time scale 
-    decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(bst_run,
-                                                                        tc,
-                                                                        pos,
-                                                                        n_shuffles=traj_shuff)
-    # check decoding quality against chance distribution
-    _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
-    
-    # get ready to decode replay
     # restrict to events at least xx s long
     ripples = ripples[ripples.duration >= min_rip_dur]
-    
+
     # make epoch object
     ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
 
-    # bin data for replay (20ms default) 
-    bst_placecells = sta_placecells[ripple_epochs].bin(ds=replay_binsize)
-
-    # count units per event
-    n_active = [bst.n_active for bst in bst_placecells]
-    n_active = np.array(n_active) 
-    # also count the proportion of bins in each event with 0 activity
-    inactive_bin_prop = [sum(bst.n_active_per_bin == 0) / bst.lengths[0] for bst in bst_placecells]
-    inactive_bin_prop = np.array(inactive_bin_prop) 
-    # restrict bst to instances with >= 5 active units and < 50% inactive bins
-    idx = (n_active >= 5) & (inactive_bin_prop < .5)
-    bst_placecells = bst_placecells[np.where(idx)[0]]
-    # restrict to instances with >= 5 active units
-    n_active = n_active[idx]
-    inactive_bin_prop = inactive_bin_prop[idx]
-    ripples = ripples[idx]
-
-    # decode each ripple event
-    posteriors, bdries, mode_pth, mean_pth = nel.decoding.decode1D(bst_placecells,
-                                                                    tc,
-                                                                    xmin=np.nanmin(pos.data),
-                                                                    xmax=np.nanmax(pos.data))
-            
-    # score each event using trajectory_score_bst (sums the posterior probability in a range (w) from the LS line)
-    scores, scores_time_swap, scores_col_cycle = replay.trajectory_score_bst(bst_placecells,
-                                                                                tc,
-                                                                                w=3,
-                                                                                n_shuffles=traj_shuff,
-                                                                                normalize=True)
-    
-    # find sig events using time and column shuffle distributions
-    _,score_pval_time_swap = get_significant_events(scores, scores_time_swap)
-    _,score_pval_col_cycle = get_significant_events(scores, scores_col_cycle)
-
-    (
-        traj_dist,
-        traj_speed,
-        traj_step,
-        replay_type,
-        dist_rat_start,
-        dist_rat_end,
-        position
-    ) = get_features(bst_placecells,posteriors,bdries,mode_pth,pos)
-    
-    slope, intercept, r2values = replay.linregress_bst(bst_placecells, tc)
-
-    # package data into results dictionary
+    # iter through both running directions
     results = {}
+    direction_str = ['outbound_epochs','inbound_epochs']
+    for dir_i,dir_epoch in enumerate([outbound_epochs,inbound_epochs]):
 
-    results['cell_metrics'] = cell_metrics
+        # construct tuning curves
+        tc,st_run,bst_run = get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,ds_run,s_binsize,tuning_curve_sigma)
+        
+        # locate pyr cells with >= 100 spikes, peak rate >= 1 Hz, peak/mean ratio >=1.5
+        (sta_placecells,
+        tc,
+        bst_run,
+        cell_metrics_,
+        total_units) = restrict_to_place_cells(tc,
+                                                st_run,
+                                                bst_run,
+                                                st_all,
+                                                cell_metrics,
+                                                place_cell_min_spks,
+                                                place_cell_min_rate,
+                                                place_cell_peak_mean_ratio)
 
-    results['sta_placecells'] = sta_placecells
-    results['bst_placecells'] = bst_placecells
-    results['bst_run'] = bst_run
-    results['pos'] = pos
-    results['tc'] = tc
-    results['posteriors'] = posteriors
-    results['bdries'] = bdries
-    results['mode_pth'] = mode_pth
-    results['position'] = position
+        # access decoding accuracy on behavioral time scale 
+        decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(bst_run,
+                                                                            tc,
+                                                                            pos[dir_epoch],
+                                                                            n_shuffles=traj_shuff)
+        # check decoding quality against chance distribution
+        _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
     
-    temp_df = ripples.copy()
-    # add event by event metrics to df
-    temp_df['n_active'] = n_active
-    temp_df['inactive_bin_prop'] = inactive_bin_prop
-    temp_df['trajectory_score'] = scores
-    temp_df['r_squared'] = r2values
-    temp_df['slope'] = slope
-    temp_df['intercept'] = intercept
-    temp_df['score_pval_time_swap'] = score_pval_time_swap
-    temp_df['score_pval_col_cycle'] = score_pval_col_cycle
-    temp_df['traj_dist'] = traj_dist
-    temp_df['traj_speed'] = traj_speed
-    temp_df['traj_step'] = traj_step
-    temp_df['replay_type'] = replay_type
-    temp_df['dist_rat_start'] = dist_rat_start
-    temp_df['dist_rat_end'] = dist_rat_end
-    results['df'] = temp_df
+        # get ready to decode replay
+        # bin data for replay (20ms default) 
+        bst_placecells = sta_placecells[ripple_epochs].bin(ds=replay_binsize)
 
-    results['session'] = basepath
-    results['decoding_r2'] = decoding_r2
-    results['decoding_r2_pval'] = decoding_r2_pval
-    results['decoding_median_error'] = median_error
-    results['total_units'] = total_units
+        # count units per event
+        n_active = [bst.n_active for bst in bst_placecells]
+        n_active = np.array(n_active) 
+        # also count the proportion of bins in each event with 0 activity
+        inactive_bin_prop = [sum(bst.n_active_per_bin == 0) / bst.lengths[0] for bst in bst_placecells]
+        inactive_bin_prop = np.array(inactive_bin_prop) 
+        # restrict bst to instances with >= 5 active units and < 50% inactive bins
+        idx = (n_active >= 5) & (inactive_bin_prop < .5)
+        bst_placecells = bst_placecells[np.where(idx)[0]]
+        # restrict to instances with >= 5 active units
+        n_active = n_active[idx]
+        inactive_bin_prop = inactive_bin_prop[idx]
+        ripples = ripples[idx]
+
+        # decode each ripple event
+        posteriors, bdries, mode_pth, mean_pth = nel.decoding.decode1D(bst_placecells,
+                                                                        tc,
+                                                                        xmin=np.nanmin(pos[dir_epoch].data),
+                                                                        xmax=np.nanmax(pos[dir_epoch].data))
+                
+        # score each event using trajectory_score_bst (sums the posterior probability in a range (w) from the LS line)
+        scores, scores_time_swap, scores_col_cycle = replay.trajectory_score_bst(bst_placecells,
+                                                                                    tc,
+                                                                                    w=3,
+                                                                                    n_shuffles=traj_shuff,
+                                                                                    normalize=True)
+        
+        # find sig events using time and column shuffle distributions
+        _,score_pval_time_swap = get_significant_events(scores, scores_time_swap)
+        _,score_pval_col_cycle = get_significant_events(scores, scores_col_cycle)
+
+        (
+            traj_dist,
+            traj_speed,
+            traj_step,
+            replay_type,
+            position
+        ) = get_features(bst_placecells,posteriors,bdries,mode_pth,pos[dir_epoch],dp=s_binsize)
+        
+        slope, intercept, r2values = replay.linregress_bst(bst_placecells, tc)
+
+        # package data into results dictionary
+        results[direction_str[dir_i]]['cell_metrics'] = cell_metrics_
+
+        results[direction_str[dir_i]]['sta_placecells'] = sta_placecells
+        results[direction_str[dir_i]]['bst_placecells'] = bst_placecells
+        results[direction_str[dir_i]]['bst_run'] = bst_run
+        results[direction_str[dir_i]]['pos'] = pos[dir_epoch]
+        results[direction_str[dir_i]]['tc'] = tc
+        results[direction_str[dir_i]]['posteriors'] = posteriors
+        results[direction_str[dir_i]]['bdries'] = bdries
+        results[direction_str[dir_i]]['mode_pth'] = mode_pth
+        results[direction_str[dir_i]]['position'] = position
+        
+        temp_df = ripples.copy()
+        # add event by event metrics to df
+        temp_df['n_active'] = n_active
+        temp_df['inactive_bin_prop'] = inactive_bin_prop
+        temp_df['trajectory_score'] = scores
+        temp_df['r_squared'] = r2values
+        temp_df['slope'] = slope
+        temp_df['intercept'] = intercept
+        temp_df['score_pval_time_swap'] = score_pval_time_swap
+        temp_df['score_pval_col_cycle'] = score_pval_col_cycle
+        temp_df['traj_dist'] = traj_dist
+        temp_df['traj_speed'] = traj_speed
+        temp_df['traj_step'] = traj_step
+        temp_df['replay_type'] = replay_type
+        temp_df['dist_rat_start'] = dist_rat_start
+        temp_df['dist_rat_end'] = dist_rat_end
+        results[direction_str[dir_i]]['df'] = temp_df
+
+        results[direction_str[dir_i]]['session'] = basepath
+        results[direction_str[dir_i]]['decoding_r2'] = decoding_r2
+        results[direction_str[dir_i]]['decoding_r2_pval'] = decoding_r2_pval
+        results[direction_str[dir_i]]['decoding_median_error'] = median_error
+        results[direction_str[dir_i]]['total_units'] = total_units
 
     return results
 
