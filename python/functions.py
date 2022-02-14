@@ -311,7 +311,7 @@ def find_sig_assemblies(patterns):
         isMember,_,_ = Otsu(np.abs(pat))
         is_member.append(isMember)
 
-        if any(pat[isMember] < 0) & any(pat[isMember] > 0):
+        if np.any(pat[isMember] < 0) & np.any(pat[isMember] > 0):
             keep_assembly.append(False)
         elif sum(isMember) == 0:
             keep_assembly.append(False)
@@ -480,7 +480,7 @@ def find_laps(Vts,Vdata,newLapThreshold=15,good_laps=True,
             positions = np.arange(laps.iloc[i].pos,laps.iloc[i+1].pos)
         except:
             positions = [np.nan,np.nan]
-        if (any(positions > middle) == True) & (any(positions < middle) == False):
+        if (np.any(positions > middle) == True) & (np.any(positions < middle) == False):
             laps = laps.drop(laps.index[i+1])
         i = i+1
         if i+1 >= len(laps.pos):
