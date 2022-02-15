@@ -262,7 +262,7 @@ def handle_behavior(basepath,epoch_df,beh_epochs):
 
     return pos,outbound_epochs,inbound_epochs
 
-def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,ds_run,s_binsize,tuning_curve_sigma):
+def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_curve_sigma):
     # compute and smooth speed
     speed1 = nel.utils.ddt_asa(pos[dir_epoch], smooth=True, sigma=0.1, norm=True)
  
@@ -273,16 +273,18 @@ def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,ds_run,s_binsize,
     st_run = st_all[dir_epoch][run_epochs] 
     
     # smooth and re-bin:
-    # 300 ms spike smoothing
-    bst_run = st_run.bin(ds=ds_50ms).smooth(sigma=0.3 , inplace=True).rebin(w=ds_run/ds_50ms)
+    bst_run = st_run.bin(ds=ds_50ms)
+    
+    x_max = np.ceil(np.nanmin(pos[dir_epoch].data))
+    x_min = np.floor(np.nanmin(pos[dir_epoch].data))
 
-    n_bins = int((np.nanmax(pos[dir_epoch].data)-np.nanmin(pos[dir_epoch].data))/s_binsize)
+    n_bins = int((x_max - x_min) / s_binsize)
 
     tc = nel.TuningCurve1D(bst=bst_run, 
                             extern=pos[dir_epoch],
                             n_extern=n_bins,
-                            extmin=np.nanmin(pos[dir_epoch].data),
-                            extmax=np.nanmax(pos[dir_epoch].data),
+                            extmin=x_min,
+                            extmax=x_max,
                             sigma=tuning_curve_sigma,
                             min_duration=0)
     return tc,st_run,bst_run
@@ -313,7 +315,6 @@ def restrict_to_place_cells(tc,st_run,bst_run,st_all,cell_metrics,place_cell_min
 def run_all(
     basepath, # basepath to session
     traj_shuff=1500, # number of shuffles to determine sig replay
-    ds_run=0.5,
     ds_50ms=0.05,
     s_binsize=3, # spatial bins in tuning curve
     speed_thres=4, # running threshold to determine tuning curves
@@ -371,7 +372,7 @@ def run_all(
     for dir_i,dir_epoch in enumerate([outbound_epochs,inbound_epochs]):
 
         # construct tuning curves
-        tc,st_run,bst_run = get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,ds_run,s_binsize,tuning_curve_sigma)
+        tc,st_run,bst_run = get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_curve_sigma)
         
         # locate pyr cells with >= 100 spikes, peak rate >= 1 Hz, peak/mean ratio >=1.5
         (sta_placecells,
