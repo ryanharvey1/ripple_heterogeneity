@@ -275,7 +275,7 @@ def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_
     # smooth and re-bin:
     bst_run = st_run.bin(ds=ds_50ms)
     
-    x_max = np.ceil(np.nanmin(pos[dir_epoch].data))
+    x_max = np.ceil(np.nanmax(pos[dir_epoch].data))
     x_min = np.floor(np.nanmin(pos[dir_epoch].data))
 
     n_bins = int((x_max - x_min) / s_binsize)
