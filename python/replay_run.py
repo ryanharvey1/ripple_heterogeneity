@@ -315,7 +315,7 @@ def restrict_to_place_cells(tc,st_run,bst_run,st_all,cell_metrics,place_cell_min
 def run_all(
     basepath, # basepath to session
     traj_shuff=1500, # number of shuffles to determine sig replay
-    ds_50ms=0.05,
+    ds_50ms=0.05, # bin width to bin st for tuning curve
     s_binsize=3, # spatial bins in tuning curve
     speed_thres=4, # running threshold to determine tuning curves
     min_rip_dur=0.08, # min ripple duration for replay
