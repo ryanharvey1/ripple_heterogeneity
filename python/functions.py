@@ -328,7 +328,7 @@ def get_participation_(st,event_starts,event_stops):
     for rip in range(len(event_starts)):
         for i,s in enumerate(st):
             idx = (s >= event_starts[rip]) & (s <= event_stops[rip])
-            unit_mat[i,rip] = sum(idx) > 0
+            unit_mat[i,rip] = sum(idx)
     return unit_mat 
 
 def fix_array_or_list(l, dtype=None):
@@ -345,15 +345,25 @@ def fix_array_or_list(l, dtype=None):
         new_list.append(x)
     return new_list
 
-def get_participation(st,event_starts,event_stops):
+def get_participation(st,event_starts,event_stops,par_type='binary'):
     """
     get participation prob.
     make matrix n rows (units) by n cols (ripple epochs)
     Input:
         st: spike train nelpy object that is epoched by ripples
         ripple_epochs: ripple events in nelpy epoch object 
+        par_type: participation type (counts, binary, firing_rate)
     """
-    return get_participation_(fix_array_or_list(list(st)),event_starts,event_stops)
+    unit_mat = get_participation_(fix_array_or_list(list(st)),event_starts,event_stops)
+    
+    if par_type == 'counts':
+        pass
+    elif par_type == 'binary':
+        unit_mat = (unit_mat > 0)*1 
+    elif par_type == 'firing_rate':
+        unit_mat = unit_mat / (event_stops - event_starts)
+        
+    return unit_mat
 
 def get_significant_events(scores, shuffled_scores, q=95):
     """Return the significant events based on percentiles.
