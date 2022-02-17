@@ -4,7 +4,8 @@ import pandas as pd
 import numpy as np
 import glob
 import warnings
-
+from warnings import simplefilter
+simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 def loadXML(basepath):
     """
