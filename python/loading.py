@@ -22,11 +22,10 @@ def loadXML(basepath):
 
     by Guillaume Viejo    
     """
-
-    filename = glob.glob(os.path.join(basepath,'*.xml'))[0]
-
     # check if saved file exists
-    if not os.path.exists(filename):
+    try:
+        filename = glob.glob(os.path.join(basepath,'*.xml'))[0]
+    except:
         warnings.warn("file does not exist")
         return 
 
@@ -275,13 +274,12 @@ def load_SWRunitMetrics(basepath):
         df2['epoch'] = epoch
         return df2
 
-    filename = glob.glob(os.path.join(basepath,'*.SWRunitMetrics.mat'))[0]
-
-    # check if saved file exists
-    if not os.path.exists(filename):
+    try:
+        filename = glob.glob(os.path.join(basepath,'*.SWRunitMetrics.mat'))[0]
+    except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
-
+        
     # load file
     data = sio.loadmat(filename)
 
@@ -323,10 +321,9 @@ def load_ripples_events(basepath):
     """
 
     # locate .mat file
-    filename = glob.glob(basepath+os.sep+'*ripples.events.mat')[0]
-
-    # check if saved file exists
-    if not os.path.exists(filename):
+    try:
+        filename = glob.glob(basepath+os.sep+'*ripples.events.mat')[0]
+    except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
 
@@ -393,12 +390,7 @@ def load_theta_rem_shift(basepath):
     try:
         filename = glob.glob(basepath+os.sep+'*theta_rem_shift.mat')[0]
     except:
-        # warnings.warn("file does not exist")
-        return pd.DataFrame(),np.nan
-
-    # check if saved file exists
-    if not os.path.exists(filename):
-        # warnings.warn("file does not exist")
+        warnings.warn("file does not exist")
         return pd.DataFrame(),np.nan
 
     data = sio.loadmat(filename)
@@ -457,10 +449,9 @@ def load_SleepState_states(basepath):
     TODO: extract more from file, this extracts the basics for now.
 
     """
-    filename = glob.glob(os.path.join(basepath,'*.SleepState.states.mat'))[0]
-    
-    # check if saved file exists
-    if not os.path.exists(filename):
+    try:
+        filename = glob.glob(os.path.join(basepath,'*.SleepState.states.mat'))[0]
+    except:
         warnings.warn("file does not exist")
         return 
 
@@ -494,11 +485,9 @@ def load_animal_behavior(basepath):
 
     Ryan H 2021
     """
-
-    filename = glob.glob(os.path.join(basepath,'*.animal.behavior.mat'))[0]
-
-    # check if saved file exists
-    if not os.path.exists(filename):
+    try:
+        filename = glob.glob(os.path.join(basepath,'*.animal.behavior.mat'))[0]
+    except:
         warnings.warn("file does not exist")
         return 
 
@@ -561,11 +550,9 @@ def load_epoch(basepath):
     """
     Loads epoch info from cell explorer basename.session and stores in df
     """
-
-    filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
-
-    # check if saved file exists
-    if not os.path.exists(filename):
+    try:
+        filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
+    except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
 
@@ -598,11 +585,9 @@ def load_epoch(basepath):
 
 def get_animal_id(basepath):
     """ return animal ID from basepath using basename.session.mat"""
-
-    filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
-
-    # check if saved file exists
-    if not os.path.exists(filename):
+    try:
+        filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
+    except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
 
