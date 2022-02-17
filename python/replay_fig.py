@@ -19,7 +19,8 @@ def plot_all_replay(
                     raster_lh=0.95,
                     custom_raster_color=False,
                     color_scale_vector=[],
-                    rasterized_heatmap=False
+                    rasterized_heatmap=False,
+                    cmap='cool'
                     ):
 
     if idx is not None:
@@ -94,7 +95,7 @@ def plot_all_replay(
 
         if custom_raster_color:
             norm = plt.Normalize()
-            colors = plt.cm.cool(norm(color_scale_vector))
+            colors = plt.get_cmap(cmap)(norm(color_scale_vector))
             for i,series_ids in enumerate(st_cut.series_ids):
                 npl.rasterplot(st_cut[:,series_ids], color=colors[i,:], vertstack=True, ax=axRaster, lh=raster_lh,lw=raster_lw)
         else:
