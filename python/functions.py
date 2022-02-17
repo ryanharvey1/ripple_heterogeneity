@@ -354,7 +354,10 @@ def get_participation(st,event_starts,event_stops,par_type='binary'):
         ripple_epochs: ripple events in nelpy epoch object 
         par_type: participation type (counts, binary, firing_rate)
     """
-    unit_mat = get_participation_(fix_array_or_list(list(st)),np.array(event_starts),np.array(event_stops))
+
+    event_starts, event_stops = np.array(event_starts),np.array(event_stops)
+
+    unit_mat = get_participation_(fix_array_or_list(list(st)),event_starts,event_stops)
 
     if par_type == 'counts':
         pass
