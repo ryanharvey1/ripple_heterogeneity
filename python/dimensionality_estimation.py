@@ -10,7 +10,8 @@ import pickle
 import seaborn as sns
 import nelpy as nel
 from sklearn.decomposition import PCA
-# from numba import jit
+import multiprocessing
+from joblib import Parallel, delayed
 
 
 # @jit(nopython=True)
@@ -60,8 +61,7 @@ def SVCA_(X):
 
     return scov,varcov,strain,stest
 
-
-def SVCA(X,folds=10,verbose=False):
+def SVCA(X,folds=10):
     """ calls SVCA_ """
 
     #  do multiple subsets and avg
@@ -71,8 +71,6 @@ def SVCA(X,folds=10,verbose=False):
     stest = []
     svc_neur = []
     for i in range(folds):
-        if verbose:
-            print(str(i)+' of ',str(folds-1),'...')
         scov_,varcov_,strain_,stest_ = SVCA_(X)
         scov.append(scov_)
         varcov.append(varcov_)
@@ -81,3 +79,115 @@ def SVCA(X,folds=10,verbose=False):
         svc_neur.append(scov_ / varcov_)
 
     return svc_neur,scov,varcov,strain,stest
+
+def main_analysis(unit_mat,beh_epochs,epoch_df,nrem_epochs,wake_epochs,restrict_to_state=True):
+
+  # iter through each behavioral epoch
+  scov = []
+  varcov = []
+  strain = []
+  stest = []
+  svc_neur = []
+  for i,ep in enumerate(beh_epochs):
+    if restrict_to_state:
+        if epoch_df.environment.iloc[i] == 'sleep':
+            temp_st = unit_mat[nrem_epochs][ep]
+        else:
+            temp_st = unit_mat[wake_epochs][ep]
+    else:
+        temp_st = unit_mat[ep]
+            
+    svc_neur_,scov_,varcov_,strain_,stest_ = SVCA(temp_st.data)
+    scov.append(scov_)
+    varcov.append(varcov_)
+    strain.append(strain_)
+    stest.append(stest_)
+    svc_neur.append(svc_neur_)
+
+  results = {}
+  results['scov'] = scov
+  results['varcov'] = varcov
+  results['strain'] = strain
+  results['stest'] = stest
+  results['svc_neur'] = svc_neur
+
+  return results
+
+def load_needed_data(basepath):
+    cell_metrics,data,ripples,fs_dat = loading.load_basic_data(basepath)
+
+    restrict_idx = ((cell_metrics.putativeCellType == "Pyramidal Cell") &
+                        ((cell_metrics.brainRegion=="CA1") |
+                        (cell_metrics.brainRegion=="rCA1") |
+                        (cell_metrics.brainRegion=="lCA1")) &
+                        (cell_metrics.bad_unit==False))
+
+    # restrict cell metrics                      
+    cell_metrics = cell_metrics[restrict_idx]
+
+    # get spike train array
+    try:
+        st = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
+    except: # if only single cell... should prob just skip session
+        st = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx][0], fs=fs_dat)
+
+    # behavioral epochs
+    epoch_df = loading.load_epoch(basepath)
+    behavioral_epochs = nel.EpochArray([np.array([epoch_df.startTime,
+                                                    epoch_df.stopTime]).T])
+
+    # get brain states                                                
+    state_dict = loading.load_SleepState_states(basepath)
+    nrem_epochs = nel.EpochArray(state_dict['NREMstate'])
+    wake_epochs = nel.EpochArray(state_dict['WAKEstate'])
+
+    ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
+
+    unit_mat = functions.get_participation(st.data,ripples.start,ripples.stop,par_type='firing_rate')
+    unit_mat = nel.AnalogSignalArray(data=unit_mat,timestamps=ripples.peaks,support=ripple_epochs)
+
+    return cell_metrics,st,epoch_df,behavioral_epochs,nrem_epochs,wake_epochs,ripple_epochs,unit_mat
+
+
+def session_loop(basepath,save_path):
+
+    save_file = os.path.join(save_path,basepath.replace(os.sep, "_").replace(":", "_")  + '.pkl')
+    if os.path.exists(save_file):
+        return
+
+    (cell_metrics,
+    st,
+    epoch_df,
+    behavioral_epochs,
+    nrem_epochs,
+    wake_epochs,
+    ripple_epochs,
+    unit_mat) = load_needed_data(basepath)
+
+    if cell_metrics.shape[0] == 0:
+        return     
+
+    results = main_analysis(unit_mat,behavioral_epochs,epoch_df,nrem_epochs,wake_epochs)
+
+    results['UID'] = cell_metrics.UID
+    results['basepath'] = basepath
+    results['deepSuperficial'] = cell_metrics.deepSuperficial
+
+    # save file
+    with open(save_file, 'wb') as f:
+        pickle.dump(results, f)
+
+def main_run(df,save_path,parallel=True):
+    # find sessions to run
+    basepaths = pd.unique(df.basepath)
+
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+
+    if parallel:
+        num_cores = multiprocessing.cpu_count()         
+        processed_list = Parallel(n_jobs=num_cores)(delayed(session_loop)(basepath,save_path) for basepath in basepaths)
+    else:    
+        for basepath in basepaths:
+            print(basepath)
+            session_loop(basepath,save_path)   
