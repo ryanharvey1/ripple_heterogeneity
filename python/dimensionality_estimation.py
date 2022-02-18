@@ -13,7 +13,7 @@ import nelpy as nel
 from sklearn.decomposition import PCA
 import multiprocessing
 from joblib import Parallel, delayed
-
+from sklearn.linear_model import LinearRegression
 
 # @jit(nopython=True)
 def SVCA_(X):
@@ -115,6 +115,8 @@ def main_analysis(unit_mat,beh_epochs,epoch_df,nrem_epochs,wake_epochs,restrict_
   return results
 
 def load_needed_data(basepath):
+    """ gets and formats basic data"""
+
     cell_metrics,data,ripples,fs_dat = loading.load_basic_data(basepath)
 
     restrict_idx = ((cell_metrics.putativeCellType == "Pyramidal Cell") &
@@ -149,13 +151,6 @@ def load_needed_data(basepath):
 
     return cell_metrics,st,epoch_df,behavioral_epochs,nrem_epochs,wake_epochs,ripple_epochs,unit_mat
 
-# def pooled_time_swap_bst(bst):
-#     """Time swap on BinnedSpikeTrainArray, swapping within entire bst."""
-#     out = copy.deepcopy(bst) # should this be deep? YES! Oh my goodness, yes!
-#     shuffled = np.random.permutation(bst.n_bins)
-#     out._data = out._data[:,shuffled]
-#     return out
-
 def pooled_incoherent_shuffle(X):
     """Incoherent shuffle on X, circ shifting rows."""
     data = copy.deepcopy(X)
@@ -167,7 +162,34 @@ def pooled_incoherent_shuffle(X):
     data.data = out
     return data
 
-def set_up_and_do_analysis(basepath,n_shuffles=1500):
+def estimate_slope(svc_neur):
+    """ 
+    get slope from svc_neur
+    x var in regression is in log10
+    Input: svc_neur nested list, each level is an epoch
+    Output: slope, intercept, r2
+    """
+    slope, intercept, r2 = [],[],[]
+
+    for i in range(len(svc_neur)):
+
+        y = np.array(svc_neur[i]).mean(axis=0)
+        x = np.log10(np.arange(len(y)))
+
+        bad_idx = np.isnan(x) | np.isinf(x)
+        y = y[~bad_idx]
+        x = x[~bad_idx]
+        x = x[:,np.newaxis]
+
+        reg = LinearRegression().fit(x, y)
+
+        slope.append(reg.coef_)
+        intercept.append(reg.intercept_)
+        r2.append(reg.score(x, y)**2)
+
+    return slope, intercept, r2
+
+def set_up_and_do_analysis(basepath,n_shuffles=100):
 
     (cell_metrics,
     st,
@@ -181,7 +203,13 @@ def set_up_and_do_analysis(basepath,n_shuffles=1500):
     if cell_metrics.shape[0] == 0:
         return     
 
+    # run main analysis and get SVC
     results = main_analysis(unit_mat,behavioral_epochs,epoch_df,nrem_epochs,wake_epochs)
+
+    slope, intercept, r2 = estimate_slope(results['svc_neur'])
+    results['slope'] = slope
+    results['intercept'] = intercept
+    results['r2'] = r2
 
     results['cell_metrics'] = cell_metrics
     results['basepath'] = basepath
@@ -193,6 +221,11 @@ def set_up_and_do_analysis(basepath,n_shuffles=1500):
         svc_neur_shuff.append(scov_ / varcov_)
 
     results['svc_neur_shuff'] = svc_neur_shuff
+
+    slope, intercept, r2 = estimate_slope([results['svc_neur_shuff']])
+    results['slope_shuff'] = slope
+    results['intercept_shuff'] = intercept
+    results['r2_shuff'] = r2
 
     return results
 
