@@ -1,3 +1,4 @@
+import copy
 import sys
 sys.path.append(r'D:\github\ripple_heterogeneity\python')
 import functions,loading
@@ -148,12 +149,25 @@ def load_needed_data(basepath):
 
     return cell_metrics,st,epoch_df,behavioral_epochs,nrem_epochs,wake_epochs,ripple_epochs,unit_mat
 
+# def pooled_time_swap_bst(bst):
+#     """Time swap on BinnedSpikeTrainArray, swapping within entire bst."""
+#     out = copy.deepcopy(bst) # should this be deep? YES! Oh my goodness, yes!
+#     shuffled = np.random.permutation(bst.n_bins)
+#     out._data = out._data[:,shuffled]
+#     return out
 
-def session_loop(basepath,save_path):
+def pooled_incoherent_shuffle(X):
+    """Incoherent shuffle on X, circ shifting rows."""
+    data = copy.deepcopy(X)
+    out = data.data
+    for uu in range(X.n_signals):
+        segment = out[uu,:]
+        segment = np.roll(segment, np.random.randint(len(segment)))
+        out[uu,:] = segment
+    data.data = out
+    return data
 
-    save_file = os.path.join(save_path,basepath.replace(os.sep, "_").replace(":", "_")  + '.pkl')
-    if os.path.exists(save_file):
-        return
+def set_up_and_do_analysis(basepath,n_shuffles=1500):
 
     (cell_metrics,
     st,
@@ -169,9 +183,26 @@ def session_loop(basepath,save_path):
 
     results = main_analysis(unit_mat,behavioral_epochs,epoch_df,nrem_epochs,wake_epochs)
 
-    results['UID'] = cell_metrics.UID
+    results['cell_metrics'] = cell_metrics
     results['basepath'] = basepath
-    results['deepSuperficial'] = cell_metrics.deepSuperficial
+
+    # make null dist from shuffling across 
+    svc_neur_shuff = []
+    for _ in range(n_shuffles):
+        scov_,varcov_,_,_ = SVCA_(pooled_incoherent_shuffle(unit_mat).data)
+        svc_neur_shuff.append(scov_ / varcov_)
+
+    results['svc_neur_shuff'] = svc_neur_shuff
+
+    return results
+
+def session_loop(basepath,save_path):
+
+    save_file = os.path.join(save_path,basepath.replace(os.sep, "_").replace(":", "_")  + '.pkl')
+    if os.path.exists(save_file):
+        return
+
+    results = set_up_and_do_analysis(basepath)
 
     # save file
     with open(save_file, 'wb') as f:
