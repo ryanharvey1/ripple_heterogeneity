@@ -114,7 +114,7 @@ def main_analysis(unit_mat,beh_epochs,epoch_df,nrem_epochs,wake_epochs,restrict_
 
   return results
 
-def load_needed_data(basepath):
+def load_needed_data(basepath,par_type='firing_rate'):
     """ gets and formats basic data"""
 
     cell_metrics,data,ripples,fs_dat = loading.load_basic_data(basepath)
@@ -146,7 +146,7 @@ def load_needed_data(basepath):
 
     ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
 
-    unit_mat = functions.get_participation(st.data,ripples.start,ripples.stop,par_type='firing_rate')
+    unit_mat = functions.get_participation(st.data,ripples.start,ripples.stop,par_type=par_type)
     unit_mat = nel.AnalogSignalArray(data=unit_mat,timestamps=ripples.peaks,support=ripple_epochs)
 
     return cell_metrics,st,epoch_df,behavioral_epochs,nrem_epochs,wake_epochs,ripple_epochs,unit_mat
@@ -189,7 +189,7 @@ def estimate_slope(svc_neur):
 
     return slope, intercept, r2
 
-def set_up_and_do_analysis(basepath,n_shuffles=100):
+def set_up_and_do_analysis(basepath,n_shuffles=100,par_type='firing_rate'):
 
     (cell_metrics,
     st,
@@ -198,7 +198,7 @@ def set_up_and_do_analysis(basepath,n_shuffles=100):
     nrem_epochs,
     wake_epochs,
     ripple_epochs,
-    unit_mat) = load_needed_data(basepath)
+    unit_mat) = load_needed_data(basepath,par_type=par_type)
 
     if cell_metrics.shape[0] == 0:
         return     
@@ -229,19 +229,19 @@ def set_up_and_do_analysis(basepath,n_shuffles=100):
 
     return results
 
-def session_loop(basepath,save_path):
+def session_loop(basepath,save_path,par_type='firing_rate'):
 
     save_file = os.path.join(save_path,basepath.replace(os.sep, "_").replace(":", "_")  + '.pkl')
     if os.path.exists(save_file):
         return
 
-    results = set_up_and_do_analysis(basepath)
+    results = set_up_and_do_analysis(basepath,par_type=par_type)
 
     # save file
     with open(save_file, 'wb') as f:
         pickle.dump(results, f)
 
-def main_run(df,save_path,parallel=True):
+def main_run(df,save_path,parallel=True,par_type='firing_rate'):
     # find sessions to run
     basepaths = pd.unique(df.basepath)
 
@@ -250,8 +250,8 @@ def main_run(df,save_path,parallel=True):
 
     if parallel:
         num_cores = multiprocessing.cpu_count()         
-        processed_list = Parallel(n_jobs=num_cores)(delayed(session_loop)(basepath,save_path) for basepath in basepaths)
+        processed_list = Parallel(n_jobs=num_cores)(delayed(session_loop)(basepath,save_path,par_type) for basepath in basepaths)
     else:    
         for basepath in basepaths:
             print(basepath)
-            session_loop(basepath,save_path)   
+            session_loop(basepath,save_path,par_type)   
