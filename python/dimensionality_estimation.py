@@ -114,7 +114,7 @@ def main_analysis(unit_mat,beh_epochs,epoch_df,nrem_epochs,wake_epochs,restrict_
 
   return results
 
-def load_needed_data(basepath,par_type='firing_rate'):
+def load_needed_data(basepath,par_type='firing_rate',ripple_window=.1):
     """ gets and formats basic data"""
 
     cell_metrics,data,ripples,fs_dat = loading.load_basic_data(basepath)
@@ -144,9 +144,9 @@ def load_needed_data(basepath,par_type='firing_rate'):
     nrem_epochs = nel.EpochArray(state_dict['NREMstate'])
     wake_epochs = nel.EpochArray(state_dict['WAKEstate'])
 
-    ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
+    ripple_epochs = nel.EpochArray([np.array([ripples.peaks-ripple_window, ripples.peaks+ripple_window]).T])
 
-    unit_mat = functions.get_participation(st.data,ripples.start,ripples.stop,par_type=par_type)
+    unit_mat = functions.get_participation(st.data,ripple_epochs.starts,ripple_epochs.stops,par_type=par_type)
     unit_mat = nel.AnalogSignalArray(data=unit_mat,timestamps=ripples.peaks,support=ripple_epochs)
 
     return cell_metrics,st,epoch_df,behavioral_epochs,nrem_epochs,wake_epochs,ripple_epochs,unit_mat
