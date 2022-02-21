@@ -203,6 +203,9 @@ def set_up_and_do_analysis(basepath,n_shuffles=100,par_type='firing_rate'):
     if cell_metrics.shape[0] == 0:
         return     
 
+    # zscore matrix
+    unit_mat = unit_mat.zscore()
+
     # run main analysis and get SVC
     results = main_analysis(unit_mat,behavioral_epochs,epoch_df,nrem_epochs,wake_epochs)
 
