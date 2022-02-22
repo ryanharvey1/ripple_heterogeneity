@@ -117,22 +117,11 @@ def main_analysis(unit_mat,beh_epochs,epoch_df,nrem_epochs,wake_epochs,restrict_
 def load_needed_data(basepath,par_type='firing_rate',ripple_window=.1):
     """ gets and formats basic data"""
 
-    cell_metrics,data,ripples,fs_dat = loading.load_basic_data(basepath)
+    ripples = loading.load_ripples_events(basepath)
 
-    restrict_idx = ((cell_metrics.putativeCellType == "Pyramidal Cell") &
-                        ((cell_metrics.brainRegion=="CA1") |
-                        (cell_metrics.brainRegion=="rCA1") |
-                        (cell_metrics.brainRegion=="lCA1")) &
-                        (cell_metrics.bad_unit==False))
-
-    # restrict cell metrics                      
-    cell_metrics = cell_metrics[restrict_idx]
-
-    # get spike train array
-    try:
-        st = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
-    except: # if only single cell... should prob just skip session
-        st = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx][0], fs=fs_dat)
+    st,cell_metrics = loading.load_spikes(basepath,
+                                        brainRegion='CA1',
+                                        putativeCellType='Pyramidal Cell')
 
     # behavioral epochs
     epoch_df = loading.load_epoch(basepath)
