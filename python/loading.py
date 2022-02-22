@@ -3,6 +3,7 @@ import sys,os
 import pandas as pd
 import numpy as np
 import glob
+import nelpy as nel
 import warnings
 from warnings import simplefilter
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
@@ -221,6 +222,15 @@ def load_cell_metrics(basepath):
     except:
         df['bad_unit'] = [False]*df.shape[0]  
 
+    # add column for bad waveform label tag    
+    try:
+        bad_waveform_units = data['cell_metrics']['tags'][0][0]['bad_waveform'][0][0][0]
+        df['bad_waveform'] = [False]*df.shape[0]
+        for uid in bad_waveform_units:
+            df.loc[df.UID == uid,'bad_waveform'] = True
+    except:
+        df['bad_waveform'] = [False]*df.shape[0]  
+
     # add data from general metrics        
     df['basename'] = data['cell_metrics']['general'][0][0]['basename'][0][0][0]
     df['basepath'] = basepath
@@ -293,7 +303,7 @@ def load_SWRunitMetrics(basepath):
 
             # append conents to overall data frame
             if df_.size>0:
-                df2 = df2.append(df_,ignore_index=True)
+                df2 = pd.concat([df2,df_],ignore_index=True)
 
     return df2
 
@@ -572,7 +582,7 @@ def load_epoch(basepath):
                 df_temp[dn] = epoch[0][0][dn][0]
             except:
                 df_temp[dn] = ""
-        df_save = df_save.append(df_temp,ignore_index=True)
+        df_save = pd.concat([df_save,df_temp],ignore_index=True)
         name.append(epoch[0]['name'][0][0])
         try:
             environment.append(epoch[0]['environment'][0][0])
@@ -600,3 +610,52 @@ def load_basic_data(basepath):
     ripples = load_ripples_events(basepath)
     cell_metrics,data = load_cell_metrics(basepath)
     return cell_metrics,data,ripples,fs_dat
+
+def load_spikes(basepath,
+                putativeCellType=[], # restrict spikes to putativeCellType
+                brainRegion=[], # restrict spikes to brainRegion
+                bad_unit=False, # false for not loading bad cells
+                brain_state=[] # restrict spikes to brainstate
+                ):
+    """ 
+    Load specific cells' spike times
+    """
+
+    _,_,fs_dat,_ = loadXML(basepath)
+
+    cell_metrics,data = load_cell_metrics(basepath)
+
+    st = np.array(data['spikes'],dtype=object)
+
+    # restrict cell metrics                      
+    if len(putativeCellType) > 0:
+        restrict_idx = (cell_metrics.putativeCellType == putativeCellType) 
+        cell_metrics = cell_metrics[restrict_idx]
+        st = st[restrict_idx]
+
+    if len(brainRegion) > 0:
+        restrict_idx = cell_metrics.brainRegion.str.contains(brainRegion).values  
+        cell_metrics = cell_metrics[restrict_idx]
+        st = st[restrict_idx]
+
+    restrict_idx = cell_metrics.bad_unit.values==bad_unit
+    cell_metrics = cell_metrics[restrict_idx]
+    st = st[restrict_idx]
+
+    # get spike train array
+    try:
+        st = nel.SpikeTrainArray(timestamps=st, fs=fs_dat)
+    except: # if only single cell... should prob just skip session
+        st = nel.SpikeTrainArray(timestamps=st[0], fs=fs_dat)
+
+    if len(brain_state) > 0:
+        # get brain states        
+        brain_states = ['WAKEstate', 'NREMstate', 'REMstate', 'THETA', 'nonTHETA']
+        if brain_state not in brain_states:
+            assert print('not correct brain state. Pick one',brain_states) 
+        else:                                    
+            state_dict = load_SleepState_states(basepath)
+            state_epoch = nel.EpochArray(state_dict[brain_state])
+            st = st[state_epoch]
+
+    return st,cell_metrics
