@@ -161,8 +161,10 @@ def estimate_slope(svc_neur):
     slope, intercept, r2 = [],[],[]
 
     for i in range(len(svc_neur)):
-
-        y = np.array(svc_neur[i]).mean(axis=0)
+        if np.array(svc_neur[i]).ndim == 1:
+            y = np.array(svc_neur[i])
+        else:
+            y = np.array(svc_neur[i]).mean(axis=0)
         x = np.log10(np.arange(len(y)))
 
         bad_idx = np.isnan(x) | np.isinf(x)
