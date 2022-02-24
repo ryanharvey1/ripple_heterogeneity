@@ -20,7 +20,22 @@ sessions = {'AO10/day14', 'AO10/day15', 'AO10/day16', 'AO10/day20', 'AO10/day23'
     'AO31/day10',...
     'AO33/day8', 'AO33/day11',...
     'AO39/day7', 'AO39/day9', 'AO39/day16', 'AO39/day17'}
-basepaths = fullfile('Y:\SMproject',sessions)';
+% basepaths = fullfile('Y:\SMproject',sessions)';
+% 
+% clear basenames
+% for i = 1:length(basepaths)
+%     if exist(basepaths{i},'file')
+%         basenames{i,1} = basenameFromBasepath(basepaths{i});
+%     else
+%         disp(basepaths{i})
+%     end
+% end
+% df = table();
+% df.basepath = basepaths;
+% df.basename = basenames;
+% 
+% writetable(df,'Z:\home\ryanh\projects\ripple_heterogeneity\mouse_sessions.csv')
+
 
 % clear basepaths
 clear basenames
