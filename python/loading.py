@@ -620,6 +620,10 @@ def load_spikes(basepath,
     """ 
     Load specific cells' spike times
     """
+    if not isinstance(putativeCellType, list):
+        putativeCellType = [putativeCellType]
+    if not isinstance(brainRegion, list):
+        brainRegion = [brainRegion]
 
     _,_,fs_dat,_ = loadXML(basepath)
 
@@ -629,12 +633,18 @@ def load_spikes(basepath,
 
     # restrict cell metrics                      
     if len(putativeCellType) > 0:
-        restrict_idx = (cell_metrics.putativeCellType == putativeCellType) 
+        restrict_idx = []
+        for cell_type in putativeCellType:
+            restrict_idx.append(cell_metrics.putativeCellType.str.contains(cell_type).values) 
+        restrict_idx = np.any(restrict_idx,axis=0)
         cell_metrics = cell_metrics[restrict_idx]
         st = st[restrict_idx]
 
     if len(brainRegion) > 0:
-        restrict_idx = cell_metrics.brainRegion.str.contains(brainRegion).values  
+        restrict_idx = []
+        for brain_region in brainRegion:
+            restrict_idx.append(cell_metrics.brainRegion.str.contains(brain_region).values) 
+        restrict_idx = np.any(restrict_idx,axis=0)
         cell_metrics = cell_metrics[restrict_idx]
         st = st[restrict_idx]
 
