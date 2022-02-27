@@ -213,7 +213,8 @@ def load_cell_metrics(basepath):
         except:
             continue
         
-    # add column for bad label tag    
+    # add column for bad label tag 
+    # have dedicated var as this tag is important   
     try:
         bad_units = data['cell_metrics']['tags'][0][0]['Bad'][0][0][0]
         df['bad_unit'] = [False]*df.shape[0]
@@ -222,14 +223,16 @@ def load_cell_metrics(basepath):
     except:
         df['bad_unit'] = [False]*df.shape[0]  
 
-    # add column for bad waveform label tag    
-    try:
-        bad_waveform_units = data['cell_metrics']['tags'][0][0]['bad_waveform'][0][0][0]
-        df['bad_waveform'] = [False]*df.shape[0]
-        for uid in bad_waveform_units:
-            df.loc[df.UID == uid,'bad_waveform'] = True
-    except:
-        df['bad_waveform'] = [False]*df.shape[0]  
+    # load in tag
+    dt = data['cell_metrics']['tags'][0][0].dtype
+    if len(dt) > 0:
+        # iter through each tag
+        for dn in dt.names:
+            # set up column for tag
+            df['tags_'+dn] = [False]*df.shape[0]
+            # iter through uid 
+            for uid in data['cell_metrics']['tags'][0][0][dn][0][0][0]:
+                df.loc[df.UID == uid,'tags_'+dn] = True 
 
     # add data from general metrics        
     df['basename'] = data['cell_metrics']['general'][0][0]['basename'][0][0][0]
