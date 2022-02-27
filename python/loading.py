@@ -108,8 +108,35 @@ def load_position(basepath,fs=39.0625):
     df[df==-1] = np.nan
     return df,fs
 
+def load_all_cell_metrics(basepaths):
+    """
+    load cell metrics from multiple sessions
 
-def load_cell_metrics(basepath):
+    Input: 
+            basepaths: list of basepths, can be pandas column
+    Output:
+            cell_metrics: concatenated pandas df with metrics
+
+    Note: to get waveforms, spike times, etc. use load_cell_metrics
+    """
+    import multiprocessing
+    from joblib import Parallel, delayed
+
+    # to speed up, use parallel
+    num_cores = multiprocessing.cpu_count()   
+    cell_metrics = Parallel(n_jobs=num_cores)(
+            delayed(load_cell_metrics)(basepath,True) for basepath in basepaths
+        )
+    cell_metrics = pd.concat(cell_metrics,ignore_index=True)
+
+    # convert nans within tags columns to false
+    cols = cell_metrics.filter(regex='tags_').columns
+    cell_metrics[cols] = cell_metrics[cols].replace({np.nan:False})
+    
+    return cell_metrics
+
+
+def load_cell_metrics(basepath,only_metrics=False):
     """ 
     loader of cell-explorer cell_metrics.cellinfo.mat
 
@@ -249,6 +276,8 @@ def load_cell_metrics(basepath):
     # extract other general data and put into dict    
     data_ = extract_general(data)
 
+    if only_metrics:
+        return df
     return df,data_
 
 def load_SWRunitMetrics(basepath):
