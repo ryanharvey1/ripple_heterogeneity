@@ -273,11 +273,12 @@ def load_cell_metrics(basepath,only_metrics=False):
     # fix nesting issue for strings
     df = un_nest_df(df)
 
+    if only_metrics:
+        return df
+
     # extract other general data and put into dict    
     data_ = extract_general(data)
 
-    if only_metrics:
-        return df
     return df,data_
 
 def load_SWRunitMetrics(basepath):
