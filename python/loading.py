@@ -127,13 +127,8 @@ def load_all_cell_metrics(basepaths):
     cell_metrics = Parallel(n_jobs=num_cores)(
             delayed(load_cell_metrics)(basepath,True) for basepath in basepaths
         )
-    cell_metrics = pd.concat(cell_metrics,ignore_index=True)
 
-    # convert nans within tags columns to false
-    cols = cell_metrics.filter(regex='tags_').columns
-    cell_metrics[cols] = cell_metrics[cols].replace({np.nan:False})
-    
-    return cell_metrics
+    return pd.concat(cell_metrics,ignore_index=True)
 
 
 def load_cell_metrics(basepath,only_metrics=False):
@@ -273,6 +268,10 @@ def load_cell_metrics(basepath,only_metrics=False):
     # fix nesting issue for strings
     df = un_nest_df(df)
 
+    # convert nans within tags columns to false
+    cols = df.filter(regex='tags_').columns
+    df[cols] = df[cols].replace({np.nan:False})
+    
     if only_metrics:
         return df
 
