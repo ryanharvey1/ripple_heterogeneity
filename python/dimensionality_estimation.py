@@ -62,7 +62,7 @@ def SVCA_(X):
 
     return scov,varcov,strain,stest
 
-def SVCA(X,folds=10):
+def SVCA(X,folds=10,n_ripples=100):
     """ calls SVCA_ """
 
     #  do multiple subsets and avg
@@ -71,8 +71,14 @@ def SVCA(X,folds=10):
     strain = []
     stest = []
     svc_neur = []
+    n_ripples = np.min([n_ripples,X.shape[1]])
     for i in range(folds):
-        scov_,varcov_,strain_,stest_ = SVCA_(X)
+        if n_ripples == X.shape[1]:
+            idx = np.arange(0,n_ripples)
+        else:
+            idx = np.arange(0,n_ripples) + np.random.randint(0,X.shape[1] - n_ripples,1)
+
+        scov_,varcov_,strain_,stest_ = SVCA_(X[:,idx])
         scov.append(scov_)
         varcov.append(varcov_)
         strain.append(strain_)
