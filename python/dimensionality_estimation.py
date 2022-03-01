@@ -165,19 +165,24 @@ def estimate_slope(svc_neur):
         if np.array(svc_neur[i]).ndim == 1:
             y = np.array(svc_neur[i])
         else:
-            y = np.array(svc_neur[i]).mean(axis=0)
+            y = np.nanmean(np.array(svc_neur[i]),axis=0)
         x = np.log10(np.arange(len(y)))
 
         bad_idx = np.isnan(x) | np.isinf(x)
         y = y[~bad_idx]
         x = x[~bad_idx]
         x = x[:,np.newaxis]
+        try:
+            reg = LinearRegression().fit(x, y)
 
-        reg = LinearRegression().fit(x, y)
-
-        slope.append(reg.coef_)
-        intercept.append(reg.intercept_)
-        r2.append(reg.score(x, y)**2)
+            slope.append(reg.coef_)
+            intercept.append(reg.intercept_)
+            r2.append(reg.score(x, y)**2)
+        except:
+            print('LinearRegression failed, y must be all nan')
+            slope.append(np.nan)
+            intercept.append(np.nan)
+            r2.append(np.nan)
 
     return slope, intercept, r2
 
