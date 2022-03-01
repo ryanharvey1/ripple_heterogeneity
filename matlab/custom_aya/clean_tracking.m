@@ -46,7 +46,7 @@ if ~isempty(behavior.position.x)
         end
     end
     
-    good_idx = manual_trackerjumps(behavior.time,...
+    good_idx = manual_trackerjumps(behavior.timestamps,...
         behavior.position.x,...
         behavior.position.y,...
         start,...
@@ -63,7 +63,7 @@ end
 %         disp(session.epochs{ep}.environment)
 %         start = session.epochs{ep}.startTime;
 %         stop = session.epochs{ep}.stopTime;
-%         idx = behavior.time >= start & behavior.time <= stop;
+%         idx = behavior.timestamps >= start & behavior.timestamps <= stop;
 %         figure;
 %         plot(behavior.position.x(idx),behavior.position.y(idx))
 %     end
