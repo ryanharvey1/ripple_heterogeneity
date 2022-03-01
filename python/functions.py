@@ -844,12 +844,17 @@ def find_pre_task_post(env):
         2	OR15day1_2_180116_171020	    8087.292	9952.05995	wmaze
         3	OR15day1_sleep2_180116_181618	9952.060	10182.92795	sleep
     """
+    if len(env) < 3:
+        return None,None
     numeric_idx = ('sleep' == env)*1
+    dummy = np.zeros_like(numeric_idx) == 1
     if all(numeric_idx[:3] == [1,0,1]):
-        return [0,1,2]
+        dummy[:3] = True
+        return dummy, [0,1,2]
     else:
         for i in np.arange(len(numeric_idx)+3):
             if 3+i > len(numeric_idx):
-                return None
+                return None,None
             if all(numeric_idx[0+i:3+i] == [1,0,1]):
-                return [0,1,2] + i
+                dummy[0+i:3+i] = True
+                return dummy, [0,1,2] + i
