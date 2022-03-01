@@ -553,7 +553,7 @@ def load_animal_behavior(basepath):
 
     df = pd.DataFrame()
     try:
-        df['time'] = data['behavior']['time'][0][0][0]
+        df['time'] = data['behavior']['timestamps'][0][0][0]
     except:
         warnings.warn("no tracking data")
         return pd.DataFrame()
