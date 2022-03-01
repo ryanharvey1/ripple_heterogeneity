@@ -824,3 +824,32 @@ def get_linear_track_lap_epochs(ts,x,newLapThreshold=15,
     inbound_epochs = nel.EpochArray([np.array([inbound_start,inbound_stop]).T])
     
     return outbound_epochs,inbound_epochs
+
+
+def find_pre_task_post(env):
+    """ 
+    given list of environment, finds contigous epochs that meet pre/task/post
+
+    Input: 
+        environment list, can be pandas column
+    Output: 
+        indices of where pre-sleep/task/post-sleep exist
+
+    example: 
+    pre_task_post = find_pre_task_post(epoch_df.environment)
+    epoch_df.loc[pre_task_post]
+
+            name	                        startTime	stopTime	environment
+        1	OR15day1_sleep1_180116_110120	2001.600	8087.29195	sleep
+        2	OR15day1_2_180116_171020	    8087.292	9952.05995	wmaze
+        3	OR15day1_sleep2_180116_181618	9952.060	10182.92795	sleep
+    """
+    numeric_idx = ('sleep' == env)*1
+    if all(numeric_idx[:3] == [1,0,1]):
+        return [0,1,2]
+    else:
+        for i in np.arange(len(numeric_idx)+3):
+            if 3+i > len(numeric_idx):
+                return None
+            if all(numeric_idx[0+i:3+i] == [1,0,1]):
+                return [0,1,2] + i
