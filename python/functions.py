@@ -858,3 +858,41 @@ def find_pre_task_post(env):
             if all(numeric_idx[0+i:3+i] == [1,0,1]):
                 dummy[0+i:3+i] = True
                 return dummy, [0,1,2] + i
+
+def find_epoch_pattern(env,pattern):
+    """ 
+    given list of environment, finds contigous epochs (pattern) that meet pattern
+    
+    Limitation: stops on the first instance of finding the pattern
+
+    Input: 
+        env: environment list, can be pandas column
+        pattern: pattern you are searching for
+    Output: 
+        indices of where pattern exist
+
+    example: 
+    epoch_df = loading.load_epoch(basepath)
+    pattern_idx,_ = find_epoch_pattern(epoch_df.environment,['sleep','linear','sleep'])
+    epoch_df.loc[pattern_idx]
+
+        name	                startTime	stopTime	environment	behavioralParadigm	notes
+    0	preSleep_210411_064951	0.0000	    9544.56315	sleep	    NaN	                NaN
+    1	maze_210411_095201	    9544.5632	11752.80635	linear	    novel	            novel
+    2	postSleep_210411_103522	11752.8064	23817.68955	sleep	    novel	            novel
+    """
+    
+    env = list(env)
+    pattern = list(pattern)
+
+    if len(env) < len(pattern):
+        return None,None
+
+    dummy = np.zeros(len(env))
+
+    for i in range(len(env) - len(pattern)+1):
+        if pattern == env[i:i+len(pattern)]:
+            dummy[i:i+len(pattern)] = 1
+            dummy = dummy == 1
+            return dummy, np.arange(i,i+len(pattern))
+    return None,None
