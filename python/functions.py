@@ -861,7 +861,7 @@ def find_pre_task_post(env):
 
 def find_epoch_pattern(env,pattern):
     """ 
-    given list of environment, finds contigous epochs (pattern) that meet pattern
+    given list of environment, finds contigous epochs that meet pattern
     
     Limitation: stops on the first instance of finding the pattern
 
@@ -881,7 +881,7 @@ def find_epoch_pattern(env,pattern):
     1	maze_210411_095201	    9544.5632	11752.80635	linear	    novel	            novel
     2	postSleep_210411_103522	11752.8064	23817.68955	sleep	    novel	            novel
     """
-    
+
     env = list(env)
     pattern = list(pattern)
 
