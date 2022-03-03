@@ -384,11 +384,15 @@ def load_ripples_events(basepath):
     df['peaks'] = data['ripples']['peaks'][0][0]
     try:
         df['amplitude'] = data['ripples']['amplitude'][0][0]
-        df['duration'] = data['ripples']['duration'][0][0]
-        df['frequency'] = data['ripples']['frequency'][0][0]
     except:
         df['amplitude'] = np.nan
+    try:
+        df['duration'] = data['ripples']['duration'][0][0]
+    except:
         df['duration'] = np.nan
+    try:
+        df['frequency'] = data['ripples']['frequency'][0][0]
+    except:
         df['frequency'] = np.nan
      
     try:
