@@ -349,10 +349,8 @@ def run_all(
         st_all = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx][0], fs=fs_dat)
 
     epoch_df = loading.load_epoch(basepath)
-    # remove sleep and wheel running
-    # epoch_df = epoch_df[(epoch_df.environment != 'sleep') & (epoch_df.environment != 'wheel')]
-    # remove sessions < 5 minutes
-    epoch_df = epoch_df[(epoch_df.stopTime - epoch_df.startTime)/60 > 5]
+    pattern_idx,_ = functions.find_epoch_pattern(epoch_df.environment,['sleep','linear','sleep'])
+    epoch_df = epoch_df[pattern_idx]
     beh_epochs = nel.EpochArray([np.array([epoch_df.startTime,epoch_df.stopTime]).T])
 
     pos,outbound_epochs,inbound_epochs = handle_behavior(basepath,epoch_df,beh_epochs)
