@@ -29,6 +29,9 @@ def decode_and_score(bst, tc, pos):
                                                                     xmin=np.nanmin(pos.data),
                                                                     xmax=np.nanmax(pos.data))
     actual_pos = pos(bst.bin_centers)
+    bad_idx = np.isnan(actual_pos) | np.isnan(mode_pth)
+    actual_pos = actual_pos[~bad_idx]
+    mode_pth = mode_pth[~bad_idx]
     slope, intercept, rvalue, pvalue, stderr = stats.linregress(actual_pos, mode_pth)
     median_error = np.nanmedian(np.abs(actual_pos - mode_pth))
     
