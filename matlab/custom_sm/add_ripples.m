@@ -32,10 +32,16 @@ for i = 1:length(df.basepath)
     ripple_ch = session.brainRegions.CA1.channels(c_idx);
     ripples = FindRipples(basepath,ripple_ch,'saveMat',true);
     
-    ripples = DetectSWR([31 3],'basepath',basepath,'saveMat',true,...
+    lfpRip = getLFP(35,'basepath',basepath);
+    [wavAvg,lfpAvg] = eventWavelet(lfpRip,ripples.peaks(1:500),'twin',[0.1 0.1]);
+    
+    ripples = DetectSWR_old([35 33],'basepath',basepath,'saveMat',true,...
         'thresSDswD',[0.5 2.5],'thresSDrip', [0.25 1],...
         'forceDetect',true,'check',true);
 
+    ripples = DetectSWR([35 33],'basepath',basepath,'saveMat',true,...
+        'forceDetect',true);
+    
     ripples = eventSpikingTreshold(ripples,'basepath',basepath,'spikes',spikes,'spikingThreshold',0.0001);
     
     save(fullfile(basepath,[basename,'.ripples.events.mat']),'ripples');
