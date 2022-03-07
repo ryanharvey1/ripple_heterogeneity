@@ -507,3 +507,43 @@ def main(df,save_path,parallel=True):
         for basepath in basepaths:
             print(basepath)
             main_loop(basepath,save_path)   
+
+def load_results(save_path):
+    import glob
+
+    sessions = glob.glob(save_path +os.sep+ '*.pkl')
+    df = pd.DataFrame()
+    for session in sessions:
+        with open(session, 'rb') as f:
+            results = pickle.load(f)
+
+        for key_ in results.keys():
+
+            # calc and add ripple participation
+            st = results[key_]['sta_placecells']
+            bst = results[key_]['bst_placecells']
+            if len(bst.support.starts) == 0:
+                results[key_]['df']['pop_partic'] = 0
+            else:
+                particip_mat = functions.get_participation(st.data,bst.support.starts,bst.support.stops)
+                results[key_]['df']['pop_partic'] = particip_mat.mean(axis=0)
+            
+            # add behavioral decoding quality
+            results[key_]['df']['decoding_r2'] = float(results[key_]['decoding_r2'])
+            results[key_]['df']['decoding_r2_pval'] = float(results[key_]['decoding_r2_pval'])
+            results[key_]['df']['decoding_median_error'] = float(results[key_]['decoding_median_error'])
+            results[key_]['df']['total_units'] = float(results[key_]['total_units'])
+            results[key_]['df']['direction'] = key_
+            
+            # add epoch
+            if len(results[key_]['df']) > 0:
+                results[key_]['df']['epoch'] = 'unknown'
+                epoch_df = loading.load_epoch(results[key_]['session'])
+                pattern_idx,_ = functions.find_epoch_pattern(epoch_df.environment,['sleep','linear','sleep'])
+                epoch_df = epoch_df[pattern_idx]
+                results[key_]['df'].loc[results[key_]['df'].start.between(epoch_df.startTime.iloc[0],epoch_df.stopTime.iloc[0]),'epoch'] = 'pre_sleep'
+                results[key_]['df'].loc[results[key_]['df'].start.between(epoch_df.startTime.iloc[1],epoch_df.stopTime.iloc[1]),'epoch'] = 'linear'
+                results[key_]['df'].loc[results[key_]['df'].start.between(epoch_df.startTime.iloc[2],epoch_df.stopTime.iloc[2]),'epoch'] = 'post_sleep'
+
+            df = pd.concat([df,results[key_]['df']],ignore_index=True)
+    return df
