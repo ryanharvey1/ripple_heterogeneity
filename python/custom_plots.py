@@ -125,18 +125,24 @@ def plot_events(events,labels,cmap='tab20',gridlines=True,alpha=.75):
     labels: labels related to each event
 
     example:
+
+        # load sleep states
+        state_dict = loading.load_SleepState_states(basepath)
+        
+        # make nelpy epoch arrays
+        nrem_epochs = nel.EpochArray(state_dict['NREMstate'])
+        wake_epochs = nel.EpochArray(state_dict['WAKEstate'])
+        rem_epochs = nel.EpochArray(state_dict['REMstate'])
+
+        # add to list
         events = []
         events.append(nrem_epochs)
         events.append(wake_epochs)
         events.append(rem_epochs)
-        events.append(presleep_epochs)
-        events.append(linear_epochs)
-        events.append(postsleep_epochs)
-        events.append(outbound_replay_epochs)
-        events.append(inbound_replay_epochs)
 
+        # plot
         plt.figure(figsize=(20,5))
-        plot_events(events,['nrem','wake','rem','presleep','linear','postsleep','outbound_replay','inbound_replay'])
+        plot_events(events,['nrem','wake','rem'])
         
     Ryan H 2022
     """
@@ -144,7 +150,7 @@ def plot_events(events,labels,cmap='tab20',gridlines=True,alpha=.75):
     cmap = matplotlib.cm.get_cmap(cmap)
     # set up y axis
     y = np.linspace(0,1,len(events)+1)
-    
+
     # iter over each event
     for i,evt in enumerate(events):
 
