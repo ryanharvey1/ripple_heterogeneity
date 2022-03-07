@@ -3,6 +3,8 @@ from matplotlib.pyplot import axes
 import numpy as np 
 import seaborn as sns
 from matplotlib.ticker import AutoMinorLocator
+import matplotlib
+import matplotlib.pyplot as plt
 
 def ecdf(x):
     xs = np.sort(x)
@@ -116,3 +118,44 @@ def restore_natural_scale(ax,min_,max_,n_steps=4,x_axis=True,y_axis=True):
     if y_axis:
         ax.set_yticks(ticks)
         ax.set_yticklabels(np.round(10**ticks,3))
+
+def plot_events(events,labels,cmap='tab20',gridlines=True,alpha=.75):
+    """
+    events: nested list of nelpy EpochArrays
+    labels: labels related to each event
+
+    example:
+        events = []
+        events.append(nrem_epochs)
+        events.append(wake_epochs)
+        events.append(rem_epochs)
+        events.append(presleep_epochs)
+        events.append(linear_epochs)
+        events.append(postsleep_epochs)
+        events.append(outbound_replay_epochs)
+        events.append(inbound_replay_epochs)
+
+        plt.figure(figsize=(20,5))
+        plot_events(events,['nrem','wake','rem','presleep','linear','postsleep','outbound_replay','inbound_replay'])
+        
+    Ryan H 2022
+    """
+    # get colormap
+    cmap = matplotlib.cm.get_cmap(cmap)
+    # set up y axis
+    y = np.linspace(0,1,len(events)+1)
+    
+    # iter over each event
+    for i,evt in enumerate(events):
+
+        # add horizontal line underneath
+        if gridlines:
+            plt.axhline(y[i] + np.diff(y)[0]/2,color='k',zorder=-100,alpha=.1)
+
+        # plot events
+        for pair in range(evt.n_intervals):
+            plt.axvspan(evt.starts[pair], evt.stops[pair],y[i],y[i+1], alpha=alpha,color=cmap(i*.1))
+
+    ax = plt.gca()
+    ax.set_yticks(y[:-1] + np.diff(y)[0]/2)
+    ax.set_yticklabels(labels)
