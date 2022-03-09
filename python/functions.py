@@ -8,6 +8,7 @@ from numba.typed import List
 from numba import typeof
 import sys
 import nelpy as nel
+import warnings
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -896,8 +897,6 @@ def find_epoch_pattern(env,pattern):
             dummy = dummy == 1
             return dummy, np.arange(i,i+len(pattern))
     return None,None
-
-import warnings
 
 def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01):
     """
