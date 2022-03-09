@@ -908,13 +908,13 @@ def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01):
         ds: bin width (s) for peak_fr method
         sigma: smoothing sigma (s)
     Output:
-        mean_rank: mean rank order over all epochs
+        median_rank: median rank order over all epochs
         rank_order: matrix (n cells X n epochs) each column shows rank per cell per epoch
 
     Example:
         st,_ = loading.load_spikes(basepath,putativeCellType='Pyr')
         forward_replay = nel.EpochArray(np.array([starts,stops]).T)
-        mean_rank,rank_order = get_rank_order(st,forward_replay)
+        median_rank,rank_order = get_rank_order(st,forward_replay)
     """
     # filter out specific warnings
     warnings.filterwarnings("ignore", message="ignoring events outside of eventarray support")
@@ -956,4 +956,4 @@ def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01):
             # st_.get_event_firing_order()
             # x = (np.array(st_.get_event_firing_order())-1)[st_.n_events>0]
             # zero_to_one(x)
-    return np.nanmean(rank_order,axis=1),rank_order
+    return np.nanmedian(rank_order,axis=1),rank_order
