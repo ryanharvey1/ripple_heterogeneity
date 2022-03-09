@@ -896,3 +896,65 @@ def find_epoch_pattern(env,pattern):
             dummy = dummy == 1
             return dummy, np.arange(i,i+len(pattern))
     return None,None
+
+import warnings
+
+def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01):
+    """
+    get rank order of spike train within epoch
+    Input:
+        st: spike train nelpy array 
+        epochs: epoch array, windows in which to calculate rank order
+        method: method of rank order (default: peak_fr)
+        ds: bin width (s) for peak_fr method
+        sigma: smoothing sigma (s)
+    Output:
+        mean_rank: mean rank order over all epochs
+        rank_order: matrix (n cells X n epochs) each column shows rank per cell per epoch
+
+    Example:
+        st,_ = loading.load_spikes(basepath,putativeCellType='Pyr')
+        forward_replay = nel.EpochArray(np.array([starts,stops]).T)
+        mean_rank,rank_order = get_rank_order(st,forward_replay)
+    """
+    # filter out specific warnings
+    warnings.filterwarnings("ignore", message="ignoring events outside of eventarray support")
+    warnings.filterwarnings("ignore", message="Mean of empty slice")
+
+    if method != "peak_fr":
+        raise Exception('other methods are not implemented yet')
+
+        # print('other methods are not implemented yet')
+        # return
+    # def zero_to_one(x):
+    #     return (x - min(x)) / (max(x) - min(x))
+
+    # create epoched spike array
+    st_epoch = st[epochs]
+    # set up empty matrix for rank order
+    rank_order = np.zeros([st_epoch.data.shape[0],st_epoch.n_intervals])
+    # iter over epochs
+    for event_i,st_ in enumerate(st_epoch):
+        if method == 'peak_fr':
+            # bin spike train 
+            z_t = st_.bin(ds=ds)
+            # smooth spike train in order to estimate peak 
+            z_t.smooth(sigma=sigma,inplace=True)
+            # iterate over each cell
+            for cell_i,unit in enumerate(z_t.data):
+                # if the cell is not active apply nan
+                if not np.any(unit>0):
+                    rank_order[cell_i,event_i] = np.nan
+                else:
+                    # calculate normalized rank order (0-1)
+                    rank_order[cell_i,event_i] = np.argmax(unit) / len(unit)
+        else:
+            raise Exception('other methods are not implemented yet')
+            
+            # st_.sub
+            # unit_ids_to_keep = (np.array(np.where(st_.n_events>0))+1).squeeze().tolist()
+            # st_ = st_._unit_subset(unit_ids_to_keep)
+            # st_.get_event_firing_order()
+            # x = (np.array(st_.get_event_firing_order())-1)[st_.n_events>0]
+            # zero_to_one(x)
+    return np.nanmean(rank_order,axis=1),rank_order
