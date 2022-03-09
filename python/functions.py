@@ -77,8 +77,8 @@ def writeNeuroscopeEvents(path, ep, name):
 def linearize_position(x,y):
     """
     use PCA (a dimensionality reduction technique) to find
-     the direction of maximal variance in our position data, 
-     and we use this as our new 1D linear track axis.
+    the direction of maximal variance in our position data, 
+    and we use this as our new 1D linear track axis.
     -Ryan H
     """
     # locate and remove nans (sklearn pca does not like nans)
@@ -700,7 +700,6 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                     if len(t) > 5:
                         t=t[0:5]
                         v=v[0:5]
-                 
         else: # % if lookformax
         #% find the direct path from topend to bottomend (or mark lap for
         #% deleting if the turn around points are not in those ranges)
@@ -728,11 +727,9 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                     else:
                         t=t[peak[gt,1]:trough[gt+1,1]]
                         v=v[peak[gt,1]:trough[gt+1,1]]
-             
             else: #% if ~isempty(peak)
                 #% make sure trough exists and is in range of bottomend
                 if len(trough) == 0:
-                 
                     if len(t)>2:
                         t = t[0:2]
                         v = v[0:2]
@@ -742,13 +739,11 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                     if len(t) > 5:
                         t = t[0:5]
                         v = v[0:5]
-                     
         vcovered,_ = np.histogram(v,bins=bins)
 
         if len(v) < 3:
         #% eliminate the lap if it is non-existent (as is sometimes the case for lap 1)
             laps = laps.drop(laps.index[l])
-         
         #% eliminate the lap if >completeprop of it is NaNs or if it has been marked for
         #% deleting above
         elif (len(v) < 6) | (sum(vcovered==0)>completeprop*posbins):
@@ -757,7 +752,6 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
             if l % 2 == 0:
                 #% delete previous lap from laps
                 laps = laps.drop(laps.index[l-1])
-             
                 #% change goodlaps markers to delete previous lap from laps
                 if len(stopgoodlaps) > 0:
                     if 'lastlapend' not in locals() | (startgoodlaps[-1] > lastlapend):
@@ -770,7 +764,6 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
             elif l<=len(laps) & l > 1:
                 #% delete next lap from laps
                 laps = laps.drop(laps.index[l])
-              
         else: #% if lap is good
             #% store last lap end just in case have to delete this lap with next lap
             if len(stopgoodlaps) > 0:
@@ -788,7 +781,7 @@ def find_good_laps(ts,V_rest,laps,edgethresh=0.1,completeprop=0.2,posbins=50):
                 stopgoodlaps.append(t[-1])
             
             l = l+1
-  
+
     return laps
 
 def get_linear_track_lap_epochs(ts,x,newLapThreshold=15,
