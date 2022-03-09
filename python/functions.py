@@ -923,6 +923,11 @@ def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01):
 
     # create epoched spike array
     st_epoch = st[epochs]
+
+    # if no spikes in epoch, break out
+    if st_epoch.n_active == 0:
+        return np.tile(np.nan,st.data.shape),None
+
     # set up empty matrix for rank order
     rank_order = np.zeros([st_epoch.data.shape[0],st_epoch.n_intervals])
     # iter over epochs
