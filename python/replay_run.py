@@ -300,7 +300,7 @@ def handle_behavior(basepath,epoch_df,beh_epochs):
 
     return pos,outbound_epochs,inbound_epochs
 
-def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_curve_sigma,dir_i):
+def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_curve_sigma):
     # compute and smooth speed
     speed1 = nel.utils.ddt_asa(pos[dir_epoch], smooth=True, sigma=0.1, norm=True)
 
@@ -421,8 +421,7 @@ def run_all(
                                                 speed_thres,
                                                 ds_50ms,
                                                 s_binsize,
-                                                tuning_curve_sigma,
-                                                dir_i)
+                                                tuning_curve_sigma)
         
         # locate pyr cells with >= 100 spikes, peak rate >= 1 Hz, peak/mean ratio >=1.5
         (sta_placecells,
