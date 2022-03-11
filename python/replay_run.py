@@ -327,7 +327,14 @@ def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_
                             min_duration=0)
     return tc,st_run,bst_run
 
-def restrict_to_place_cells(tc,st_run,bst_run,st_all,cell_metrics,place_cell_min_spks,place_cell_min_rate,place_cell_peak_mean_ratio):
+def restrict_to_place_cells(tc,
+                            st_run,
+                            bst_run,
+                            st_all,
+                            cell_metrics,
+                            place_cell_min_spks,
+                            place_cell_min_rate,
+                            place_cell_peak_mean_ratio):
     # locate pyr cells with >= 100 spikes, peak rate >= 1 Hz, peak/mean ratio >=1.5
     peak_firing_rates = tc.max(axis=1)
     mean_firing_rates = tc.mean(axis=1)
