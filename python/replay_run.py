@@ -237,7 +237,7 @@ def get_features(bst_placecells,
             replay_type.append('reverse')
         else:
             replay_type.append('unknown')
-            
+
     return traj_dist,traj_speed,traj_step,replay_type,position
 
 def flip_pos_within_epoch(pos,dir_epoch):
@@ -432,10 +432,13 @@ def run_all(
                                                 place_cell_peak_mean_ratio)
 
         # access decoding accuracy on behavioral time scale 
-        decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(bst_run,
-                                                                            tc,
-                                                                            pos[dir_epoch],
-                                                                            n_shuffles=traj_shuff)
+        (decoding_r2, 
+        median_error, 
+        decoding_r2_shuff, 
+        _)= decode_and_shuff(bst_run,
+                                tc,
+                                pos[dir_epoch],
+                                n_shuffles=traj_shuff)
         # check decoding quality against chance distribution
         _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
     
@@ -458,17 +461,22 @@ def run_all(
         current_ripples = ripples[idx]
 
         # decode each ripple event
-        posteriors, bdries, mode_pth, mean_pth = nel.decoding.decode1D(bst_placecells,
-                                                                        tc,
-                                                                        xmin=np.nanmin(pos[dir_epoch].data),
-                                                                        xmax=np.nanmax(pos[dir_epoch].data))
+        (posteriors,
+        bdries,
+        mode_pth,
+        mean_pth) = nel.decoding.decode1D(bst_placecells,
+                                            tc,
+                                            xmin=np.nanmin(pos[dir_epoch].data),
+                                            xmax=np.nanmax(pos[dir_epoch].data))
                 
         # score each event using trajectory_score_bst (sums the posterior probability in a range (w) from the LS line)
-        scores, scores_time_swap, scores_col_cycle = replay.trajectory_score_bst(bst_placecells,
-                                                                                    tc,
-                                                                                    w=3,
-                                                                                    n_shuffles=traj_shuff,
-                                                                                    normalize=True)
+        (scores,
+        scores_time_swap,
+        scores_col_cycle) = replay.trajectory_score_bst(bst_placecells,
+                                                        tc,
+                                                        w=3,
+                                                        n_shuffles=traj_shuff,
+                                                        normalize=True)
         
         # find sig events using time and column shuffle distributions
         _,score_pval_time_swap = get_significant_events(scores, scores_time_swap)
