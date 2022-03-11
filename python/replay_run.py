@@ -231,17 +231,13 @@ def get_features(bst_placecells,
         # get mean step size 
         traj_step.append(np.nanmean(dy))
         
-        if (velocity > 0) & (outbound == True):
+        if (velocity > 0):
             replay_type.append('forward')
-        elif (velocity < 0) & (outbound == True):
+        elif (velocity < 0):
             replay_type.append('reverse')
-        elif (velocity > 0) & (outbound == False):
-            replay_type.append('reverse')
-        elif (velocity < 0) & (outbound == False):
-            replay_type.append('forward')
         else:
             replay_type.append('unknown')
-
+            
     return traj_dist,traj_speed,traj_step,replay_type,position
 
 def flip_pos_within_epoch(pos,dir_epoch):
