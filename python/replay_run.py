@@ -83,7 +83,7 @@ def weighted_correlation(posterior, time, place_bin_centers):
     posterior[np.isnan(posterior)] = 0.0
 
     return _corr(time[:, np.newaxis],
-                 place_bin_centers[np.newaxis, :], posterior)
+                place_bin_centers[np.newaxis, :], posterior)
 
 def score_array(posterior):
     """
@@ -177,11 +177,11 @@ def shuff(posterior_array,time,place_bin_centers,dt,dp):
     return w_corr_time_swap,w_corr_col_cycle
 
 def get_features(bst_placecells,
-                 posteriors,
-                 bdries,
-                 mode_pth,
-                 pos,
-                 dp=3):
+                    posteriors,
+                    bdries,
+                    mode_pth,
+                    pos,
+                    dp=3):
     """
     Using the posterior probability matrix, calculate several features on spatial trajectory
     and detects if the trajectory is foward or reverse depending on the rat's current position
@@ -244,6 +244,38 @@ def get_features(bst_placecells,
 
     return traj_dist,traj_speed,traj_step,replay_type,position
 
+def flip_pos_within_epoch(pos,dir_epoch):
+    """
+    flip_pos_within_epoch: flips x coordinate within epoch
+        Made to reverse x coordinate within nelpy array for replay analysis
+
+    Input:
+        pos: nelpy analog array with single dim
+        dir_epoch: epoch to flip
+    Output:
+        pos: original pos, but fliped by epoch
+    """
+    def flip_x(x):
+        return (x*-1) - np.nanmin(x*-1)
+
+    # make pos df 
+    pos_df = pd.DataFrame()
+    pos_df['ts'] = pos.abscissa_vals
+    pos_df['x'] = pos.data.T
+    pos_df['dir'] = False
+
+    # make index within df of epoch
+    for ep in dir_epoch:
+        pos_df.loc[pos_df['ts'].between(ep.starts[0], ep.stops[0]),'dir'] = True
+        
+    # flip x within epoch
+    pos_df.loc[pos_df.dir==True,'x'] = flip_x(pos_df[pos_df.dir==True].x)
+
+    # add position back to input pos
+    pos._data = np.expand_dims(pos_df.x.values, axis=0)
+
+    return pos
+
 def handle_behavior(basepath,epoch_df,beh_epochs):
     beh_df = loading.load_animal_behavior(basepath)
 
@@ -261,14 +293,21 @@ def handle_behavior(basepath,epoch_df,beh_epochs):
     pos.data = pos.data - np.nanmin(pos.data)
 
     # get outbound and inbound epochs
-    outbound_epochs,inbound_epochs = functions.get_linear_track_lap_epochs(pos.abscissa_vals, pos.data[0])
+    (
+        outbound_epochs,
+        inbound_epochs
+    ) = functions.get_linear_track_lap_epochs(pos.abscissa_vals,
+                                            pos.data[0],
+                                            newLapThreshold=20)
+    # flip x coord of outbound
+    pos = flip_pos_within_epoch(pos,inbound_epochs)
 
     return pos,outbound_epochs,inbound_epochs
 
-def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_curve_sigma):
+def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_curve_sigma,dir_i):
     # compute and smooth speed
     speed1 = nel.utils.ddt_asa(pos[dir_epoch], smooth=True, sigma=0.1, norm=True)
- 
+
     # find epochs where the animal ran > 4cm/sec
     run_epochs = nel.utils.get_run_epochs(speed1, v1=speed_thres, v2=speed_thres)
 
@@ -297,7 +336,7 @@ def restrict_to_place_cells(tc,st_run,bst_run,st_all,cell_metrics,place_cell_min
     peak_firing_rates = tc.max(axis=1)
     mean_firing_rates = tc.mean(axis=1)
     ratio = peak_firing_rates/mean_firing_rates
-  
+
     idx = (
         (st_run.n_events >= place_cell_min_spks) &
         (tc.ratemap.max(axis=1) >= place_cell_min_rate) &
@@ -373,7 +412,14 @@ def run_all(
     for dir_i,dir_epoch in enumerate([outbound_epochs,inbound_epochs]):
 
         # construct tuning curves
-        tc,st_run,bst_run = get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_curve_sigma)
+        tc,st_run,bst_run = get_tuning_curves(pos,
+                                                st_all,
+                                                dir_epoch,
+                                                speed_thres,
+                                                ds_50ms,
+                                                s_binsize,
+                                                tuning_curve_sigma,
+                                                dir_i)
         
         # locate pyr cells with >= 100 spikes, peak rate >= 1 Hz, peak/mean ratio >=1.5
         (sta_placecells,
