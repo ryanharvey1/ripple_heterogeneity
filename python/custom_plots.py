@@ -25,14 +25,12 @@ def plot_ecdf(
     y = df[(df[column_label] == label_)]
     if y.empty == False:
         xs, ys = ecdf(y[var])
-        ax.plot(
-            xs,
-            ys,
-            color=group_colors[y[column_label].iloc[0]],
-            linewidth=linewidth,
-            label=label,
-            rasterized=rasterized
-            )
+        ax.plot(xs,
+                ys,
+                color=group_colors[y[column_label].iloc[0]],
+                linewidth=linewidth,
+                label=label,
+                rasterized=rasterized)
 
 def plot_box(
     df,
