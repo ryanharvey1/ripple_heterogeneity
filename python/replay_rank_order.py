@@ -69,14 +69,17 @@ def run_all(basepath):
     environment = []
     avg_fr = []
     particip = []
-
+    replay_particip = []
+    n_replays = []
     par_mat = functions.get_participation(st.data,ripple_epochs.starts,ripple_epochs.stops)
     par_mat = nel.AnalogSignalArray(data=par_mat,timestamps=ripple_epochs.centers)
 
     for beh_i,beh_epoch in enumerate(behavior_epochs):
         for key_ in  epochs.keys():
             temp_rank_order,rank_order = functions.get_rank_order(st[beh_epoch],epochs[key_])
+            n_replays.append(np.tile(rank_order.shape[1],len(temp_rank_order)))
             avg_fr.append(st[beh_epoch].n_spikes / beh_epoch.duration)
+            replay_particip.append(functions.get_participation(st[beh_epoch].data,epochs[key_].starts,epochs[key_].stops).mean(axis=1))
             particip.append(par_mat[beh_epoch].mean(axis=1))
             median_rank_order.append(temp_rank_order)
             label.append([key_]*len(temp_rank_order))
@@ -86,7 +89,9 @@ def run_all(basepath):
     
     df_rank_order = pd.DataFrame()
     df_rank_order['median_rank_order'] = np.hstack(median_rank_order)
+    df_rank_order['n_replays'] = np.hstack(n_replays)
     df_rank_order['avg_fr'] = np.hstack(avg_fr)
+    df_rank_order['replay_particip'] = np.hstack(replay_particip)
     df_rank_order['particip'] = np.hstack(particip)
     df_rank_order['label'] = np.hstack(label)
     df_rank_order['deepSuperficial'] = np.hstack(deepSuperficial)
