@@ -197,6 +197,34 @@ def BurstIndex_Royer_2012(autocorrs):
         else:
             burst_idx.append(np.nan)
     return burst_idx
+    
+def select_burst_spikes(spikes,mode='bursts',isiBursts=0.006,isiSpikes=0.020):
+    """
+    select_burst_spikes - Discriminate bursts vs single spikes.
+    adpated from: http://fmatoolbox.sourceforge.net/Contents/FMAToolbox/Analyses/SelectSpikes.html
+    
+    Input:
+        spikes: list of spike times
+        mode: either 'bursts' (default) or 'single'
+        isiBursts: max inter-spike interval for bursts (default = 0.006)
+        isiSpikes: min for single spikes (default = 0.020)
+    Output:
+        selected: a logical vector indicating for each spike whether it 
+                    matches the criterion
+    """
+
+    dt = np.diff(spikes)
+
+    if mode == 'bursts':
+        b = dt<isiBursts
+        # either next or previous isi < threshold
+        selected = np.insert(b, 0, False, axis=0) | np.append(b,False)
+    else:
+        s = dt>isiSpikes
+        # either next or previous isi > threshold
+        selected = np.insert(s, 0, False, axis=0) & np.append(s,False)
+
+    return selected
 
 def compress_repeated_epochs(epoch_df):
     """
