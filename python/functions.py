@@ -891,16 +891,15 @@ def find_epoch_pattern(env,pattern):
             return dummy, np.arange(i,i+len(pattern))
     return None,None
 
-def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01,epoch_ts_dt=0.001):
+def get_rank_order(st,epochs,method='peak_fr',dt=0.001,sigma=0.01):
     """
     get rank order of spike train within epoch
     Input:
         st: spike train nelpy array 
         epochs: epoch array, windows in which to calculate rank order
         method: method of rank order 'first_spike' or 'peak_fr' (default: peak_fr)
-        ds: bin width (s) for peak_fr method
+        dt: bin width (s) for finding relative time
         sigma: smoothing sigma (s) for peak_fr method
-        epoch_ts_dt: dt for start-stop ts for each epoch for interp (first_spike method)
     Output:
         median_rank: median rank order over all epochs (0-1)
         rank_order: matrix (n cells X n epochs) each column shows rank per cell per epoch (0-1)
@@ -914,7 +913,7 @@ def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01,epoch_ts_dt=0.
     warnings.filterwarnings("ignore", message="ignoring events outside of eventarray support")
     warnings.filterwarnings("ignore", message="Mean of empty slice")
 
-    def rank_order_first_spike(st_epoch,epochs,epoch_ts_dt):
+    def rank_order_first_spike(st_epoch,epochs,dt):
         # set up empty matrix for rank order
         rank_order = np.zeros([st_epoch.data.shape[0],st_epoch.n_intervals])
         # iter over every event
@@ -929,18 +928,18 @@ def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01,epoch_ts_dt=0.
                     min_ts.append(np.nanmin(ts))
             # make time stamps for interpolation
             epoch_ts = np.arange(epochs[event_i].start,
-                                epochs[event_i].stop,epoch_ts_dt)
+                                epochs[event_i].stop,dt)
             # make normalized range 0-1
             norm_range = np.linspace(0,1,len(epoch_ts))
             # get spike order relative to normalized range
             rank_order[:,event_i] = np.interp(min_ts,epoch_ts,norm_range)
         return rank_order
 
-    def rank_order_fr(st_epoch,ds,sigma):
+    def rank_order_fr(st_epoch,dt,sigma):
         # set up empty matrix for rank order
         rank_order = np.zeros([st_epoch.data.shape[0],st_epoch.n_intervals])
         # bin spike train here (smooth later per epoch to not have edge issues)
-        z_t = st_epoch.bin(ds=ds)
+        z_t = st_epoch.bin(ds=dt)
         # iter over epochs
         for event_i,z_t_temp in enumerate(z_t):
             # smooth spike train in order to estimate peak 
@@ -964,9 +963,9 @@ def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01,epoch_ts_dt=0.
 
     # set up empty matrix for rank order
     if method == 'peak_fr':
-        rank_order = rank_order_fr(st_epoch,ds,sigma)
+        rank_order = rank_order_fr(st_epoch,dt,sigma)
     elif method == 'first_spike':
-        rank_order = rank_order_first_spike(st_epoch,epochs,epoch_ts_dt)
+        rank_order = rank_order_first_spike(st_epoch,epochs,dt)
     else:
         raise Exception('other method, '+method+ ' is not implemented')
         
