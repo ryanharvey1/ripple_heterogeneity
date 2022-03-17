@@ -930,28 +930,28 @@ def get_rank_order(st,epochs,method='peak_fr',ds=0.005,sigma=0.01):
 
     # set up empty matrix for rank order
     rank_order = np.zeros([st_epoch.data.shape[0],st_epoch.n_intervals])
-    # iter over epochs
-    for event_i,st_ in enumerate(st_epoch):
-        if method == 'peak_fr':
-            # bin spike train 
-            z_t = st_.bin(ds=ds)
-            # smooth spike train in order to estimate peak 
-            z_t.smooth(sigma=sigma,inplace=True)
-            # iterate over each cell
-            for cell_i,unit in enumerate(z_t.data):
-                # if the cell is not active apply nan
-                if not np.any(unit>0):
-                    rank_order[cell_i,event_i] = np.nan
-                else:
-                    # calculate normalized rank order (0-1)
-                    rank_order[cell_i,event_i] = np.argmax(unit) / len(unit)
-        else:
-            raise Exception('other methods are not implemented yet')
-            
-            # st_.sub
-            # unit_ids_to_keep = (np.array(np.where(st_.n_events>0))+1).squeeze().tolist()
-            # st_ = st_._unit_subset(unit_ids_to_keep)
-            # st_.get_event_firing_order()
-            # x = (np.array(st_.get_event_firing_order())-1)[st_.n_events>0]
-            # zero_to_one(x)
+    if method == 'peak_fr':
+        # bin spike train here (smooth later per epoch to not have edge issues)
+        z_t = st_epoch.bin(ds=ds)
+        # iter over epochs
+        for event_i,z_t_temp in enumerate(z_t):
+                # smooth spike train in order to estimate peak 
+                z_t_temp.smooth(sigma=sigma,inplace=True)
+                # iterate over each cell
+                for cell_i,unit in enumerate(z_t_temp.data):
+                    # if the cell is not active apply nan
+                    if not np.any(unit>0):
+                        rank_order[cell_i,event_i] = np.nan
+                    else:
+                        # calculate normalized rank order (0-1)
+                        rank_order[cell_i,event_i] = np.argmax(unit) / len(unit)
+    else:
+        raise Exception('other methods are not implemented yet')
+        
+        # st_.sub
+        # unit_ids_to_keep = (np.array(np.where(st_.n_events>0))+1).squeeze().tolist()
+        # st_ = st_._unit_subset(unit_ids_to_keep)
+        # st_.get_event_firing_order()
+        # x = (np.array(st_.get_event_firing_order())-1)[st_.n_events>0]
+        # zero_to_one(x)
     return np.nanmedian(rank_order,axis=1),rank_order
