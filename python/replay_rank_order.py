@@ -71,6 +71,7 @@ def run_all(basepath):
     particip = []
     replay_particip = []
     n_replays = []
+    n_active_replays = []
     par_mat = functions.get_participation(st.data,ripple_epochs.starts,ripple_epochs.stops)
     par_mat = nel.AnalogSignalArray(data=par_mat,timestamps=ripple_epochs.centers)
 
@@ -81,6 +82,7 @@ def run_all(basepath):
                 continue
             median_rank_order.append(temp_rank_order)
             n_replays.append(np.tile(rank_order.shape[1],len(temp_rank_order)))
+            n_active_replays.append(np.sum(rank_order>0,axis=1))
             avg_fr.append(st[beh_epoch].n_spikes / beh_epoch.duration)
             replay_particip.append(functions.get_participation(st[beh_epoch].data,epochs[key_].starts,epochs[key_].stops).mean(axis=1))
             particip.append(par_mat[beh_epoch].mean(axis=1))
@@ -90,12 +92,13 @@ def run_all(basepath):
             environment.append([beh_i]*len(temp_rank_order))
 
     df_rank_order = pd.DataFrame()
-    
+
     if len(median_rank_order) == 0:
         return df_rank_order
 
     df_rank_order['median_rank_order'] = np.hstack(median_rank_order)
     df_rank_order['n_replays'] = np.hstack(n_replays)
+    df_rank_order['n_active_replays'] = np.hstack(n_active_replays)
     df_rank_order['avg_fr'] = np.hstack(avg_fr)
     df_rank_order['replay_particip'] = np.hstack(replay_particip)
     df_rank_order['particip'] = np.hstack(particip)
