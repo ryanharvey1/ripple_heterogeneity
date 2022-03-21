@@ -10,7 +10,7 @@ import os
 import matplotlib.pyplot as plt
 
 import pandas as pd
-import statistics 
+import statistics
 from scipy import stats
 
 import multiprocessing
@@ -23,19 +23,22 @@ import loading
 
 
 def decode_and_score(bst, tc, pos):
-    # access decoding accuracy on behavioral time scale 
+    # access decoding accuracy on behavioral time scale
     posteriors, lengths, mode_pth, mean_pth = nel.decoding.decode1D(bst,
                                                                     tc,
-                                                                    xmin=np.nanmin(pos.data),
+                                                                    xmin=np.nanmin(
+                                                                        pos.data),
                                                                     xmax=np.nanmax(pos.data))
     actual_pos = pos(bst.bin_centers)
     bad_idx = np.isnan(actual_pos) | np.isnan(mode_pth)
     actual_pos = actual_pos[~bad_idx]
     mode_pth = mode_pth[~bad_idx]
-    slope, intercept, rvalue, pvalue, stderr = stats.linregress(actual_pos, mode_pth)
+    slope, intercept, rvalue, pvalue, stderr = stats.linregress(
+        actual_pos, mode_pth)
     median_error = np.nanmedian(np.abs(actual_pos - mode_pth))
-    
-    return rvalue,median_error
+
+    return rvalue, median_error
+
 
 def pooled_incoherent_shuffle_bst(bst):
     out = copy.deepcopy(bst)
@@ -47,6 +50,7 @@ def pooled_incoherent_shuffle_bst(bst):
         data[uu, :] = segment
     return out
 
+
 def decode_and_shuff(bst, tc, pos, n_shuffles=500):
     """
     """
@@ -54,14 +58,16 @@ def decode_and_shuff(bst, tc, pos, n_shuffles=500):
 
     scores = np.zeros(bst.n_epochs)
     if n_shuffles > 0:
-        rvalue_time_swap = np.zeros((n_shuffles,1))
-        median_error_time_swap = np.zeros((n_shuffles,1))
-        
+        rvalue_time_swap = np.zeros((n_shuffles, 1))
+        median_error_time_swap = np.zeros((n_shuffles, 1))
+
     for shflidx in range(n_shuffles):
         bst_shuff = pooled_incoherent_shuffle_bst(bst)
-        rvalue_time_swap[shflidx], median_error_time_swap[shflidx] = decode_and_score(bst_shuff, tc, pos)
-            
+        rvalue_time_swap[shflidx], median_error_time_swap[shflidx] = decode_and_score(
+            bst_shuff, tc, pos)
+
     return rvalue, median_error, rvalue_time_swap, median_error_time_swap
+
 
 def _m(x, w):
     """Weighted Mean"""
@@ -77,13 +83,15 @@ def _corr(x, y, w):
     """Weighted Correlation"""
     return _cov(x, y, w) / np.sqrt(_cov(x, x, w) * _cov(y, y, w))
 
+
 def weighted_correlation(posterior, time, place_bin_centers):
     """ From Eric Denovellis """
     place_bin_centers = place_bin_centers.squeeze()
     posterior[np.isnan(posterior)] = 0.0
 
     return _corr(time[:, np.newaxis],
-                place_bin_centers[np.newaxis, :], posterior)
+                 place_bin_centers[np.newaxis, :], posterior)
+
 
 def score_array(posterior):
     """
@@ -101,22 +109,23 @@ def score_array(posterior):
     x = x[~nan_loc]
     y = y[~nan_loc]
     w = w[~nan_loc]
-    
+
     # if only one time bin is active
-    if len(x)==1:
-        return np.nan,np.nan,np.nan,np.nan
-    
+    if len(x) == 1:
+        return np.nan, np.nan, np.nan, np.nan
+
     X = sm.add_constant(x)
-    wls_model = sm.WLS(y,X, weights=w)
+    wls_model = sm.WLS(y, X, weights=w)
     results = wls_model.fit()
-    
+
     slope = results.params[1]
     intercept = results.params[0]
     log_like = wls_model.loglike(results.params)
 
-    return results.rsquared,slope,intercept,log_like
+    return results.rsquared, slope, intercept, log_like
 
-def get_score_coef(bst,bdries,posterior):
+
+def get_score_coef(bst, bdries, posterior):
     """
     runs score_array on each event epoch in bst (binned spike train)
     """
@@ -127,8 +136,9 @@ def get_score_coef(bst,bdries,posterior):
 
     for idx in range(bst.n_epochs):
         posterior_array = posterior[:, bdries[idx]:bdries[idx+1]]
-        scores[idx],slope[idx],intercept[idx],log_like[idx] = score_array(posterior_array)
-    return scores,slope,intercept,log_like
+        scores[idx], slope[idx], intercept[idx], log_like[idx] = score_array(
+            posterior_array)
+    return scores, slope, intercept, log_like
 
 
 def get_significant_events(scores, shuffled_scores, q=95):
@@ -157,7 +167,7 @@ def get_significant_events(scores, shuffled_scores, q=95):
 
     # set nan scores to 1
     pvalues[np.isnan(scores)] = 1
-    
+
     sig_event_idx = np.argwhere(scores > np.percentile(
         shuffled_scores,
         axis=0,
@@ -165,31 +175,35 @@ def get_significant_events(scores, shuffled_scores, q=95):
 
     return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues)
 
-def shuff(posterior_array,time,place_bin_centers,dt,dp):
-    
+
+def shuff(posterior_array, time, place_bin_centers, dt, dp):
+
     posterior_ts = replay.time_swap_array(posterior_array)
     posterior_cs = replay.column_cycle_array(posterior_array)
 
+    w_corr_time_swap = weighted_correlation(
+        posterior_ts, time, place_bin_centers)
+    w_corr_col_cycle = weighted_correlation(
+        posterior_cs, time, place_bin_centers)
 
-    w_corr_time_swap = weighted_correlation(posterior_ts, time, place_bin_centers)
-    w_corr_col_cycle = weighted_correlation(posterior_cs, time, place_bin_centers)
-    
-    return w_corr_time_swap,w_corr_col_cycle
+    return w_corr_time_swap, w_corr_col_cycle
+
 
 def get_features(bst_placecells,
-                    posteriors,
-                    bdries,
-                    mode_pth,
-                    pos,
-                    dp=3):
+                 posteriors,
+                 bdries,
+                 mode_pth,
+                 pos,
+                 dp=3):
     """
     Using the posterior probability matrix, calculate several features on spatial trajectory
     and detects if the trajectory is foward or reverse depending on the rat's current position
     """
-    
-    place_bin_edges = np.arange(np.nanmin(pos.data[0]), np.nanmax(pos.data[0]) + dp, dp)
+
+    place_bin_edges = np.arange(
+        np.nanmin(pos.data[0]), np.nanmax(pos.data[0]) + dp, dp)
     place_bin_centers = place_bin_edges[:-1] + np.diff(place_bin_edges) / 2
-    
+
     traj_dist = []
     traj_speed = []
     traj_step = []
@@ -203,10 +217,10 @@ def get_features(bst_placecells,
     for p in pos:
         good_idx = ~np.isnan(p.data[0])
         cur_x = p.data[0][good_idx]
-        b1,_,_,_,_ = stats.linregress(np.arange(len(cur_x)), cur_x)
+        b1, _, _, _, _ = stats.linregress(np.arange(len(cur_x)), cur_x)
         x_slope.append(b1)
     # if the majority (>.5) of laps have x coords that increase (positive slopes)
-    if np.mean(np.array(x_slope)>0) > .5:
+    if np.mean(np.array(x_slope) > 0) > .5:
         outbound = True
     else:
         outbound = False
@@ -224,13 +238,13 @@ def get_features(bst_placecells,
 
         # get spatial difference between bins
         dy = np.abs(np.diff(y))
-        # get cumulative distance 
+        # get cumulative distance
         traj_dist.append(np.nansum(dy))
         # calculate avg speed of trajectory (dist(cm) / time(sec))
         traj_speed.append(np.nansum(dy) / (np.nanmax(x) - np.nanmin(x)))
-        # get mean step size 
+        # get mean step size
         traj_step.append(np.nanmean(dy))
-        
+
         if (velocity > 0):
             replay_type.append('forward')
         elif (velocity < 0):
@@ -238,9 +252,10 @@ def get_features(bst_placecells,
         else:
             replay_type.append('unknown')
 
-    return traj_dist,traj_speed,traj_step,replay_type,position
+    return traj_dist, traj_speed, traj_step, replay_type, position
 
-def flip_pos_within_epoch(pos,dir_epoch):
+
+def flip_pos_within_epoch(pos, dir_epoch):
     """
     flip_pos_within_epoch: flips x coordinate within epoch
         Made to reverse x coordinate within nelpy array for replay analysis
@@ -254,7 +269,7 @@ def flip_pos_within_epoch(pos,dir_epoch):
     def flip_x(x):
         return (x*-1) - np.nanmin(x*-1)
 
-    # make pos df 
+    # make pos df
     pos_df = pd.DataFrame()
     pos_df['ts'] = pos.abscissa_vals
     pos_df['x'] = pos.data.T
@@ -262,17 +277,19 @@ def flip_pos_within_epoch(pos,dir_epoch):
 
     # make index within df of epoch
     for ep in dir_epoch:
-        pos_df.loc[pos_df['ts'].between(ep.starts[0], ep.stops[0]),'dir'] = True
-        
+        pos_df.loc[pos_df['ts'].between(
+            ep.starts[0], ep.stops[0]), 'dir'] = True
+
     # flip x within epoch
-    pos_df.loc[pos_df.dir==True,'x'] = flip_x(pos_df[pos_df.dir==True].x)
+    pos_df.loc[pos_df.dir == True, 'x'] = flip_x(pos_df[pos_df.dir == True].x)
 
     # add position back to input pos
     pos._data = np.expand_dims(pos_df.x.values, axis=0)
 
     return pos
 
-def handle_behavior(basepath,epoch_df,beh_epochs):
+
+def handle_behavior(basepath, epoch_df, beh_epochs):
     beh_df = loading.load_animal_behavior(basepath)
 
     # find linear track
@@ -280,10 +297,10 @@ def handle_behavior(basepath,epoch_df,beh_epochs):
     beh_epochs_linear = beh_epochs[idx]
     # make position array
     pos = nel.AnalogSignalArray(data=np.array(beh_df.linearized),
-                            timestamps=beh_df.time,
-                            fs=1/statistics.mode(np.diff(beh_df.time)))
-    # only include linear track                        
-    pos = pos[beh_epochs_linear]      
+                                timestamps=beh_df.time,
+                                fs=1/statistics.mode(np.diff(beh_df.time)))
+    # only include linear track
+    pos = pos[beh_epochs_linear]
 
     # make min pos 0
     pos.data = pos.data - np.nanmin(pos.data)
@@ -293,39 +310,43 @@ def handle_behavior(basepath,epoch_df,beh_epochs):
         outbound_epochs,
         inbound_epochs
     ) = functions.get_linear_track_lap_epochs(pos.abscissa_vals,
-                                            pos.data[0],
-                                            newLapThreshold=20)
+                                              pos.data[0],
+                                              newLapThreshold=20)
     # flip x coord of outbound
-    pos = flip_pos_within_epoch(pos,inbound_epochs)
+    pos = flip_pos_within_epoch(pos, inbound_epochs)
 
-    return pos,outbound_epochs,inbound_epochs
+    return pos, outbound_epochs, inbound_epochs
 
-def get_tuning_curves(pos,st_all,dir_epoch,speed_thres,ds_50ms,s_binsize,tuning_curve_sigma):
+
+def get_tuning_curves(pos, st_all, dir_epoch, speed_thres, ds_50ms, s_binsize, tuning_curve_sigma):
     # compute and smooth speed
-    speed1 = nel.utils.ddt_asa(pos[dir_epoch], smooth=True, sigma=0.1, norm=True)
+    speed1 = nel.utils.ddt_asa(
+        pos[dir_epoch], smooth=True, sigma=0.1, norm=True)
 
     # find epochs where the animal ran > 4cm/sec
-    run_epochs = nel.utils.get_run_epochs(speed1, v1=speed_thres, v2=speed_thres)
+    run_epochs = nel.utils.get_run_epochs(
+        speed1, v1=speed_thres, v2=speed_thres)
 
     # restrict spike trains to those epochs during which the animal was running
-    st_run = st_all[dir_epoch][run_epochs] 
-    
+    st_run = st_all[dir_epoch][run_epochs]
+
     # smooth and re-bin:
     bst_run = st_run.bin(ds=ds_50ms)
-    
+
     x_max = np.ceil(np.nanmax(pos[dir_epoch].data))
     x_min = np.floor(np.nanmin(pos[dir_epoch].data))
 
     n_bins = int((x_max - x_min) / s_binsize)
 
-    tc = nel.TuningCurve1D(bst=bst_run, 
-                            extern=pos[dir_epoch],
-                            n_extern=n_bins,
-                            extmin=x_min,
-                            extmax=x_max,
-                            sigma=tuning_curve_sigma,
-                            min_duration=0)
-    return tc,st_run,bst_run
+    tc = nel.TuningCurve1D(bst=bst_run,
+                           extern=pos[dir_epoch],
+                           n_extern=n_bins,
+                           extmin=x_min,
+                           extmax=x_max,
+                           sigma=tuning_curve_sigma,
+                           min_duration=0)
+    return tc, st_run, bst_run
+
 
 def restrict_to_place_cells(tc,
                             st_run,
@@ -350,85 +371,91 @@ def restrict_to_place_cells(tc,
     sta_placecells = st_all._unit_subset(unit_ids_to_keep)
     tc = tc._unit_subset(unit_ids_to_keep)
     total_units = sta_placecells.n_active
-    bst_run = bst_run.loc[:,unit_ids_to_keep]
+    bst_run = bst_run.loc[:, unit_ids_to_keep]
 
     # restrict cell_metrics to place cells
     cell_metrics_ = cell_metrics[idx]
 
-    return sta_placecells,tc,bst_run,cell_metrics_,total_units
+    return sta_placecells, tc, bst_run, cell_metrics_, total_units
+
 
 def run_all(
-    basepath, # basepath to session
-    traj_shuff=1500, # number of shuffles to determine sig replay
-    ds_50ms=0.05, # bin width to bin st for tuning curve
-    s_binsize=3, # spatial bins in tuning curve
-    speed_thres=4, # running threshold to determine tuning curves
-    min_rip_dur=0.08, # min ripple duration for replay
-    place_cell_min_rate=1, # min peak rate of tuning curve
-    place_cell_min_spks=100, # at least 100 spikes while running above speed_thres
-    place_cell_peak_mean_ratio=1.5, # peak firing rate / mean firing rate
-    replay_binsize=0.02, # bin size to decode replay
-    tuning_curve_sigma=3 # 3 cm sd of smoothing on tuning curve
+    basepath,  # basepath to session
+    traj_shuff=1500,  # number of shuffles to determine sig replay
+    ds_50ms=0.05,  # bin width to bin st for tuning curve
+    s_binsize=3,  # spatial bins in tuning curve
+    speed_thres=4,  # running threshold to determine tuning curves
+    min_rip_dur=0.08,  # min ripple duration for replay
+    place_cell_min_rate=1,  # min peak rate of tuning curve
+    place_cell_min_spks=100,  # at least 100 spikes while running above speed_thres
+    place_cell_peak_mean_ratio=1.5,  # peak firing rate / mean firing rate
+    replay_binsize=0.02,  # bin size to decode replay
+    tuning_curve_sigma=3  # 3 cm sd of smoothing on tuning curve
 ):
     """
     Main function that conducts the replay analysis
     """
 
     # maze_size_cm,pos,st_all = get_base_data(data_path,spike_path,session)
-    cell_metrics,data,ripples,fs_dat = loading.load_basic_data(basepath)
+    cell_metrics, data, ripples, fs_dat = loading.load_basic_data(basepath)
 
     restrict_idx = ((cell_metrics.putativeCellType == "Pyramidal Cell") &
-                        ((cell_metrics.brainRegion=="CA1") |
-                        (cell_metrics.brainRegion=="rCA1") |
-                        (cell_metrics.brainRegion=="lCA1")) &
-                        (cell_metrics.bad_unit==False) & 
-                        (cell_metrics.total >= 100))
-    # restrict cell metrics                      
+                    ((cell_metrics.brainRegion == "CA1") |
+                     (cell_metrics.brainRegion == "rCA1") |
+                     (cell_metrics.brainRegion == "lCA1")) &
+                    (cell_metrics.bad_unit == False) &
+                    (cell_metrics.total >= 100))
+    # restrict cell metrics
     cell_metrics = cell_metrics[restrict_idx]
-    
+
     if cell_metrics.shape[0] == 0:
         return
     try:
-        st_all = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx], fs=fs_dat)
+        st_all = nel.SpikeTrainArray(timestamps=np.array(
+            data['spikes'], dtype=object)[restrict_idx], fs=fs_dat)
     except:
-        st_all = nel.SpikeTrainArray(timestamps=np.array(data['spikes'],dtype=object)[restrict_idx][0], fs=fs_dat)
+        st_all = nel.SpikeTrainArray(timestamps=np.array(
+            data['spikes'], dtype=object)[restrict_idx][0], fs=fs_dat)
 
     epoch_df = loading.load_epoch(basepath)
-    pattern_idx,_ = functions.find_epoch_pattern(epoch_df.environment,['sleep','linear','sleep'])
+    pattern_idx, _ = functions.find_epoch_pattern(
+        epoch_df.environment, ['sleep', 'linear', 'sleep'])
     epoch_df = epoch_df[pattern_idx]
-    beh_epochs = nel.EpochArray([np.array([epoch_df.startTime,epoch_df.stopTime]).T])
+    beh_epochs = nel.EpochArray(
+        [np.array([epoch_df.startTime, epoch_df.stopTime]).T])
 
-    pos,outbound_epochs,inbound_epochs = handle_behavior(basepath,epoch_df,beh_epochs)
+    pos, outbound_epochs, inbound_epochs = handle_behavior(
+        basepath, epoch_df, beh_epochs)
 
     # restrict to events at least xx s long
     ripples = ripples[ripples.duration >= min_rip_dur]
 
     # make epoch object
-    ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
+    ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
 
     # iter through both running directions
     results = {}
     results['outbound_epochs'] = {}
     results['inbound_epochs'] = {}
 
-    direction_str = ['outbound_epochs','inbound_epochs']
-    for dir_i,dir_epoch in enumerate([outbound_epochs,inbound_epochs]):
+    direction_str = ['outbound_epochs', 'inbound_epochs']
+    for dir_i, dir_epoch in enumerate([outbound_epochs, inbound_epochs]):
 
         # construct tuning curves
-        tc,st_run,bst_run = get_tuning_curves(pos,
+        tc, st_run, bst_run = get_tuning_curves(pos,
                                                 st_all,
                                                 dir_epoch,
                                                 speed_thres,
                                                 ds_50ms,
                                                 s_binsize,
                                                 tuning_curve_sigma)
-        
+
         # locate pyr cells with >= 100 spikes, peak rate >= 1 Hz, peak/mean ratio >=1.5
         (sta_placecells,
-        tc,
-        bst_run,
-        cell_metrics_,
-        total_units) = restrict_to_place_cells(tc,
+         tc,
+         bst_run,
+         cell_metrics_,
+         total_units) = restrict_to_place_cells(tc,
                                                 st_run,
                                                 bst_run,
                                                 st_all,
@@ -437,27 +464,29 @@ def run_all(
                                                 place_cell_min_rate,
                                                 place_cell_peak_mean_ratio)
 
-        # access decoding accuracy on behavioral time scale 
-        (decoding_r2, 
-        median_error, 
-        decoding_r2_shuff, 
-        _)= decode_and_shuff(bst_run,
-                                tc,
-                                pos[dir_epoch],
-                                n_shuffles=traj_shuff)
+        # access decoding accuracy on behavioral time scale
+        (decoding_r2,
+         median_error,
+         decoding_r2_shuff,
+         _) = decode_and_shuff(bst_run,
+                               tc,
+                               pos[dir_epoch],
+                               n_shuffles=traj_shuff)
         # check decoding quality against chance distribution
-        _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
-    
+        _, decoding_r2_pval = get_significant_events(
+            decoding_r2, decoding_r2_shuff)
+
         # get ready to decode replay
-        # bin data for replay (20ms default) 
+        # bin data for replay (20ms default)
         bst_placecells = sta_placecells[ripple_epochs].bin(ds=replay_binsize)
 
         # count units per event
         n_active = [bst.n_active for bst in bst_placecells]
-        n_active = np.array(n_active) 
+        n_active = np.array(n_active)
         # also count the proportion of bins in each event with 0 activity
-        inactive_bin_prop = [sum(bst.n_active_per_bin == 0) / bst.lengths[0] for bst in bst_placecells]
-        inactive_bin_prop = np.array(inactive_bin_prop) 
+        inactive_bin_prop = [
+            sum(bst.n_active_per_bin == 0) / bst.lengths[0] for bst in bst_placecells]
+        inactive_bin_prop = np.array(inactive_bin_prop)
         # restrict bst to instances with >= 5 active units and < 50% inactive bins
         idx = (n_active >= 5) & (inactive_bin_prop < .5)
         bst_placecells = bst_placecells[np.where(idx)[0]]
@@ -468,25 +497,27 @@ def run_all(
 
         # decode each ripple event
         (posteriors,
-        bdries,
-        mode_pth,
-        mean_pth) = nel.decoding.decode1D(bst_placecells,
-                                            tc,
-                                            xmin=np.nanmin(pos[dir_epoch].data),
-                                            xmax=np.nanmax(pos[dir_epoch].data))
-                
+         bdries,
+         mode_pth,
+         mean_pth) = nel.decoding.decode1D(bst_placecells,
+                                           tc,
+                                           xmin=np.nanmin(pos[dir_epoch].data),
+                                           xmax=np.nanmax(pos[dir_epoch].data))
+
         # score each event using trajectory_score_bst (sums the posterior probability in a range (w) from the LS line)
         (scores,
-        scores_time_swap,
-        scores_col_cycle) = replay.trajectory_score_bst(bst_placecells,
-                                                        tc,
-                                                        w=3,
-                                                        n_shuffles=traj_shuff,
-                                                        normalize=True)
-        
+         scores_time_swap,
+         scores_col_cycle) = replay.trajectory_score_bst(bst_placecells,
+                                                         tc,
+                                                         w=3,
+                                                         n_shuffles=traj_shuff,
+                                                         normalize=True)
+
         # find sig events using time and column shuffle distributions
-        _,score_pval_time_swap = get_significant_events(scores, scores_time_swap)
-        _,score_pval_col_cycle = get_significant_events(scores, scores_col_cycle)
+        _, score_pval_time_swap = get_significant_events(
+            scores, scores_time_swap)
+        _, score_pval_col_cycle = get_significant_events(
+            scores, scores_col_cycle)
 
         (
             traj_dist,
@@ -494,8 +525,8 @@ def run_all(
             traj_step,
             replay_type,
             position
-        ) = get_features(bst_placecells,posteriors,bdries,mode_pth,pos[dir_epoch],dp=s_binsize)
-        
+        ) = get_features(bst_placecells, posteriors, bdries, mode_pth, pos[dir_epoch], dp=s_binsize)
+
         slope, intercept, r2values = replay.linregress_bst(bst_placecells, tc)
 
         # package data into results dictionary
@@ -510,7 +541,7 @@ def run_all(
         results[direction_str[dir_i]]['bdries'] = bdries
         results[direction_str[dir_i]]['mode_pth'] = mode_pth
         results[direction_str[dir_i]]['position'] = position
-        
+
         temp_df = current_ripples.copy()
         # add event by event metrics to df
         temp_df['n_active'] = n_active
@@ -535,21 +566,24 @@ def run_all(
 
     return results
 
-def main_loop(basepath,save_path):
+
+def main_loop(basepath, save_path):
     '''
     main_loop: file management 
     '''
-    save_file = os.path.join(save_path,basepath.replace(os.sep, "_").replace(":", "_")  + '.pkl')
+    save_file = os.path.join(save_path, basepath.replace(
+        os.sep, "_").replace(":", "_") + '.pkl')
     if os.path.exists(save_file):
         return
-        
+
     # calc some features
     results = run_all(basepath)
     # save file
     with open(save_file, 'wb') as f:
         pickle.dump(results, f)
 
-def main(df,save_path,parallel=True):
+
+def main(df, save_path, parallel=True):
     # find sessions to run
     basepaths = pd.unique(df.basepath)
 
@@ -557,17 +591,19 @@ def main(df,save_path,parallel=True):
         os.mkdir(save_path)
 
     if parallel:
-        num_cores = multiprocessing.cpu_count()         
-        processed_list = Parallel(n_jobs=num_cores)(delayed(main_loop)(basepath,save_path) for basepath in basepaths)
-    else:    
+        num_cores = multiprocessing.cpu_count()
+        processed_list = Parallel(n_jobs=num_cores)(
+            delayed(main_loop)(basepath, save_path) for basepath in basepaths)
+    else:
         for basepath in basepaths:
             print(basepath)
-            main_loop(basepath,save_path)   
+            main_loop(basepath, save_path)
+
 
 def load_results(save_path):
     import glob
 
-    sessions = glob.glob(save_path +os.sep+ '*.pkl')
+    sessions = glob.glob(save_path + os.sep + '*.pkl')
     df = pd.DataFrame()
     for session in sessions:
         with open(session, 'rb') as f:
@@ -581,25 +617,34 @@ def load_results(save_path):
             if len(bst.support.starts) == 0:
                 results[key_]['df']['pop_partic'] = 0
             else:
-                particip_mat = functions.get_participation(st.data,bst.support.starts,bst.support.stops)
+                particip_mat = functions.get_participation(
+                    st.data, bst.support.starts, bst.support.stops)
                 results[key_]['df']['pop_partic'] = particip_mat.mean(axis=0)
-            
+
             # add behavioral decoding quality
-            results[key_]['df']['decoding_r2'] = float(results[key_]['decoding_r2'])
-            results[key_]['df']['decoding_r2_pval'] = float(results[key_]['decoding_r2_pval'])
-            results[key_]['df']['decoding_median_error'] = float(results[key_]['decoding_median_error'])
-            results[key_]['df']['total_units'] = float(results[key_]['total_units'])
+            results[key_]['df']['decoding_r2'] = float(
+                results[key_]['decoding_r2'])
+            results[key_]['df']['decoding_r2_pval'] = float(
+                results[key_]['decoding_r2_pval'])
+            results[key_]['df']['decoding_median_error'] = float(
+                results[key_]['decoding_median_error'])
+            results[key_]['df']['total_units'] = float(
+                results[key_]['total_units'])
             results[key_]['df']['direction'] = key_
-            
+
             # add epoch
             if len(results[key_]['df']) > 0:
                 results[key_]['df']['epoch'] = 'unknown'
                 epoch_df = loading.load_epoch(results[key_]['session'])
-                pattern_idx,_ = functions.find_epoch_pattern(epoch_df.environment,['sleep','linear','sleep'])
+                pattern_idx, _ = functions.find_epoch_pattern(
+                    epoch_df.environment, ['sleep', 'linear', 'sleep'])
                 epoch_df = epoch_df[pattern_idx]
-                results[key_]['df'].loc[results[key_]['df'].start.between(epoch_df.startTime.iloc[0],epoch_df.stopTime.iloc[0]),'epoch'] = 'pre_sleep'
-                results[key_]['df'].loc[results[key_]['df'].start.between(epoch_df.startTime.iloc[1],epoch_df.stopTime.iloc[1]),'epoch'] = 'linear'
-                results[key_]['df'].loc[results[key_]['df'].start.between(epoch_df.startTime.iloc[2],epoch_df.stopTime.iloc[2]),'epoch'] = 'post_sleep'
+                results[key_]['df'].loc[results[key_]['df'].start.between(
+                    epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[0]), 'epoch'] = 'pre_sleep'
+                results[key_]['df'].loc[results[key_]['df'].start.between(
+                    epoch_df.startTime.iloc[1], epoch_df.stopTime.iloc[1]), 'epoch'] = 'linear'
+                results[key_]['df'].loc[results[key_]['df'].start.between(
+                    epoch_df.startTime.iloc[2], epoch_df.stopTime.iloc[2]), 'epoch'] = 'post_sleep'
 
-            df = pd.concat([df,results[key_]['df']],ignore_index=True)
+            df = pd.concat([df, results[key_]['df']], ignore_index=True)
     return df
