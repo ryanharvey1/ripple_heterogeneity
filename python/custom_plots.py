@@ -1,27 +1,29 @@
 from matplotlib.figure import Figure
 from matplotlib.pyplot import axes
-import numpy as np 
+import numpy as np
 import seaborn as sns
 from matplotlib.ticker import AutoMinorLocator
 import matplotlib
 import matplotlib.pyplot as plt
 
+
 def ecdf(x):
     xs = np.sort(x)
-    ys = np.linspace(0,1,len(xs))
+    ys = np.linspace(0, 1, len(xs))
     return xs, ys
 
+
 def plot_ecdf(
-    var:str,
+    var: str,
     df,
     column_label,
-    label_:str,
-    ax:axes,
-    group_colors:dict,
+    label_: str,
+    ax: axes,
+    group_colors: dict,
     label="",
     rasterized=False,
     linewidth=1
-    ):
+):
     y = df[(df[column_label] == label_)]
     if y.empty == False:
         xs, ys = ecdf(y[var])
@@ -32,13 +34,14 @@ def plot_ecdf(
                 label=label,
                 rasterized=rasterized)
 
+
 def plot_box(
     df,
-    x:str,
-    var:str,
-    ax:axes,
-    fig:Figure,
-    group_colors:dict,
+    x: str,
+    var: str,
+    ax: axes,
+    fig: Figure,
+    group_colors: dict,
     title='',
     x_offset=.2,
     y_offset=.03,
@@ -63,19 +66,19 @@ def plot_box(
     # set up colors
     sns.set_palette(sns.color_palette(group_colors.values()))
     # plot boxes
-    g=sns.boxplot(x=x,
-                y=var,
-                hue=x,
-                data=df,
-                width=boxwidth,
-                ax=ax3,
-                saturation=saturation,
-                showfliers=showfliers,
-                fliersize=fliersize,
-                hue_order=list(group_colors.keys()),
-                order=list(group_colors.keys()),
-                dodge=False
-                )
+    g = sns.boxplot(x=x,
+                    y=var,
+                    hue=x,
+                    data=df,
+                    width=boxwidth,
+                    ax=ax3,
+                    saturation=saturation,
+                    showfliers=showfliers,
+                    fliersize=fliersize,
+                    hue_order=list(group_colors.keys()),
+                    order=list(group_colors.keys()),
+                    dodge=False
+                    )
     # make aesthetics adjustments
     ax3.axes.get_xaxis().set_ticks([])
     g.set(xlabel=None)
@@ -85,39 +88,42 @@ def plot_box(
     ax3.spines["left"].set_visible(False)
     ax3.spines["top"].set_visible(False)
     ax3.spines["bottom"].set_visible(False)
-    ax3.set_title(title,fontsize=7)
+    ax3.set_title(title, fontsize=7)
     ax3.get_legend().remove()
     return ax3
 
-def set_equal_axis_range(ax1,ax2):
+
+def set_equal_axis_range(ax1, ax2):
     """
     Makes x and y min and max the same between two plots
     """
-    axis_x_values = np.hstack(np.array((ax1.get_xlim(),ax2.get_xlim())))
-    axis_y_values = np.hstack(np.array((ax1.get_ylim(),ax2.get_ylim())))
-    ax1.set_xlim(axis_x_values.min(),axis_x_values.max())
-    ax1.set_ylim(axis_y_values.min(),axis_y_values.max())
-    ax2.set_xlim(axis_x_values.min(),axis_x_values.max())
-    ax2.set_ylim(axis_y_values.min(),axis_y_values.max())
+    axis_x_values = np.hstack(np.array((ax1.get_xlim(), ax2.get_xlim())))
+    axis_y_values = np.hstack(np.array((ax1.get_ylim(), ax2.get_ylim())))
+    ax1.set_xlim(axis_x_values.min(), axis_x_values.max())
+    ax1.set_ylim(axis_y_values.min(), axis_y_values.max())
+    ax2.set_xlim(axis_x_values.min(), axis_x_values.max())
+    ax2.set_ylim(axis_y_values.min(), axis_y_values.max())
 
-def restore_natural_scale(ax,min_,max_,n_steps=4,x_axis=True,y_axis=True):
+
+def restore_natural_scale(ax, min_, max_, n_steps=4, x_axis=True, y_axis=True):
     """
     takes x and y ax that are in log10 and puts them into natural scale
 
     By default, it adjusts both x and y, but you can run this on a single
     axis or two times if you have different scales for x and y
     """
-    ticks = np.linspace(min_,max_,n_steps)
+    ticks = np.linspace(min_, max_, n_steps)
 
     if x_axis:
         ax.set_xticks(ticks)
-        ax.set_xticklabels(np.round(10**ticks,3))
+        ax.set_xticklabels(np.round(10**ticks, 3))
 
     if y_axis:
         ax.set_yticks(ticks)
-        ax.set_yticklabels(np.round(10**ticks,3))
+        ax.set_yticklabels(np.round(10**ticks, 3))
 
-def plot_events(events,labels,cmap='tab20',gridlines=True,alpha=.75):
+
+def plot_events(events, labels, cmap='tab20', gridlines=True, alpha=.75):
     """
     events: nested list of nelpy EpochArrays
     labels: labels related to each event
@@ -126,7 +132,7 @@ def plot_events(events,labels,cmap='tab20',gridlines=True,alpha=.75):
 
         # load sleep states
         state_dict = loading.load_SleepState_states(basepath)
-        
+
         # make nelpy epoch arrays
         nrem_epochs = nel.EpochArray(state_dict['NREMstate'])
         wake_epochs = nel.EpochArray(state_dict['WAKEstate'])
@@ -141,24 +147,26 @@ def plot_events(events,labels,cmap='tab20',gridlines=True,alpha=.75):
         # plot
         plt.figure(figsize=(20,5))
         plot_events(events,['nrem','wake','rem'])
-        
+
     Ryan H 2022
     """
     # get colormap
     cmap = matplotlib.cm.get_cmap(cmap)
     # set up y axis
-    y = np.linspace(0,1,len(events)+1)
+    y = np.linspace(0, 1, len(events)+1)
 
     # iter over each event
-    for i,evt in enumerate(events):
+    for i, evt in enumerate(events):
 
         # add horizontal line underneath
         if gridlines:
-            plt.axhline(y[i] + np.diff(y)[0]/2,color='k',zorder=-100,alpha=.1)
+            plt.axhline(y[i] + np.diff(y)[0]/2,
+                        color='k', zorder=-100, alpha=.1)
 
         # plot events
         for pair in range(evt.n_intervals):
-            plt.axvspan(evt.starts[pair], evt.stops[pair],y[i],y[i+1], alpha=alpha,color=cmap(i*.1))
+            plt.axvspan(evt.starts[pair], evt.stops[pair],
+                        y[i], y[i+1], alpha=alpha, color=cmap(i*.1))
 
     ax = plt.gca()
     ax.set_yticks(y[:-1] + np.diff(y)[0]/2)
