@@ -987,7 +987,7 @@ def get_rank_order(st,
 
     if method not in ['first_spike', 'peak_fr']:
         assert print('method ' + method + ' not implemented')
-    if ref not in ['cells', 'epochs']:
+    if ref not in ['cells', 'epoch']:
         assert print('ref ' + ref + ' not implemented')
 
     def get_min_ts(st_temp):
@@ -1042,10 +1042,13 @@ def get_rank_order(st,
                         min_ts, epoch_ts, norm_range)
         return rank_order
 
-    def rank_order_fr(st_epoch, dt, sigma, min_units):
+    def rank_order_fr(st_epoch, dt, sigma, min_units, ref):
         # set up empty matrix for rank order
         rank_order = np.zeros(
             [st_epoch.data.shape[0], st_epoch.n_intervals]) * np.nan
+
+        unit_id = np.arange(st_epoch.data.shape[0])
+
         # bin spike train here (smooth later per epoch to not have edge issues)
         z_t = st_epoch.bin(ds=dt)
         # iter over epochs
@@ -1054,9 +1057,12 @@ def get_rank_order(st,
             z_t_temp.smooth(sigma=sigma, inplace=True)
 
             if ref == 'cells':
+
                 # find loc of each peak and get sorted idx of active units
-                units = np.argsort(np.argmax(z_t_temp.data, axis=1))[
-                    np.sum(z_t_temp.data > 0, axis=1) > 0]
+                idx = np.argsort(np.argmax(z_t_temp.data, axis=1))
+                # reorder unit ids by order and remove non-active
+                units = unit_id[idx][np.sum(
+                    z_t_temp.data[idx, :] > 0, axis=1) > 0]
 
                 nUnits = len(units)
 
@@ -1089,7 +1095,7 @@ def get_rank_order(st,
 
     # set up empty matrix for rank order
     if method == 'peak_fr':
-        rank_order = rank_order_fr(st_epoch, dt, sigma, min_units)
+        rank_order = rank_order_fr(st_epoch, dt, sigma, min_units, ref)
     elif method == 'first_spike':
         rank_order = rank_order_first_spike(
             st_epoch, epochs, dt, min_units, ref)
