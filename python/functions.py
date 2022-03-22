@@ -712,8 +712,7 @@ def find_good_laps(ts, V_rest, laps, edgethresh=0.1, completeprop=0.2, posbins=5
 
         v = V_rest[np.where(ts == laps.iloc[l].start_ts)[0]
                    [0]:np.where(ts == endoflap)[0][0]]
-        t = ts[np.where(ts == laps.iloc[l].start_ts)[0][0]
-                        :np.where(ts == endoflap)[0][0]]
+        t = ts[np.where(ts == laps.iloc[l].start_ts)[0][0]:np.where(ts == endoflap)[0][0]]
 
         # % find turn around points during this lap
         lookformax = laps.iloc[l].direction == 1
@@ -954,13 +953,21 @@ def find_epoch_pattern(env, pattern):
     return None, None
 
 
-def get_rank_order(st, epochs, method='peak_fr', dt=0.001, sigma=0.01):
+def get_rank_order(st,
+                   epochs,
+                   method='peak_fr', # 'first_spike' or 'peak_fr'
+                   ref='cells', # 'cells' or 'epochs'
+                   padding=0.05,
+                   dt=0.001,
+                   sigma=0.01,
+                   min_units=5):
     """
     get rank order of spike train within epoch
     Input:
         st: spike train nelpy array 
         epochs: epoch array, windows in which to calculate rank order
         method: method of rank order 'first_spike' or 'peak_fr' (default: peak_fr)
+        ref: frame of reference for rank order ('cells' or 'epoch')
         dt: bin width (s) for finding relative time
         sigma: smoothing sigma (s) for peak_fr method
     Output:
@@ -977,31 +984,61 @@ def get_rank_order(st, epochs, method='peak_fr', dt=0.001, sigma=0.01):
         "ignore", message="ignoring events outside of eventarray support")
     warnings.filterwarnings("ignore", message="Mean of empty slice")
 
-    def rank_order_first_spike(st_epoch, epochs, dt):
+    def get_min_ts(st_temp):
+        min_ts = []
+        for ts in st_temp.data:
+            # nan if no spikes
+            if len(ts) == 0:
+                min_ts.append(np.nan)
+            else:
+                min_ts.append(np.nanmin(ts))
+        return min_ts
+
+    def rank_order_first_spike(st_epoch, epochs, dt, min_units,ref):
         # set up empty matrix for rank order
-        rank_order = np.zeros([st_epoch.data.shape[0], st_epoch.n_intervals])
+        rank_order = np.ones(
+            [st_epoch.data.shape[0], st_epoch.n_intervals]) * np.nan
+
+        unit_id = np.arange(st_epoch.data.shape[0])
+
         # iter over every event
         for event_i, st_temp in enumerate(st_epoch):
-            # find first spike time for each cell
-            min_ts = []
-            for ts in st_temp.data:
-                # nan if no spikes
-                if len(ts) == 0:
-                    min_ts.append(np.nan)
+            
+            if ref == 'cells':
+                # get firing order
+                idx = np.array(st_temp.get_event_firing_order()) - 1
+                # reorder unit ids by order and remove non-active
+                units = unit_id[idx][st_temp.n_events[idx] > 0]
+                # how many are left?
+                nUnits = len(units)
+                
+                if nUnits < min_units:
+                    rank_order[:, event_i] = np.nan
                 else:
-                    min_ts.append(np.nanmin(ts))
-            # make time stamps for interpolation
-            epoch_ts = np.arange(epochs[event_i].start,
-                                 epochs[event_i].stop, dt)
-            # make normalized range 0-1
-            norm_range = np.linspace(0, 1, len(epoch_ts))
-            # get spike order relative to normalized range
-            rank_order[:, event_i] = np.interp(min_ts, epoch_ts, norm_range)
+                    # arange 1 to n units in order of units
+                    rank_order[units, event_i] = np.arange(nUnits)
+                    # normalize by n units
+                    rank_order[units, event_i] = rank_order[units,
+                                                            event_i] / nUnits
+            elif ref == 'epoch':
+                # find first spike time for each cell
+                min_ts = get_min_ts(st_temp)
+                # make time stamps for interpolation
+                epoch_ts = np.arange(epochs[event_i].start,
+                                    epochs[event_i].stop, dt)
+                # make normalized range 0-1
+                norm_range = np.linspace(0, 1, len(epoch_ts))
+                # get spike order relative to normalized range
+                if len(min_ts) < min_units:
+                    rank_order[:, event_i] = np.nan
+                else:
+                    rank_order[:, event_i] = np.interp(
+                        min_ts, epoch_ts, norm_range)
         return rank_order
 
-    def rank_order_fr(st_epoch, dt, sigma):
+    def rank_order_fr(st_epoch, dt, sigma, min_units):
         # set up empty matrix for rank order
-        rank_order = np.zeros([st_epoch.data.shape[0], st_epoch.n_intervals])
+        rank_order = np.zeros([st_epoch.data.shape[0], st_epoch.n_intervals]) * np.nan
         # bin spike train here (smooth later per epoch to not have edge issues)
         z_t = st_epoch.bin(ds=dt)
         # iter over epochs
@@ -1019,7 +1056,7 @@ def get_rank_order(st, epochs, method='peak_fr', dt=0.001, sigma=0.01):
         return rank_order
 
     # create epoched spike array
-    st_epoch = st[epochs]
+    st_epoch = st[epochs.expand(padding)]
 
     # if no spikes in epoch, break out
     if st_epoch.n_active == 0:
@@ -1027,9 +1064,9 @@ def get_rank_order(st, epochs, method='peak_fr', dt=0.001, sigma=0.01):
 
     # set up empty matrix for rank order
     if method == 'peak_fr':
-        rank_order = rank_order_fr(st_epoch, dt, sigma)
+        rank_order = rank_order_fr(st_epoch, dt, sigma, min_units)
     elif method == 'first_spike':
-        rank_order = rank_order_first_spike(st_epoch, epochs, dt)
+        rank_order = rank_order_first_spike(st_epoch, epochs, dt, min_units,ref)
     else:
         raise Exception('other method, '+method + ' is not implemented')
 
