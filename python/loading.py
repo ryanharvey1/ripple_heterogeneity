@@ -821,4 +821,7 @@ def load_deepSuperficialfromRipple(basepath):
     ripple_average = data[name]["ripple_average"][0][0][0]
     ripple_time_axis = data[name]["ripple_time_axis"][0][0][0]
 
+    # remove bad channels
+    channel_df = channel_df[channel_df[labels].isnull().sum(axis=1).values == 0]
+    
     return channel_df, ripple_average, ripple_time_axis
