@@ -1024,9 +1024,9 @@ def get_rank_order(
     warnings.filterwarnings("ignore", message="Mean of empty slice")
 
     if method not in ["first_spike", "peak_fr"]:
-        assert print("method " + method + " not implemented")
+        assert Exception("method " + method + " not implemented")
     if ref not in ["cells", "epoch"]:
-        assert print("ref " + ref + " not implemented")
+        assert Exception("ref " + ref + " not implemented")
 
     def get_min_ts(st_temp):
         min_ts = []
