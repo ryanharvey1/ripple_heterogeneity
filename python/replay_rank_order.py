@@ -102,7 +102,7 @@ def run_all(basepath):
             if epochs[key_].n_intervals == 0:
                 continue
             temp_rank_order, rank_order = functions.get_rank_order(
-                st[beh_epoch], epochs[key_], ref="cells", method="first_spike"
+                st[beh_epoch], epochs[key_], ref="cells", method="peak_fr"
             )
             if rank_order is None:
                 continue
