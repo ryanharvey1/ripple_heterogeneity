@@ -783,3 +783,42 @@ def load_spikes(basepath,
             st = st[state_epoch]
 
     return st,cell_metrics
+
+def load_deepSuperficialfromRipple(basepath):
+    
+    # locate .mat file
+    filename = glob.glob(
+        basepath + os.sep + "*.deepSuperficialfromRipple.channelinfo.mat"
+    )[0]
+
+    # load matfile
+    data = sio.loadmat(filename)
+
+    channel_df = pd.DataFrame()
+    name = "deepSuperficialfromRipple"
+    data[name]["channel"][0][0].T[0]
+    channel_df["channel"] = data[name]["channel"][0][0].T[0]
+    channel_df["channelDistance"] = data[name]["channelDistance"][0][0].T[0]
+
+    channelClass = []
+    for item in data[name]["channelClass"][0][0]:
+        try:
+            channelClass.append(item[0][0])
+        except:
+            channelClass.append("unknown")
+    channel_df["channelClass"] = channelClass
+
+    for shank_i, shank in enumerate(data[name]["ripple_channels"][0][0][0]):
+        _, b, _ = np.intersect1d(channel_df.channel, shank, return_indices=True)
+        channel_df.loc[b, "shank"] = shank_i
+
+    labels = ["ripple_power", "ripple_amplitude", "SWR_diff", "SWR_amplitude"]
+    for shank_i, shank in enumerate(data[name]["ripple_channels"][0][0][0]):
+        _, b, _ = np.intersect1d(channel_df.channel, shank, return_indices=True)
+        for label in labels:
+            channel_df.loc[b, label] = data[name][label][0][0][0][shank_i][0]
+
+    ripple_average = data[name]["ripple_average"][0][0][0]
+    ripple_time_axis = data[name]["ripple_time_axis"][0][0][0]
+
+    return channel_df, ripple_average, ripple_time_axis
