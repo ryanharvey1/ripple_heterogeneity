@@ -99,6 +99,8 @@ def run_all(basepath):
 
     for beh_i, beh_epoch in enumerate(behavior_epochs):
         for key_ in epochs.keys():
+            if epochs[key_].n_intervals == 0:
+                continue
             temp_rank_order, rank_order = functions.get_rank_order(
                 st[beh_epoch], epochs[key_], ref="cells", method="peak_fr"
             )
