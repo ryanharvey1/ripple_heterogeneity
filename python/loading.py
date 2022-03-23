@@ -1,3 +1,4 @@
+from logging import exception
 import scipy.io as sio
 import sys,os
 import pandas as pd
@@ -816,6 +817,8 @@ def load_deepSuperficialfromRipple(basepath):
     for shank_i, shank in enumerate(data[name]["ripple_channels"][0][0][0]):
         _, b, _ = np.intersect1d(channel_df.channel, shank, return_indices=True)
         for label in labels:
+            if shank_i > len(data[name][label][0][0][0]) - 1:
+                break
             channel_df.loc[b, label] = data[name][label][0][0][0][shank_i][0]
 
     ripple_average = data[name]["ripple_average"][0][0][0]
@@ -824,4 +827,11 @@ def load_deepSuperficialfromRipple(basepath):
     # remove bad channels
     channel_df = channel_df[channel_df[labels].isnull().sum(axis=1).values == 0]
     
+    if np.hstack(ripple_average).shape[1] != channel_df.shape[0]:
+        raise Exception('size mismatch '+
+                        str(np.hstack(ripple_average).shape[1]) +
+                        ' and ' +
+                        str(channel_df.shape[0])
+        )
+
     return channel_df, ripple_average, ripple_time_axis
