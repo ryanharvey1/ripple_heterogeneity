@@ -785,7 +785,7 @@ def load_spikes(basepath,
 
     return st,cell_metrics
 
-def load_deepSuperficialfromRipple(basepath):
+def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     
     # locate .mat file
     filename = glob.glob(
@@ -827,7 +827,7 @@ def load_deepSuperficialfromRipple(basepath):
     # remove bad channels
     channel_df = channel_df[channel_df[labels].isnull().sum(axis=1).values == 0]
     
-    if np.hstack(ripple_average).shape[1] != channel_df.shape[0]:
+    if (np.hstack(ripple_average).shape[1] != channel_df.shape[0]) & (~bypass_mismatch_exception):
         raise Exception('size mismatch '+
                         str(np.hstack(ripple_average).shape[1]) +
                         ' and ' +
