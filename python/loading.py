@@ -707,6 +707,38 @@ def load_epoch(basepath):
     df_save['environment'] = environment
 
     return df_save
+    
+def load_brain_regions(basepath):
+    """
+    Loads brain region info from cell explorer basename.session and stores in dict
+
+    Example:
+        Input:
+            brainRegions = load_epoch("Z:\\Data\\GirardeauG\\Rat09\\Rat09-20140327")
+            print(brainRegions.keys())
+            print(brainRegions['CA1'].keys())
+            print(brainRegions['CA1']['channels'])
+            print(brainRegions['CA1']['electrodeGroups'])
+        output:
+            dict_keys(['CA1', 'Unknown', 'blv', 'bmp', 'ven'])
+            dict_keys(['channels', 'electrodeGroups'])
+            [145 146 147 148 149 153 155 157 150 151 154 159 156 152 158 160 137 140
+            129 136 138 134 130 132 142 143 144 141 131 139 133 135]
+            [17 18 19 20]
+    """
+    filename = glob.glob(os.path.join(basepath, "*.session.mat"))[0]
+
+    # load file
+    data = sio.loadmat(filename)
+    data = data["session"]
+    brainRegions = {}
+    for dn in data["brainRegions"][0][0].dtype.names:
+        brainRegions[dn] = {
+            "channels": data["brainRegions"][0][0][dn][0][0][0][0][0][0],
+            "electrodeGroups": data["brainRegions"][0][0][dn][0][0][0][0][1][0],
+        }
+
+    return brainRegions
 
 def get_animal_id(basepath):
     """ return animal ID from basepath using basename.session.mat"""
@@ -824,9 +856,10 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     ripple_average = data[name]["ripple_average"][0][0][0]
     ripple_time_axis = data[name]["ripple_time_axis"][0][0][0]
 
-    # remove bad channels
-    channel_df = channel_df[channel_df[labels].isnull().sum(axis=1).values == 0]
-    
+    # remove bad channels if needed
+    if np.hstack(ripple_average).shape[1] < channel_df.shape[0]:
+        channel_df = channel_df[channel_df[labels].isnull().sum(axis=1).values == 0]
+
     if (np.hstack(ripple_average).shape[1] != channel_df.shape[0]) & (~bypass_mismatch_exception):
         raise Exception('size mismatch '+
                         str(np.hstack(ripple_average).shape[1]) +
