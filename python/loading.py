@@ -507,7 +507,58 @@ def load_ripples_events(basepath):
 
     return df
 
+def load_dentate_spike(basepath):
+    """
+    load info from DS*.events.mat and store within df
+    basepath: path to your session where DS*.events.mat is
 
+    returns pandas dataframe with the following fields
+        start: start time of DS
+        stop: end time of DS
+        peaks: peak time of DS
+        amplitude: envlope value at peak time
+        duration: DS duration
+        detectorName: the name of DS detector used
+        basepath: path name
+        basename: session id
+        animal: animal id *
+        * Note that basepath/basename/animal relies on specific folder
+        structure and may be incorrect for some data structures
+    """
+
+    def extract_data(s_type, data):
+        # make data frame of known fields
+        df = pd.DataFrame()
+        df["start"] = data[s_type]["timestamps"][0][0][:, 0]
+        df["stop"] = data[s_type]["timestamps"][0][0][:, 1]
+        df["peaks"] = data[s_type]["peaks"][0][0]
+        df["event_label"] = s_type
+        df["amplitude"] = data[s_type]["amplitudes"][0][0]
+        df["duration"] = data[s_type]["duration"][0][0]
+        df["amplitudeUnits"] = data[s_type]["amplitudeUnits"][0][0][0]
+        df["detectorName"] = data[s_type]["detectorinfo"][0][0]["detectorname"][0][0][0]
+        df["ml_channel"] = data[s_type]["detectorinfo"][0][0]["ml_channel"][0][0][0][0]
+        df["h_channel"] = data[s_type]["detectorinfo"][0][0]["h_channel"][0][0][0][0]
+        return df
+
+    # locate .mat file
+    df = pd.DataFrame()
+    for s_type in ["DS1", "DS2"]:
+        filename = glob.glob(basepath + os.sep + "*" + s_type + ".events.mat")[0]
+        # load matfile
+        data = sio.loadmat(filename)
+        # pull out data
+        df = pd.concat([df,extract_data(s_type, data)], ignore_index=True)
+
+    # get basename and animal
+    normalized_path = os.path.normpath(filename)
+    path_components = normalized_path.split(os.sep)
+    df["basepath"] = basepath
+    df["basename"] = path_components[-2]
+    df["animal"] = path_components[-3]
+
+    return df
+    
 def load_theta_rem_shift(basepath):
     """
     load_theta_rem_shift: loads matlab structure from get_rem_shift.m
