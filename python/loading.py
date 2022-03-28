@@ -910,6 +910,11 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     ripple_average = data[name]["ripple_average"][0][0][0]
     ripple_time_axis = data[name]["ripple_time_axis"][0][0][0]
 
+    # some shanks might have all bad channels, if so they are empty, fix here
+    for i, avg_rip in enumerate(ripple_average):
+        if avg_rip.shape[0] != len(ripple_time_axis):
+            ripple_average[i] = np.expand_dims(ripple_time_axis*np.nan, axis=1)
+
     # remove bad channels if needed
     if np.hstack(ripple_average).shape[1] < channel_df.shape[0]:
         channel_df = channel_df[channel_df[labels].isnull().sum(axis=1).values == 0]
