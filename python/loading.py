@@ -880,8 +880,11 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
 
     channel_df = pd.DataFrame()
     name = "deepSuperficialfromRipple"
-    data[name]["channel"][0][0].T[0]
-    channel_df["channel"] = data[name]["channel"][0][0].T[0]
+    try:
+        channel_df["channel"] = data[name]["channel"][0][0].T[0]
+    except:
+        channel_df["channel"] = data[name]["channels"][0][0].T[0]
+
     channel_df["channelDistance"] = data[name]["channelDistance"][0][0].T[0]
 
     channelClass = []
