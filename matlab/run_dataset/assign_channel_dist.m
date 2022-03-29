@@ -27,16 +27,37 @@ for i = 1:length(basepaths)
     end
     
     ripple_average = cell2mat(deepSuperficialfromRipple.ripple_average)';
-    ripple_average(polarity_reversal,:)
-    ripple_average(~polarity_reversal,:)
+%     ripple_average(polarity_reversal,:)
+%     ripple_average(~polarity_reversal,:)
     
     df_ripple_info = table();
     df_ripple_info.channel = deepSuperficialfromRipple.channel;
     df_ripple_info.shanks = shanks;
     df_ripple_info.channelClass = deepSuperficialfromRipple.channelClass;
     df_ripple_info.channelDistance = deepSuperficialfromRipple.channelDistance;
+    df_ripple_info.ripple_power = cell2mat(deepSuperficialfromRipple.ripple_power)';
+    df_ripple_info.ripple_amplitude = cell2mat(deepSuperficialfromRipple.ripple_amplitude)';
+    df_ripple_info.SWR_diff = cell2mat(deepSuperficialfromRipple.SWR_diff)';
+    df_ripple_info.SWR_amplitude = cell2mat(deepSuperficialfromRipple.SWR_amplitude)';
     df_ripple_info.polarity_reversal = polarity_reversal;
     df_ripple_info.basepath = repmat(basepath,length(polarity_reversal),1);
+    
+    equation = 'channelDistance ~ (channel + ripple_power + ripple_amplitude + SWR_diff + SWR_amplitude)^2';
+    mdl = fitlm(df_ripple_info,equation)
+    figure;
+    plot(mdl)
+    figure
+    plotResiduals(mdl,'probability')
+    
+    ci = predint(mdl,X)
+    
+    X = [df_ripple_info.channel,df_ripple_info.ripple_power,...
+        df_ripple_info.ripple_amplitude,df_ripple_info.SWR_diff,...
+        df_ripple_info.SWR_amplitude];
+    plotmatrix(X)
+    
+  
+    
     
     [coeff,score,latent,tsquared,explained,mu] = pca(ripple_average);
     df_ripple_info.rip_pc_1 = score(:,1);
