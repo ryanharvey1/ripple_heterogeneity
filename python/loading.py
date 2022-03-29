@@ -871,22 +871,25 @@ def load_spikes(basepath,
 def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     
     # locate .mat file
-    filename = glob.glob(
-        basepath + os.sep + "*.deepSuperficialfromRipple.channelinfo.mat"
-    )[0]
+    file_type = "*.deepSuperficialfromRipple.channelinfo.mat"
+    filename = glob.glob(basepath + os.sep + file_type)[0]
 
     # load matfile
     data = sio.loadmat(filename)
 
     channel_df = pd.DataFrame()
     name = "deepSuperficialfromRipple"
+
+    # add channel ID
     try:
         channel_df["channel"] = data[name]["channel"][0][0].T[0]
     except:
         channel_df["channel"] = data[name]["channels"][0][0].T[0]
 
+    # add distance from pyr layer (will only be accurate if polarity rev)
     channel_df["channelDistance"] = data[name]["channelDistance"][0][0].T[0]
 
+    # add channel class (deep or superficial)
     channelClass = []
     for item in data[name]["channelClass"][0][0]:
         try:
@@ -895,10 +898,20 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
             channelClass.append("unknown")
     channel_df["channelClass"] = channelClass
 
+    # label shank
     for shank_i, shank in enumerate(data[name]["ripple_channels"][0][0][0]):
         _, b, _ = np.intersect1d(channel_df.channel, shank, return_indices=True)
         channel_df.loc[b, "shank"] = shank_i
+    channel_df.shank += 1 
 
+    # add if shank has polarity reversal
+    for shank in channel_df.shank.unique():
+        if channel_df[channel_df.shank == shank].channelClass.unique().shape[0] == 2:
+            channel_df.loc[channel_df.shank == shank, "polarity_reversal"] = True
+        else:
+            channel_df.loc[channel_df.shank == shank, "polarity_reversal"] = False
+
+    # add ripple and sharp wave features        
     labels = ["ripple_power", "ripple_amplitude", "SWR_diff", "SWR_amplitude"]
     for shank_i, shank in enumerate(data[name]["ripple_channels"][0][0][0]):
         _, b, _ = np.intersect1d(channel_df.channel, shank, return_indices=True)
@@ -907,14 +920,19 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
                 break
             channel_df.loc[b, label] = data[name][label][0][0][0][shank_i][0]
 
+    # pull put avg ripple traces and ts
     ripple_average = data[name]["ripple_average"][0][0][0]
     ripple_time_axis = data[name]["ripple_time_axis"][0][0][0]
+
+    # add ripple channels
+    channel_df['ripple_channels'] = np.hstack(data[name]["ripple_channels"][0][0][0]).T
 
     # some shanks might have all bad channels, if so they are empty, fix here
     for i, avg_rip in enumerate(ripple_average):
         if avg_rip.shape[0] != len(ripple_time_axis):
             ripple_average[i] = np.expand_dims(ripple_time_axis*np.nan, axis=1)
 
+    # lengths = [item.shape[1] for item in ripple_average]
     # remove bad channels if needed
     if np.hstack(ripple_average).shape[1] < channel_df.shape[0]:
         channel_df = channel_df[channel_df[labels].isnull().sum(axis=1).values == 0]
@@ -925,5 +943,7 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
                         ' and ' +
                         str(channel_df.shape[0])
         )
+        
+    channel_df['basepath'] = basepath
 
     return channel_df, ripple_average, ripple_time_axis
