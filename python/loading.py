@@ -27,7 +27,8 @@ def loadXML(basepath):
     """
     # check if saved file exists
     try:
-        filename = glob.glob(os.path.join(basepath,'*.xml'))[0]
+        basename = os.path.basename(basepath)
+        filename = glob.glob(os.path.join(basepath,basename+'.xml'))[0]
     except:
         warnings.warn("file does not exist")
         return 
@@ -39,7 +40,11 @@ def loadXML(basepath):
     fs = xmldoc.getElementsByTagName('fieldPotentials')[0].getElementsByTagName('lfpSamplingRate')[0].firstChild.data
 
     shank_to_channel = {}
-    groups = xmldoc.getElementsByTagName('anatomicalDescription')[0].getElementsByTagName('channelGroups')[0].getElementsByTagName('group')
+    groups = (
+        xmldoc.getElementsByTagName("anatomicalDescription")[0]
+        .getElementsByTagName("channelGroups")[0]
+        .getElementsByTagName("group")
+    )
     for i in range(len(groups)):
         shank_to_channel[i] = [int(child.firstChild.data) for child in groups[i].getElementsByTagName('channel')]
     return int(nChannels), int(fs), int(fs_dat), shank_to_channel
@@ -869,7 +874,10 @@ def load_spikes(basepath,
     return st,cell_metrics
 
 def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
+    """
+    Load deepSuperficialfromRipple file created by classification_DeepSuperficial.m
     
+    """
     # locate .mat file
     file_type = "*.deepSuperficialfromRipple.channelinfo.mat"
     filename = glob.glob(basepath + os.sep + file_type)[0]
@@ -880,11 +888,17 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     channel_df = pd.DataFrame()
     name = "deepSuperficialfromRipple"
 
-    # add channel ID
-    try:
-        channel_df["channel"] = data[name]["channel"][0][0].T[0]
-    except:
-        channel_df["channel"] = data[name]["channels"][0][0].T[0]
+    # load xml to see channel mapping
+    _,_,_,shank_to_channel = loadXML(basepath)
+    channels, shanks = zip(
+        *[(values, np.tile(key, len(values))) for key, values in shank_to_channel.items()]
+    )
+    channels = np.hstack(channels) + 1
+    shanks = np.hstack(shanks) + 1
+    # some things are sorted, others not...
+    channel_sort_idx = np.argsort(channels)
+    channel_df["channel"] = np.hstack(channels)[channel_sort_idx]
+    channel_df["shank"] = np.hstack(shanks)[channel_sort_idx]
 
     # add distance from pyr layer (will only be accurate if polarity rev)
     channel_df["channelDistance"] = data[name]["channelDistance"][0][0].T[0]
@@ -898,12 +912,6 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
             channelClass.append("unknown")
     channel_df["channelClass"] = channelClass
 
-    # label shank
-    for shank_i, shank in enumerate(data[name]["ripple_channels"][0][0][0]):
-        _, b, _ = np.intersect1d(channel_df.channel, shank, return_indices=True)
-        channel_df.loc[b, "shank"] = shank_i
-    channel_df.shank += 1 
-
     # add if shank has polarity reversal
     for shank in channel_df.shank.unique():
         if channel_df[channel_df.shank == shank].channelClass.unique().shape[0] == 2:
@@ -911,39 +919,36 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
         else:
             channel_df.loc[channel_df.shank == shank, "polarity_reversal"] = False
 
+    ripple_channels = np.hstack(data[name]["ripple_channels"][0][0][0])[0]
+
     # add ripple and sharp wave features        
+    bool_array = np.in1d(channel_df.channel.values, ripple_channels)
     labels = ["ripple_power", "ripple_amplitude", "SWR_diff", "SWR_amplitude"]
-    for shank_i, shank in enumerate(data[name]["ripple_channels"][0][0][0]):
-        _, b, _ = np.intersect1d(channel_df.channel, shank, return_indices=True)
-        for label in labels:
-            if shank_i > len(data[name][label][0][0][0]) - 1:
-                break
-            channel_df.loc[b, label] = data[name][label][0][0][0][shank_i][0]
+    for label in labels: 
+        x = np.ones_like(channel_df.channel.values)*np.nan
+        x[bool_array] = np.hstack(data[name][label][0][0][0])[0]
+        channel_df[label] = x[channel_sort_idx]
 
     # pull put avg ripple traces and ts
-    ripple_average = data[name]["ripple_average"][0][0][0]
     ripple_time_axis = data[name]["ripple_time_axis"][0][0][0]
+    ripple_average = np.ones([channel_df.shape[0],len(ripple_time_axis)])*np.nan
+    avg_rip = np.hstack(data[name]["ripple_average"][0][0][0]).T
+    ripple_average[bool_array] = avg_rip
+    ripple_average = ripple_average[channel_sort_idx]
 
-    # add ripple channels
-    channel_df['ripple_channels'] = np.hstack(data[name]["ripple_channels"][0][0][0]).T
+    brainRegions = load_brain_regions(basepath)
+    for key, value in brainRegions.items():
+        if 'ca1' in key.lower():
+            for shank in value['electrodeGroups']:
+                channel_df.loc[channel_df.shank == shank,"ca1_shank"] = True
 
-    # some shanks might have all bad channels, if so they are empty, fix here
-    for i, avg_rip in enumerate(ripple_average):
-        if avg_rip.shape[0] != len(ripple_time_axis):
-            ripple_average[i] = np.expand_dims(ripple_time_axis*np.nan, axis=1)
-
-    # lengths = [item.shape[1] for item in ripple_average]
-    # remove bad channels if needed
-    if np.hstack(ripple_average).shape[1] < channel_df.shape[0]:
-        channel_df = channel_df[channel_df[labels].isnull().sum(axis=1).values == 0]
-
-    if (np.hstack(ripple_average).shape[1] != channel_df.shape[0]) & (~bypass_mismatch_exception):
+    if (ripple_average.shape[0] != channel_df.shape[0]) & (~bypass_mismatch_exception):
         raise Exception('size mismatch '+
                         str(np.hstack(ripple_average).shape[1]) +
                         ' and ' +
                         str(channel_df.shape[0])
         )
-        
+
     channel_df['basepath'] = basepath
 
     return channel_df, ripple_average, ripple_time_axis
