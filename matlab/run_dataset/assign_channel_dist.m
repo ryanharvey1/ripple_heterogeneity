@@ -5,6 +5,11 @@
 % 
 % deepSuperficialfromRipple = classification_DeepSuperficial(session)
 
+figure;
+for i = 1:length(deepSuperficialfromRipple.ripple_average{1, 4})
+    plot(deepSuperficialfromRipple.ripple_average{1, 4}(:,i) - i*.1)
+    hold on
+end
 
 df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 basepaths = unique(df.basepath);
