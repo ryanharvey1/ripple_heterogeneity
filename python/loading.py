@@ -889,16 +889,42 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     name = "deepSuperficialfromRipple"
 
     # load xml to see channel mapping
-    _,_,_,shank_to_channel = loadXML(basepath)
-    channels, shanks = zip(
-        *[(values, np.tile(key, len(values))) for key, values in shank_to_channel.items()]
+    # _,_,_,shank_to_channel = loadXML(basepath)
+    # channels, shanks = zip(
+    #     *[(values, np.tile(key, len(values))) for key, values in shank_to_channel.items()]
+    # )
+    # channels = np.hstack(channels) + 1
+    # shanks = np.hstack(shanks) + 1
+    # # some things are sorted, others not...
+    # channel_sort_idx = np.argsort(channels)
+    # channel_df["channel"] = np.hstack(channels)[channel_sort_idx]
+    # channel_df["shank"] = np.hstack(shanks)[channel_sort_idx]
+
+    np.hstack(data[name]["channel"][0][0])
+
+
+    ripple_channels = np.hstack(data[name]["ripple_channels"][0][0][0])[0]
+    # bool_array = np.in1d(channel_df.channel.values, ripple_channels)
+
+    # sometimes more channels positons will be in deepSuperficialfromRipple than in xml
+    #   this is because they used channel id as an index. 
+    # if channel_df.shape[0] < data[name]["channelDistance"][0][0].T[0].shape[0]:
+        # print('more channels in deepSuperficialfromRipple than xml...')
+    channel_df = pd.DataFrame()
+    # channels = np.ones(np.hstack(data[name]["ripple_channels"][0][0][0]).max())*np.nan
+    channels = np.hstack(data[name]["channel"][0][0])*np.nan
+    shanks = np.hstack(data[name]["channel"][0][0])*np.nan
+    # shanks = np.ones(np.hstack(data[name]["ripple_channels"][0][0][0]).max())*np.nan
+
+    channels_, shanks_ = zip(
+        *[(values[0], np.tile(shank, len(values[0]))) for shank, values in enumerate(data[name]["ripple_channels"][0][0][0])]
     )
-    channels = np.hstack(channels) + 1
-    shanks = np.hstack(shanks) + 1
-    # some things are sorted, others not...
-    channel_sort_idx = np.argsort(channels)
-    channel_df["channel"] = np.hstack(channels)[channel_sort_idx]
-    channel_df["shank"] = np.hstack(shanks)[channel_sort_idx]
+    channel_sort_idx = np.hstack(channels_)-1
+    channels[channel_sort_idx] = np.hstack(channels_)
+    shanks[channel_sort_idx] = np.hstack(shanks_) + 1
+
+    channel_df["channel"] = channels
+    channel_df["shank"] = shanks
 
     # add distance from pyr layer (will only be accurate if polarity rev)
     channel_df["channelDistance"] = data[name]["channelDistance"][0][0].T[0]
@@ -919,22 +945,31 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
         else:
             channel_df.loc[channel_df.shank == shank, "polarity_reversal"] = False
 
-    ripple_channels = np.hstack(data[name]["ripple_channels"][0][0][0])[0]
-
     # add ripple and sharp wave features        
-    bool_array = np.in1d(channel_df.channel.values, ripple_channels)
+    # bool_array = np.in1d(channel_df.channel.values, ripple_channels)
     labels = ["ripple_power", "ripple_amplitude", "SWR_diff", "SWR_amplitude"]
     for label in labels: 
-        x = np.ones_like(channel_df.channel.values)*np.nan
-        x[bool_array] = np.hstack(data[name][label][0][0][0])[0]
-        channel_df[label] = x[channel_sort_idx]
+        try:
+            channel_df.loc[channel_sort_idx,label] = np.hstack(data[name][label][0][0][0])[0]
+        except:
+            # x = np.hstack(data[name]["channel"][0][0])*np.nan
+            x = np.arange(len(channel_sort_idx))*np.nan
+            x[0:len(np.hstack(data[name][label][0][0][0])[0])] = np.hstack(data[name][label][0][0][0])[0]
+            # x[0:len(np.hstack(data[name][label][0][0][0])[0])] = np.hstack(data[name][label][0][0][0])[0]
+            channel_df.loc[channel_sort_idx,label] = x
 
     # pull put avg ripple traces and ts
     ripple_time_axis = data[name]["ripple_time_axis"][0][0][0]
     ripple_average = np.ones([channel_df.shape[0],len(ripple_time_axis)])*np.nan
-    avg_rip = np.hstack(data[name]["ripple_average"][0][0][0]).T
-    ripple_average[bool_array] = avg_rip
-    ripple_average = ripple_average[channel_sort_idx]
+
+    rip_map = []
+    for values in data[name]["ripple_average"][0][0][0]:
+        if values.shape[1]>0:
+            rip_map.append(values)
+    
+    ripple_average[channel_sort_idx] = np.hstack(rip_map).T
+
+    # ripple_average[channel_sort_idx] = np.hstack(data[name]["ripple_average"][0][0][0]).T
 
     brainRegions = load_brain_regions(basepath)
     for key, value in brainRegions.items():
