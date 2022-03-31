@@ -902,6 +902,7 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     shanks[channel_sort_idx] = np.hstack(shanks_) + 1
 
     channel_df["channel"] = channels
+    channel_df.loc[np.arange(len(channel_sort_idx)),"channel_sort_idx"] = channel_sort_idx
     channel_df["shank"] = shanks
 
     # add distance from pyr layer (will only be accurate if polarity rev)
