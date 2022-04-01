@@ -3,7 +3,7 @@
 df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation.csv');
 
 basepaths = unique(df.basepath);
-for i = 1:length(unique(df.basepath))
+parfor i = 1:length(unique(df.basepath))
     basepath = basepaths{i};
     % detect if some shanks don't have a polarity reversal
     if any(~contains(df(contains(df.basepath,basepath),:).polarity_reversal,'True'))
@@ -37,26 +37,24 @@ for i = unique(temp_df.shank)'
     [a,b] = ismember(deepSuperficialfromRipple.ripple_channels{i},cur_df.channel);
     new_df = [new_df;cur_df(b,:)];
 end
-% temp_df = new_df;
-% [~,idx] = sort(temp_df.channel_sort_idx);
-% temp_df = temp_df(idx,:);
+
+vert_space = deepSuperficialfromRipple.processinginfo.params.verticalSpacing;
 for i = unique(new_df.shank)'
     
     channelClass = unique(new_df(new_df.shank == i,:).channelClass);
     if length(channelClass) == 1
         if contains(channelClass,"Superficial")
             new_dist = new_df(new_df.shank == i,:).channelDistance_pred;
-            new_dist = linspace(0,length(new_dist)*10,length(new_dist)) + new_dist(1);
+            new_dist = linspace(0,length(new_dist)*vert_space,length(new_dist)) + new_dist(1);
             new_df(new_df.shank == i,:).channelDistance = new_dist';
         elseif contains(channelClass,"Deep")
             new_dist = new_df(new_df.shank == i,:).channelDistance_pred;
-            new_dist = linspace(-length(new_dist)*10,0,length(new_dist)) + new_dist(1);
+            new_dist = linspace(-length(new_dist)*vert_space,0,length(new_dist)) + new_dist(1);
             new_df(new_df.shank == i,:).channelDistance = new_dist';
         end
     end
 end
 
-% [~,idx] = sort(new_df.channel);
 [~,Lib] = ismember(new_df.channel,deepSuperficialfromRipple.channel);
 deepSuperficialfromRipple.channelDistance(Lib) = new_df.channelDistance';
 
