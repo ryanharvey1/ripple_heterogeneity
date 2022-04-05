@@ -184,12 +184,12 @@ def plot_events(events, labels, cmap="tab20", gridlines=True, alpha=0.75):
 
 
 def plot_ecdf_box(
-    data,
-    x,
-    hue,
-    hue_order,
-    ax,
-    fig,
+    data=None,
+    x=None,
+    hue=None,
+    hue_order=None,
+    ax=None,
+    fig=None,
     x_offset=0.2,
     y_offset=0.03,
     width_ratio=2.5,
@@ -198,14 +198,36 @@ def plot_ecdf_box(
     saturation=1,
     fliersize=0.5,
     showfliers=True,
+    legend=False,
 ):
+    """
+    Code to make a cdf with a box plot off to the right side.
 
-    sns.ecdfplot(data=data, x=x, hue=hue, hue_order=hue_order, ax=ax, legend=False)
+    Example:
+    fig, axs = plt.subplots(1,4,
+    figsize=functions.set_size("thesis", fraction=1.5, subplots=(1, 4)))
+    fig.subplots_adjust(hspace=0.7, wspace=1)
+    axs = axs.ravel()
 
-    right_side = ax.spines["right"]
-    right_side.set_visible(False)
-    top_side = ax.spines["top"]
-    top_side.set_visible(False)
+    ax_ = custom_plots.plot_ecdf_box(
+        data=temp_df_2,
+        x="rankorder",
+        hue="ca1_layer",
+        hue_order=group_colors.keys(),
+        x_offset=0.13,
+        fig=fig,
+        ax=axs[0]
+    )
+    """
+    if ax is None:
+        ax = plt.gca()
+    if fig is None:
+        fig = plt.gcf()
+
+    sns.ecdfplot(data=data, x=x, hue=hue, hue_order=hue_order, ax=ax, legend=legend)
+
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
     ax.xaxis.set_minor_locator(AutoMinorLocator())
     ax.yaxis.set_minor_locator(AutoMinorLocator())
 
@@ -216,6 +238,7 @@ def plot_ecdf_box(
         pos1.width / width_ratio,
         pos1.height / height_ratio,
     ]
+
     # create axes
     ax3 = fig.add_axes(pos2)
     g = sns.boxplot(
@@ -228,8 +251,8 @@ def plot_ecdf_box(
         saturation=saturation,
         showfliers=showfliers,
         fliersize=fliersize,
-        hue_order=list(hue_order),
-        order=list(hue_order),
+        hue_order=hue_order,
+        order=hue_order,
         dodge=False,
     )
     ax3.axes.get_xaxis().set_ticks([])
@@ -240,5 +263,9 @@ def plot_ecdf_box(
     ax3.spines["left"].set_visible(False)
     ax3.spines["top"].set_visible(False)
     ax3.spines["bottom"].set_visible(False)
-    ax3.get_legend().remove()
+    try:
+        ax3.get_legend().remove()
+    except:
+        pass
+    
     return ax3
