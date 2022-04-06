@@ -33,9 +33,10 @@ end
 
 % iter over each session
 for i = 1:length(probe_df.basepath)
-%     if probe_df.fixed(i) == true
-%         continue
-%     end
+    if probe_df.fixed(i) == true
+        continue
+    end
+    disp(probe_df.basepath{i})
     fix_it(probe_df.basepath{i},probe_df.real_spacing(i))
     probe_df.fixed(i) = true;
     writetable(probe_df,'Z:\home\ryanh\projects\ripple_heterogeneity\probe_df.csv')
@@ -56,6 +57,9 @@ function fix_it(basepath,real_spacing)
         [~,b] = ismember(channels,deepSuperficialfromRipple.channel);
         % find current offset
         % sort to account for mapping differences
+        if ~all(diff(deepSuperficialfromRipple.channelDistance(b)))
+            keyboard
+        end
         sorted_channels = sort(deepSuperficialfromRipple.channelDistance(b));
         current_channel_offset = mode(diff(sorted_channels));
         % find ratio between real and current
@@ -67,12 +71,19 @@ function fix_it(basepath,real_spacing)
     
     % assign spacing meta data, this is hidden all over the place
     % in session
-    session.animal.probeImplants{1, 1}.verticalSpacing = real_spacing;
-    session.animal.probeImplants{1, 1}.supplier = [];
-    session.animal.probeImplants{1, 1}.descriptiveName = [];
+%     session.animal.probeImplants{1, 1}.verticalSpacing = real_spacing;
+%     % add other fields to make session work
+%     if ~isfield(session.animal.probeImplants{1, 1},'supplier')
+%         session.animal.probeImplants{1, 1}.supplier = [];
+%     end
+%     if ~isfield(session.animal.probeImplants{1, 1},'descriptiveName')
+%         session.animal.probeImplants{1, 1}.descriptiveName = [];
+%     end
     session.analysisTags.probesVerticalSpacing = real_spacing;
+    
     % in deepSuperficialfromRipple file
     deepSuperficialfromRipple.processinginfo.params.verticalSpacing = real_spacing;
+    
     % in cell metrics
     cell_metrics.general.SWR = deepSuperficialfromRipple;
     cell_metrics.general.SWR_batch = deepSuperficialfromRipple;
