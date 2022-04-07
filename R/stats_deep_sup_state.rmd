@@ -13,7 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/df_states.csv")
 
-data <- data[data$ca1_layer != "Middle",]
+data <- data[data$ca1_layer != "Middle" & data$spikeCount > 200,]
+data <- data[data$ca1_layer == "Deep" | data$ca1_layer == "Superficial",]
+data <- data[data$putativeCellType  == "Pyramidal Cell",]
 
 data$basepath = factor(data$basepath)
 data$basename = factor(data$basename)
@@ -57,7 +59,8 @@ a1 = anova(m1)
 F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
 ```
-
+ 
+# ripple_FRall _NREMepisode
 
 ```{r}
 temp_data <- data[data$state == "_NREMepisode",]
