@@ -36,7 +36,7 @@ summary(data)
 
 ```{r}
 
-m1 = glmer(participation ~ deepSuperficial + (1|basepath), weights=n_replays, data=data,family="binomial")
+m1 = glmer(participation ~ deepSuperficial + epoch + (1|basepath), weights=n_replays, data=data,family="binomial")
 
 summary(m1)
 
