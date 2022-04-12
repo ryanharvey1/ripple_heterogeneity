@@ -8,7 +8,6 @@ import statistics
 from scipy import stats
 import multiprocessing
 from joblib import Parallel, delayed
-import statsmodels.api as sm
 import pickle
 import copy
 import loading
@@ -58,78 +57,6 @@ def decode_and_shuff(bst, tc, pos, n_shuffles=500):
     return rvalue, median_error, rvalue_time_swap, median_error_time_swap
 
 
-def _m(x, w):
-    """Weighted Mean"""
-    return np.sum(x * w) / np.sum(w)
-
-
-def _cov(x, y, w):
-    """Weighted Covariance"""
-    return np.sum(w * (x - _m(x, w)) * (y - _m(y, w))) / np.sum(w)
-
-
-def _corr(x, y, w):
-    """Weighted Correlation"""
-    return _cov(x, y, w) / np.sqrt(_cov(x, x, w) * _cov(y, y, w))
-
-
-def weighted_correlation(posterior, time, place_bin_centers):
-    """From Eric Denovellis"""
-    place_bin_centers = place_bin_centers.squeeze()
-    posterior[np.isnan(posterior)] = 0.0
-
-    return _corr(time[:, np.newaxis], place_bin_centers[np.newaxis, :], posterior)
-
-
-def score_array(posterior):
-    """
-    takes in posterior matrix (distance by time) and conducts
-    weighted least squares
-    """
-    nan_loc = np.isnan(posterior).any(axis=0)
-
-    rows, cols = posterior.shape
-
-    x = np.arange(cols)
-    y = posterior.argmax(axis=0)
-    w = posterior.max(axis=0)
-
-    x = x[~nan_loc]
-    y = y[~nan_loc]
-    w = w[~nan_loc]
-
-    # if only one time bin is active
-    if len(x) == 1:
-        return np.nan, np.nan, np.nan, np.nan
-
-    X = sm.add_constant(x)
-    wls_model = sm.WLS(y, X, weights=w)
-    results = wls_model.fit()
-
-    slope = results.params[1]
-    intercept = results.params[0]
-    log_like = wls_model.loglike(results.params)
-
-    return results.rsquared, slope, intercept, log_like
-
-
-def get_score_coef(bst, bdries, posterior):
-    """
-    runs score_array on each event epoch in bst (binned spike train)
-    """
-    scores = np.zeros(bst.n_epochs)
-    slope = np.zeros(bst.n_epochs)
-    intercept = np.zeros(bst.n_epochs)
-    log_like = np.zeros(bst.n_epochs)
-
-    for idx in range(bst.n_epochs):
-        posterior_array = posterior[:, bdries[idx] : bdries[idx + 1]]
-        scores[idx], slope[idx], intercept[idx], log_like[idx] = score_array(
-            posterior_array
-        )
-    return scores, slope, intercept, log_like
-
-
 def get_significant_events(scores, shuffled_scores, q=95):
     """Return the significant events based on percentiles.
     NOTE: The score is compared to the distribution of scores obtained
@@ -162,17 +89,6 @@ def get_significant_events(scores, shuffled_scores, q=95):
     ).squeeze()
 
     return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues)
-
-
-def shuff(posterior_array, time, place_bin_centers, dt, dp):
-
-    posterior_ts = replay.time_swap_array(posterior_array)
-    posterior_cs = replay.column_cycle_array(posterior_array)
-
-    w_corr_time_swap = weighted_correlation(posterior_ts, time, place_bin_centers)
-    w_corr_col_cycle = weighted_correlation(posterior_cs, time, place_bin_centers)
-
-    return w_corr_time_swap, w_corr_col_cycle
 
 
 def get_features(bst_placecells, posteriors, bdries, mode_pth, pos, dp=3):
