@@ -186,7 +186,7 @@ def get_pairwise_corrs(basepath):
     ripple_epochs = nel.EpochArray([np.array([ripples.start,ripples.stop]).T])
     st_unit_rip = st_unit[ripple_epochs]
 
-    spk_count_rip = get_participation(st_unit_rip,ripple_epochs)
+    spk_count_rip = functions.get_participation(st_unit_rip,ripple_epochs)
 
     rho,pval,c = pairwise_corr(spk_count_rip)
 
