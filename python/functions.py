@@ -359,6 +359,15 @@ def Otsu(vector):
 
 
 def find_sig_assemblies(patterns):
+    """
+    Input:
+        patterns: a list of patterns
+    Output:
+        patterns[keep_assembly]: a list of patterns that are significant
+        is_member[keep_assembly]: a list of booleans indicating whether each pattern is a significant assembly
+        keep_assembly: a list of indices of the significant assemblies
+        is_member: a list of booleans indicating whether each unit is a significant member of an assembly
+    """
     is_member = []
     keep_assembly = []
     for pat in patterns:
@@ -379,6 +388,15 @@ def find_sig_assemblies(patterns):
 
 @jit(nopython=True)
 def get_participation_(st, event_starts, event_stops):
+    """
+    get_participation_: Calculates the participation of each unit to each event
+    Input:
+        st: spike times
+        event_starts: start times of events
+        event_stops: stop times of events
+    Output:
+        unit_mat: a matrix of participation of each unit to each event
+    """
     unit_mat = np.zeros((len(st), len(event_starts)), dtype=int8)
     for rip in range(len(event_starts)):
         for i, s in enumerate(st):
