@@ -167,10 +167,12 @@ def assembly_run(df, save_path, parallel=True):
 def load_assem_epoch_data(save_path):
     """
     Loads the assembly epoch data from the save_path
+    Input:
+        save_path: path to the save directory
+    Output:
+        results: dataframe of results
     """
-
-    save_path = r"Z:\home\ryanh\projects\ripple_heterogeneity\cell_assembly_epochs_10ms"
-
+    
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
     sessions_df = pd.DataFrame()
