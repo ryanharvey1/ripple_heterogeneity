@@ -59,9 +59,9 @@ def main_analysis(
             temp_st = st_rip[wake_epochs][ep]
         # check if temp_st is empty
         if temp_st.data is None:
-            patterns.append(None)
-            significance.append(None)
-            zactmat.append(None)
+            patterns.append(np.tile(np.nan,len(st.data)))
+            significance.append(np.nan)
+            zactmat.append(np.nan)
             env.append(epoch_df.environment.iloc[i])
             continue
         # extract assembly patterns
@@ -191,20 +191,22 @@ def load_assem_epoch_data(save_path):
     for session in sessions_df.sessions:
         with open(session, "rb") as f:
             results = pickle.load(f)
-
-    for i_epoch, patterns in enumerate(results["patterns"]):
-        for i_assemblies, pattern in enumerate(patterns):
-            UID.append(results["UID"])
-            deepSuperficial.append(results["deepSuperficial"])
-            deepSuperficialDistance.append(results["deepSuperficialDistance"])
-            weights.append(pattern)
-            thres = np.mean(pattern) + np.std(pattern) * 2
-            membership.append(pattern > thres)
-            assembly_.append([assembly_n] * len(pattern))
-            assembly_n += 1
-            basepath.append([results["basepath"]] * len(pattern))
-            assembly_path.append([session] * len(pattern))
-            epoch.append([results["env"][i_epoch]] * len(pattern))
+        
+        for i_epoch, patterns in enumerate(results["patterns"]):
+            patterns,is_member_keep,keep_assembly,is_member = functions.find_sig_assemblies(patterns)
+            for i_assemblies, pattern in enumerate(patterns):
+                UID.append(results["UID"])
+                deepSuperficial.append(results["deepSuperficial"])
+                deepSuperficialDistance.append(results["deepSuperficialDistance"])
+                weights.append(pattern)
+                # thres = np.mean(pattern) + np.std(pattern) * 2
+                # membership.append(pattern > thres)
+                membership.append(is_member_keep[i_assemblies])
+                assembly_.append([assembly_n] * len(pattern))
+                assembly_n += 1
+                basepath.append([results["basepath"]] * len(pattern))
+                assembly_path.append([session] * len(pattern))
+                epoch.append([results["env"][i_epoch]] * len(pattern))
 
     df["UID"] = np.hstack(UID)
     df["deepSuperficial"] = np.hstack(deepSuperficial)
