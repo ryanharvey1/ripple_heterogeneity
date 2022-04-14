@@ -39,12 +39,15 @@ def main_analysis(
     patterns = []
     significance = []
     zactmat = []
+    env = []
     for i, ep in enumerate(behavioral_epochs):
         if epoch_df.environment.iloc[i] == "sleep":
             temp_st = st_rip[nrem_epochs][ep]
         else:
             temp_st = st_rip[wake_epochs][ep]
-
+        # check if temp_st is empty
+        if temp_st.data is None:
+            continue
         # extract assembly patterns
         (patterns_, significance_, zactmat_) = assembly.runPatterns(
             temp_st.bin(ds=dt).data
@@ -54,12 +57,14 @@ def main_analysis(
         patterns.append(patterns_)
         significance.append(significance_)
         zactmat.append(zactmat_)
+        env.append(epoch_df.environment.iloc[i])
 
     # package all results in dict
     results = {}
     results["patterns"] = patterns
     results["significance"] = significance
     results["zactmat"] = zactmat
+    results["env"] = env
 
     return results
 
@@ -107,6 +112,7 @@ def session_loop(basepath, save_path, rip_window=0.050):
     results["UID"] = cell_metrics.UID
     results["basepath"] = basepath
     results["deepSuperficial"] = cell_metrics.deepSuperficial
+    results["deepSuperficialDistance"] = cell_metrics.deepSuperficialDistance
 
     # save file
     with open(save_file, "wb") as f:
