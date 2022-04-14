@@ -72,16 +72,11 @@ def session_loop(basepath, save_path, rip_window=0.050):
     if os.path.exists(save_file):
         return
 
-    cell_metrics, data, ripples, fs_dat = loading.load_basic_data(basepath)
+    _, _, ripples, fs_dat = loading.load_basic_data(basepath)
 
-    restrict_idx = (
-        (cell_metrics.putativeCellType == "Pyramidal Cell")
-        & (cell_metrics.brainRegion.str.contains("CA1"))
-        & (cell_metrics.bad_unit == False)
+    st, cell_metrics = loading.load_spikes(
+        basepath, brainRegion="CA1", putativeCellType="Pyramidal"
     )
-
-    # restrict cell metrics
-    cell_metrics = cell_metrics[restrict_idx]
 
     if cell_metrics.shape[0] == 0:
         return
@@ -90,17 +85,6 @@ def session_loop(basepath, save_path, rip_window=0.050):
     ripple_epochs = nel.EpochArray(
         [np.array([ripples.start - rip_window, ripples.stop + rip_window]).T]
     )
-
-    # get spike train array
-    try:
-        st = nel.SpikeTrainArray(
-            timestamps=np.array(data["spikes"], dtype=object)[restrict_idx], fs=fs_dat
-        )
-    except:  # if only single cell... should prob just skip session
-        st = nel.SpikeTrainArray(
-            timestamps=np.array(data["spikes"], dtype=object)[restrict_idx][0],
-            fs=fs_dat,
-        )
 
     # behavioral epochs
     epoch_df = loading.load_epoch(basepath)
