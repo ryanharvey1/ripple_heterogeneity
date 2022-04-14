@@ -59,7 +59,7 @@ def main_analysis(
             temp_st = st_rip[wake_epochs][ep]
         # check if temp_st is empty
         if temp_st.data is None:
-            patterns.append(np.tile(np.nan,len(st.data)))
+            patterns.append(np.tile(np.nan, len(st.data)))
             significance.append(np.nan)
             zactmat.append(np.nan)
             env.append(epoch_df.environment.iloc[i])
@@ -191,9 +191,18 @@ def load_assem_epoch_data(save_path):
     for session in sessions_df.sessions:
         with open(session, "rb") as f:
             results = pickle.load(f)
-        
+
+        # iterate over epochs
         for i_epoch, patterns in enumerate(results["patterns"]):
-            patterns,is_member_keep,keep_assembly,is_member = functions.find_sig_assemblies(patterns)
+            # locate sig assemblies and assembly members
+            (
+                patterns,
+                is_member_keep,
+                keep_assembly,
+                is_member,
+            ) = functions.find_sig_assemblies(patterns)
+            
+            # iterate over assemblies
             for i_assemblies, pattern in enumerate(patterns):
                 UID.append(results["UID"])
                 deepSuperficial.append(results["deepSuperficial"])
