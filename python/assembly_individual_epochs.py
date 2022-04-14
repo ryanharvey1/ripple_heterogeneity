@@ -188,6 +188,7 @@ def load_assem_epoch_data(save_path):
     basepath = []
     assembly_path = []
     epoch = []
+    epoch_n = []
     for session in sessions_df.sessions:
         with open(session, "rb") as f:
             results = pickle.load(f)
@@ -201,7 +202,7 @@ def load_assem_epoch_data(save_path):
                 keep_assembly,
                 is_member,
             ) = functions.find_sig_assemblies(patterns)
-            
+
             # iterate over assemblies
             for i_assemblies, pattern in enumerate(patterns):
                 UID.append(results["UID"])
@@ -216,11 +217,14 @@ def load_assem_epoch_data(save_path):
                 basepath.append([results["basepath"]] * len(pattern))
                 assembly_path.append([session] * len(pattern))
                 epoch.append([results["env"][i_epoch]] * len(pattern))
+                epoch_n.append(np.tile(i_epoch, len(pattern)))
+
 
     df["UID"] = np.hstack(UID)
     df["deepSuperficial"] = np.hstack(deepSuperficial)
     df["deepSuperficialDistance"] = np.hstack(deepSuperficialDistance)
     df["epoch"] = np.hstack(epoch)
+    df["epoch_n"] = np.hstack(epoch_n)
     df["basepath"] = np.hstack(basepath)
     df["weights"] = np.hstack(weights)
     df["membership"] = np.hstack(membership)
