@@ -169,42 +169,51 @@ def load_assem_epoch_data(save_path):
     Loads the assembly epoch data from the save_path
     """
 
+    save_path = r"Z:\home\ryanh\projects\ripple_heterogeneity\cell_assembly_epochs_10ms"
+
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
-    assem_epoch_df = pd.DataFrame()
+    sessions_df = pd.DataFrame()
+    sessions_df["sessions"] = sessions
 
-    for session in sessions:
-        assem_epoch_df_temp = pd.DataFrame()
-        prob_sig_member = []
-        n_members = []
-        n_assemblies = []
-        n_cells = []
-        epoch = []
+    df = pd.DataFrame()
+
+    UID = []
+    deepSuperficial = []
+    deepSuperficialDistance = []
+    weights = []
+    membership = []
+    assembly_n = 0
+    assembly_ = []
+    basepath = []
+    assembly_path = []
+    epoch = []
+    for session in sessions_df.sessions:
         with open(session, "rb") as f:
             results = pickle.load(f)
 
-            for i, pattern_ep in enumerate(results["patterns"]):
-                (
-                    patterns_keep,
-                    is_member_keep,
-                    keep_assembly,
-                    is_member,
-                ) = functions.find_sig_assemblies(pattern_ep)
-                prob_sig_member.append(np.mean(is_member_keep))
-                n_members.append(is_member_keep.sum())
-                n_assemblies.append(patterns_keep.shape[0])
-                n_cells.append(patterns_keep.shape[1])
-                epoch.append(results['env'][i])
+    for i_epoch, patterns in enumerate(results["patterns"]):
+        for i_assemblies, pattern in enumerate(patterns):
+            UID.append(results["UID"])
+            deepSuperficial.append(results["deepSuperficial"])
+            deepSuperficialDistance.append(results["deepSuperficialDistance"])
+            weights.append(pattern)
+            thres = np.mean(pattern) + np.std(pattern) * 2
+            membership.append(pattern > thres)
+            assembly_.append([assembly_n] * len(pattern))
+            assembly_n += 1
+            basepath.append([results["basepath"]] * len(pattern))
+            assembly_path.append([session] * len(pattern))
+            epoch.append([results["env"][i_epoch]] * len(pattern))
 
-            assem_epoch_df_temp["prob_sig_member"] = prob_sig_member
-            assem_epoch_df_temp["n_members"] = n_members
-            assem_epoch_df_temp["n_assemblies"] = n_assemblies
-            assem_epoch_df_temp["n_cells"] = n_cells
-            assem_epoch_df_temp["epoch"] = epoch
-            assem_epoch_df_temp["basepath"] = results["basepath"]
+    df["UID"] = np.hstack(UID)
+    df["deepSuperficial"] = np.hstack(deepSuperficial)
+    df["deepSuperficialDistance"] = np.hstack(deepSuperficialDistance)
+    df["epoch"] = np.hstack(epoch)
+    df["basepath"] = np.hstack(basepath)
+    df["weights"] = np.hstack(weights)
+    df["membership"] = np.hstack(membership)
+    df["assembly_n"] = np.hstack(assembly_)
+    df["assembly_path"] = np.hstack(assembly_path)
 
-        assem_epoch_df = pd.concat(
-            [assem_epoch_df, assem_epoch_df_temp], ignore_index=True
-        )
-
-    return assem_epoch_df
+    return df
