@@ -82,12 +82,15 @@ def session_loop(basepath, save_path, rip_window=0.050):
         return
 
     # get ripple epochs
-    ripple_epochs = nel.EpochArray(
-        [np.array([ripples.start - rip_window, ripples.stop + rip_window]).T]
-    )
+    ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
+    ripple_epochs = ripple_epochs.expand(rip_window,direction="both")
 
     # behavioral epochs
     epoch_df = loading.load_epoch(basepath)
+
+    idx = functions.find_epoch_pattern(epoch_df.environment,["sleep","linear","sleep"])
+    epoch_df = epoch_df[idx[0]]
+
     behavioral_epochs = nel.EpochArray(
         [np.array([epoch_df.startTime, epoch_df.stopTime]).T]
     )
