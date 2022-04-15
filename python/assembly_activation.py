@@ -23,11 +23,11 @@ def session_loop_activation(basepath,save_path,save_path_assembly):
 
     cell_metrics,data,ripples,fs_dat = loading.load_basic_data(basepath)
 
-    restrict_idx = ((cell_metrics.putativeCellType == "Pyramidal Cell") &
-                        ((cell_metrics.brainRegion=="CA1") |
-                        (cell_metrics.brainRegion=="rCA1") |
-                        (cell_metrics.brainRegion=="lCA1")) &
-                        (cell_metrics.bad_unit == False))
+    restrict_idx = (
+        (cell_metrics.putativeCellType == "Pyramidal Cell")
+        & (cell_metrics.brainRegion.str.contains("CA1"))
+        & (cell_metrics.bad_unit == False)
+    )
 
     # restrict cell metrics                      
     cell_metrics = cell_metrics[restrict_idx]
