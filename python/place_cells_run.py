@@ -90,11 +90,11 @@ def session_loop(basepath,save_path):
 
     cell_metrics,data,fs_dat = load_basic_data(basepath)
 
-    restrict_idx = ((cell_metrics.putativeCellType == "Pyramidal Cell") &
-                        ((cell_metrics.brainRegion=="CA1") |
-                        (cell_metrics.brainRegion=="rCA1") |
-                        (cell_metrics.brainRegion=="lCA1")) &
-                        (cell_metrics.bad_unit==False))
+    restrict_idx = (
+        (cell_metrics.putativeCellType == "Pyramidal Cell")
+        & (cell_metrics.brainRegion.str.contains("CA1"))
+        & (cell_metrics.bad_unit == False)
+    )
 
     # restrict cell metrics                      
     cell_metrics = cell_metrics[restrict_idx]
