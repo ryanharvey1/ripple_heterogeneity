@@ -187,16 +187,6 @@ def get_group_cor_vectors(df, temp_df, basepath):
         assembly_id,
     )
 
-
-def get_participation(st, ripple_epochs):
-    # get participation prob.
-    # make matrix n rows (units) by n cols (ripple epochs)
-    unit_mat = np.zeros((st.n_units, ripple_epochs.n_intervals))
-    for i, event in enumerate(st):
-        unit_mat[:, i] = event.n_events
-    return unit_mat
-
-
 def get_pairwise_corrs(basepath):
 
     cell_metrics, data, ripples, fs_dat = assembly_run.load_basic_data(basepath)
