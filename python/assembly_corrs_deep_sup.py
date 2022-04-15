@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import itertools
 from scipy import stats
-import functions, assembly_run
+import functions, assembly_run, loading
 import nelpy as nel
 import os
 import multiprocessing
@@ -187,8 +187,27 @@ def get_group_cor_vectors(df, temp_df, basepath):
         assembly_id,
     )
 
-def get_pairwise_corrs(basepath):
 
+def get_pairwise_corrs(basepath, epoch):
+    """
+    Get pairwise correlations for all assemblies.
+    Input:
+        basepath: path to the directory containing the data
+        epoch: epoch of interest
+    Output:
+        Data frame with pairwise correlations for all assemblies:
+            deep: deep layer correlations
+            sup: superficial layer correlations
+            member: member-member correlations
+            non_member: non-member-non-member correlations
+            member_deep: member-member deep layer correlations
+            member_sup: member-member superficial layer correlations
+            non_member_deep: non-member-non-member deep layer correlations
+            non_member_sup: non-member-non-member superficial layer correlations
+            member_deep_sup: member-member deep-superficial layer correlations
+            non_member_deep_sup: non-member-non-member deep-superficial layer correlations
+            assembly_id: assembly id for each correlation
+    """
     cell_metrics, data, ripples, fs_dat = assembly_run.load_basic_data(basepath)
     restrict_idx = (
         (cell_metrics.putativeCellType == "Pyramidal Cell")
@@ -206,6 +225,23 @@ def get_pairwise_corrs(basepath):
         timestamps=np.array(data["spikes"], dtype=object)[restrict_idx], fs=fs_dat
     )
     ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
+
+    if epoch is not None:
+        epochs = loading.load_epoch(basepath)
+        idx = functions.find_pre_task_post(epochs.environment)
+        epochs = epochs[idx[0]]
+        behav_epochs = nel.EpochArray([np.array([epochs.startTime, epochs.stopTime]).T])
+        if epoch == "pre":
+            ripple_epochs = ripple_epochs[behav_epochs[0]]
+            st_unit = st_unit[behav_epochs[0]]
+        elif epoch == "task":
+            ripple_epochs = ripple_epochs[behav_epochs[1]]
+            st_unit = st_unit[behav_epochs[1]]
+        elif epoch == "post":
+            ripple_epochs = ripple_epochs[behav_epochs[2]]
+            st_unit = st_unit[behav_epochs[2]]
+        else:
+            raise ValueError("Invalid epoch")
 
     spk_count_rip = functions.get_participation(
         st_unit.data, ripple_epochs.starts, ripple_epochs.stops
@@ -229,9 +265,9 @@ def get_pairwise_corrs(basepath):
     return temp_df
 
 
-def get_and_organize_pairwise_corrs(basepath, df):
+def get_and_organize_pairwise_corrs(basepath, df, epoch):
 
-    temp_df = get_pairwise_corrs(basepath)
+    temp_df = get_pairwise_corrs(basepath, epoch)
     (
         deep,
         sup,
@@ -297,7 +333,7 @@ def get_and_organize_pairwise_corrs(basepath, df):
     return df_save
 
 
-def session_loop(basepath, df, save_path):
+def session_loop(basepath, df, save_path, epoch):
 
     save_file = os.path.join(
         save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".csv"
@@ -305,11 +341,19 @@ def session_loop(basepath, df, save_path):
     if os.path.exists(save_file):
         return
 
-    df_save = get_and_organize_pairwise_corrs(basepath, df)
+    df_save = get_and_organize_pairwise_corrs(basepath, df, epoch)
     df_save.to_csv(save_file)
 
 
-def assembly_corr_run(df, save_path, parallel=True):
+def assembly_corr_run(df, save_path, parallel=True, epoch=None):
+    """
+    Run the pairwise correlation analysis on all assemblies in the dataframe.
+    Input:
+        df: dataframe with assembly information
+        save_path: path to save the results
+        parallel: whether to run in parallel
+        epoch: which epoch to use [pre, task, post] (assumes sleep,linear,sleep)
+    """
     # find sessions to run
     basepaths = pd.unique(df.basepath)
 
@@ -319,9 +363,10 @@ def assembly_corr_run(df, save_path, parallel=True):
     if parallel:
         num_cores = multiprocessing.cpu_count()
         processed_list = Parallel(n_jobs=num_cores)(
-            delayed(session_loop)(basepath, df, save_path) for basepath in basepaths
+            delayed(session_loop)(basepath, df, save_path, epoch)
+            for basepath in basepaths
         )
     else:
         for basepath in basepaths:
             print(basepath)
-            session_loop(basepath, df, save_path)
+            session_loop(basepath, df, save_path, epoch)
