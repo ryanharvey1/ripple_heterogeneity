@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
@@ -183,6 +184,23 @@ def compute_AutoCorrs(spks, binsize=0.001, nbins=100):
     autocorrs.loc[0] = 0.0
     return autocorrs
 
+def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False):
+    # Get unique combo without repeats
+    x = np.arange(0, spks.shape[0])
+    c = np.array(list(itertools.combinations(x, 2)))
+    # prepare a pandas dataframe to receive the data
+    times = np.arange(0, binsize * (nbins + 1), binsize) - (nbins * binsize) / 2
+    crosscorrs = pd.DataFrame(index=times, columns=np.arange(len(c)))
+
+    # Now we can iterate over spikes
+    for i, s in enumerate(c):
+        # Calling the crossCorr function
+        crosscorrs[i] = crossCorr(spks[s[0]], spks[s[1]], binsize, nbins)
+        
+    if return_index:
+        return crosscorrs, c
+    else:
+        return crosscorrs
 
 def compute_psth(spikes, event, bin_width=0.002, n_bins=100):
 
