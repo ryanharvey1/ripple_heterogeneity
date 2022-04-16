@@ -5,9 +5,9 @@ import pandas as pd
 import numpy as np
 import nelpy as nel
 import pickle
-import assembly_run
 import loading
 import sys
+from scipy import stats
 
 sys.path.append("D:/github/neurocode/reactivation/assemblies")
 import assembly
@@ -116,9 +116,20 @@ class AssemblyReact(object):
         """
         self.st_resticted = self.st[epoch]
 
-    def get_z_mat(self,st):
-        zactmat, ts = assembly_run.get_z_t(st, ds=self.z_mat_dt)
-        return zactmat,ts
+    def get_z_mat(self, st):
+        """
+        To increase the temporal resolution beyond the
+        bin-size used to identify the assembly patterns,
+        z(t) was obtained by convolving the spike-train
+        of each neuron with a kernel-function
+        """
+        # binning the spike train
+        z_t = st.bin(ds=self.z_mat_dt)
+        # gaussian kernel to match the bin-size used to identify the assembly patterns
+        sigma = self.weight_dt / np.sqrt(int(1000 * self.weight_dt / 2))
+        z_t.smooth(sigma=sigma, inplace=True)
+        # zscore and return
+        return stats.zscore(z_t.data, axis=1), z_t.bin_centers
 
     def get_weights(self, epoch=None):
         """
@@ -133,9 +144,9 @@ class AssemblyReact(object):
 
     def get_assembly_act(self, epoch=None):
         if epoch is not None:
-            zactmat,ts = self.get_z_mat(self.st[epoch])
+            zactmat, ts = self.get_z_mat(self.st[epoch])
         else:
-            zactmat,ts = self.get_z_mat(self.st)
+            zactmat, ts = self.get_z_mat(self.st)
 
         self.assembly_act = nel.AnalogSignalArray(
             data=assembly.computeAssemblyActivity(self.patterns, zactmat),
