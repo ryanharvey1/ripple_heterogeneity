@@ -9,7 +9,7 @@ import assembly_run
 import loading
 import sys
 
-sys.path.append(r"D:\github\neurocode\reactivation\assemblies")
+sys.path.append("D:/github/neurocode/reactivation/assemblies")
 import assembly
 
 
@@ -66,52 +66,90 @@ class AssemblyReact(object):
         self.weight_dt = weight_dt
         self.z_mat_dt = z_mat_dt
 
-    def load_data(self):
+    def add_st(self, st):
+        self.st = st
+
+    def add_ripples(self, ripples):
+        self.ripples = ripples
+
+    def add_epoch_df(self, epoch_df):
+        self.epoch_df = epoch_df
+
+    def load_spikes(self):
+        """
+        loads spikes from the session folder
+        """
         self.st, self.cell_metrics = loading.load_spikes(
             self.basepath,
             brainRegion=self.brainRegion,
             putativeCellType=self.putativeCellType,
         )
+
+    def load_ripples(self):
+        """
+        loads ripples from the session folder
+        """
         ripples = loading.load_ripples_events(self.basepath)
         self.ripples = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
 
+    def load_epoch(self):
+        """
+        loads epochs from the session folder
+        """
         epoch_df = loading.load_epoch(self.basepath)
-        self.epoch_df = nel.EpochArray(
+        self.epochs = nel.EpochArray(
             [np.array([epoch_df.startTime, epoch_df.stopTime]).T],
             label=epoch_df.environment.values,
         )
 
-    def add_st(self, st):
-        self.st = st
-    
-    def add_ripples(self, ripples):
-        self.ripples = ripples
-    
-    def add_epoch_df(self, epoch_df):
-        self.epoch_df = epoch_df
+    def load_data(self):
+        """
+        loads data (spikes,ripples,epochs) from the session folder
+        """
+        self.load_spikes()
+        self.load_ripples()
+        self.load_epoch()
 
     def restrict_to_epoch(self, epoch):
-        self.st = self.st[epoch]
+        """
+        Restricts the spike data to a specific epoch
+        """
+        self.st_resticted = self.st[epoch]
 
-    def restrict_to_events(self, events):
-        self.st = self.st[events]
+    def get_z_mat(self,st):
+        zactmat, ts = assembly_run.get_z_t(st, ds=self.z_mat_dt)
+        return zactmat,ts
 
-    def get_z_mat(self):
-        self.zactmat, self.ts = assembly_run.get_z_t(self.st, ds=self.z_mat_dt)
+    def get_weights(self, epoch=None):
+        """
+        Gets the assembly weights
+        """
+        if epoch is not None:
+            bst = self.st[epoch].bin(ds=self.weight_dt).data
+        else:
+            bst = self.st.bin(ds=self.weight_dt).data
 
-    def get_weights(self):
-        (
-            self.patterns,
-            _,
-            _,
-        ) = assembly.runPatterns(self.st.bin(ds=self.weight_dt).data)
+        self.patterns, _, _ = assembly.runPatterns(bst)
 
-    def get_assembly_act(self):
+    def get_assembly_act(self, epoch=None):
+        if epoch is not None:
+            zactmat,ts = self.get_z_mat(self.st[epoch])
+        else:
+            zactmat,ts = self.get_z_mat(self.st)
+
         self.assembly_act = nel.AnalogSignalArray(
-            data=assembly.computeAssemblyActivity(self.patterns, self.zactmat),
-            timestamps=self.ts,
+            data=assembly.computeAssemblyActivity(self.patterns, zactmat),
+            timestamps=ts,
             fs=1 / self.z_mat_dt,
         )
 
     def session_loop_activation(self):
         pass
+
+    def standard_task_react(self):
+        """
+        Runs the standard task reactivation analysis
+        """
+        self.load_data()
+        self.get_weights(self.ripples[self.epochs[1]])
+        self.get_assembly_act()
