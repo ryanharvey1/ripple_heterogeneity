@@ -27,15 +27,15 @@ def load_data(basepath):
     ripples = loading.load_ripples_events(basepath)
     ripples = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
 
-    # get brain states                                                
+    # get brain states
     state_dict = loading.load_SleepState_states(basepath)
-    nrem_epochs = nel.EpochArray(state_dict['NREMstate'])
-    wake_epochs = nel.EpochArray(state_dict['WAKEstate'])
+    nrem_epochs = nel.EpochArray(state_dict["NREMstate"])
+    wake_epochs = nel.EpochArray(state_dict["WAKEstate"])
 
     return st, cell_metrics, ripples, nrem_epochs, wake_epochs
 
 
-def main(basepath,states=None):
+def main(basepath, states=None):
 
     # load data
     st, cell_metrics, ripples, nrem_epochs, wake_epochs = load_data(basepath)
@@ -53,10 +53,12 @@ def main(basepath,states=None):
             ripples = ripples[wake_epochs]
         else:
             raise ValueError("states must be 'nrem' or 'wake'")
-        if len(st.data) == 0 | len(ripples.starts ) == 0:
+        if (st is None) | len(ripples.start) == 0:
             return None
 
-    unit_mat = functions.get_participation(st.data, ripples.starts, ripples.stops, par_type="counts")
+    unit_mat = functions.get_participation(
+        st.data, ripples.starts, ripples.stops, par_type="counts"
+    )
     rho, pval, corr_c = functions.pairwise_corr(unit_mat)
 
     # get ccg
@@ -113,7 +115,8 @@ def run(df, save_path, parallel=True, states=None):
     if parallel:
         num_cores = multiprocessing.cpu_count()
         processed_list = Parallel(n_jobs=num_cores)(
-            delayed(session_loop)(basepath, df, save_path, states) for basepath in basepaths
+            delayed(session_loop)(basepath, df, save_path, states)
+            for basepath in basepaths
         )
     else:
         for basepath in basepaths:
