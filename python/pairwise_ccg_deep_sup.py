@@ -1,3 +1,4 @@
+import glob
 import sys
 import pandas as pd
 import numpy as np
@@ -99,3 +100,24 @@ def run(df, save_path, parallel=True):
         for basepath in basepaths:
             print(basepath)
             session_loop(basepath, df, save_path)
+
+
+def load_data(save_path):
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+
+    ccgs = pd.DataFrame()
+    ccg_id_df = pd.DataFrame()
+
+    for session in sessions:
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+        if results is None:
+            continue
+        # horizontally concatenate pandas
+        ccgs = pd.concat([ccgs, results["ccgs"]], axis=1)
+        # add rho and pval
+        results["ccg_id_df"]["rho"] = results["rho"]
+        results["ccg_id_df"]["pval"] = results["pval"]
+        # vertically concatenate pandas
+        ccg_id_df = pd.concat([ccg_id_df, results["ccg_id_df"]], ignore_index=True)
+    return ccgs, ccg_id_df
