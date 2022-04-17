@@ -89,6 +89,8 @@ def main(basepath, states=None, ccg_nbins=100, ccg_binsize=0.004):
     ccg_id_df["target"] = c[:, 1]
     ccg_id_df["UID_ref"] = cell_metrics.UID.iloc[ccg_id_df["ref"]].values
     ccg_id_df["UID_target"] = cell_metrics.UID.iloc[ccg_id_df["target"]].values
+    ccg_id_df["n_spikes_ref"] = st.n_events[ccg_id_df["ref"]]
+    ccg_id_df["n_spikes_target"] = st.n_events[ccg_id_df["target"]]
     ccg_id_df["deepSuperficial_ref"] = cell_metrics.deepSuperficial.iloc[
         ccg_id_df["ref"]
     ].values
