@@ -53,6 +53,8 @@ def main(basepath,states=None):
             ripples = ripples[wake_epochs]
         else:
             raise ValueError("states must be 'nrem' or 'wake'")
+        if len(st.data) == 0 | len(ripples.starts ) == 0:
+            return None
 
     unit_mat = functions.get_participation(st.data, ripples.starts, ripples.stops, par_type="counts")
     rho, pval, corr_c = functions.pairwise_corr(unit_mat)
