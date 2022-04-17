@@ -15,6 +15,14 @@ import functions, loading, add_new_deep_sup
 def load_data(basepath):
     """
     Loads data from a given basepath.
+    Inputs:
+        basepath: string, path to session
+    Outputs:
+        st: nelpy.SpikeTrain, spike train
+        cell_metrics: pandas dataframe, contains cell metrics
+        ripples: pandas dataframe, contains ripples
+        nrem_epochs: boolean array, contains epochs
+        wake_epochs: boolean array, contains epochs
     """
     st, cell_metrics = loading.load_spikes(
         basepath, brainRegion="CA1", putativeCellType="Pyramidal Cell"
@@ -35,8 +43,17 @@ def load_data(basepath):
     return st, cell_metrics, ripples, nrem_epochs, wake_epochs
 
 
-def main(basepath, states=None):
-
+def main(basepath, states=None, ccg_nbins=100, ccg_binsize=0.004):
+    """
+    Main function.
+    Inputs:
+        basepath: string, path to session
+        states: string, "nrem" or "wake"
+        ccg_nbins: int, number of bins for ccg
+        ccg_binsize: float, size of bins for ccg
+    Outputs:
+        results: dictionary, contains ccgs, ccg_id_df, rho, pval, corr_c
+    """
     # load data
     st, cell_metrics, ripples, nrem_epochs, wake_epochs = load_data(basepath)
 
@@ -53,7 +70,7 @@ def main(basepath, states=None):
             ripples = ripples[wake_epochs]
         else:
             raise ValueError("states must be 'nrem' or 'wake'")
-        if (st is None) | len(ripples.start) == 0:
+        if (st is None) | len(ripples.starts) == 0:
             return None
 
     unit_mat = functions.get_participation(
@@ -63,7 +80,7 @@ def main(basepath, states=None):
 
     # get ccg
     ccgs, c = functions.pairwise_cross_corr(
-        st[ripples].data, nbins=100, binsize=0.004, return_index=True
+        st[ripples].data, nbins=ccg_nbins, binsize=ccg_binsize, return_index=True
     )
 
     # add id
@@ -91,8 +108,14 @@ def main(basepath, states=None):
     return results
 
 
-def session_loop(basepath, df, save_path, states):
-
+def session_loop(basepath, save_path, states):
+    """
+    Runs session loop.
+    Inputs:
+        basepath: string, path to session
+        save_path: string, path to save results
+        states: string, "nrem" or "wake"
+    """
     save_file = os.path.join(
         save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
     )
@@ -106,6 +129,14 @@ def session_loop(basepath, df, save_path, states):
 
 
 def run(df, save_path, parallel=True, states=None):
+    """
+    Runs session loop.
+    Inputs:
+        df: pandas dataframe, contains basepaths
+        save_path: string, path to save results
+        parallel: boolean, whether to run in parallel
+        states: string, "nrem" or "wake"
+    """
     # find sessions to run
     basepaths = pd.unique(df.basepath)
 
@@ -115,16 +146,22 @@ def run(df, save_path, parallel=True, states=None):
     if parallel:
         num_cores = multiprocessing.cpu_count()
         processed_list = Parallel(n_jobs=num_cores)(
-            delayed(session_loop)(basepath, df, save_path, states)
-            for basepath in basepaths
+            delayed(session_loop)(basepath, save_path, states) for basepath in basepaths
         )
     else:
         for basepath in basepaths:
             print(basepath)
-            session_loop(basepath, df, save_path, states)
+            session_loop(basepath, save_path, states)
 
 
 def load_results(save_path):
+    """
+    Loads results from save_path.
+    Inputs:
+        save_path: string, path to save results
+    Outputs:
+        results: pandas dataframe, contains ccgs, ccg_id_df, rho, pval, corr_c
+    """
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
     ccgs = pd.DataFrame()
@@ -136,7 +173,7 @@ def load_results(save_path):
         if results is None:
             continue
         # horizontally concatenate pandas
-        ccgs = pd.concat([ccgs, results["ccgs"]], axis=1)
+        ccgs = pd.concat([ccgs, results["ccgs"]], axis=1, ignore_index=True)
         # add rho and pval
         results["ccg_id_df"]["rho"] = results["rho"]
         results["ccg_id_df"]["pval"] = results["pval"]
