@@ -21,23 +21,40 @@ def load_data(basepath):
     )
     # need at least 2 cells to do pairwise CCG
     if cell_metrics.shape[0] < 2:
-        return None, None, None
+        return None, None, None, None, None
 
     cell_metrics = add_new_deep_sup.add_new_deep_sup_class(cell_metrics)
     ripples = loading.load_ripples_events(basepath)
     ripples = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
-    return st, cell_metrics, ripples
+
+    # get brain states                                                
+    state_dict = loading.load_SleepState_states(basepath)
+    nrem_epochs = nel.EpochArray(state_dict['NREMstate'])
+    wake_epochs = nel.EpochArray(state_dict['WAKEstate'])
+
+    return st, cell_metrics, ripples, nrem_epochs, wake_epochs
 
 
-def main(basepath):
+def main(basepath,states=None):
 
     # load data
-    st, cell_metrics, ripples = load_data(basepath)
+    st, cell_metrics, ripples, nrem_epochs, wake_epochs = load_data(basepath)
 
     if st is None:
         return None
 
-    unit_mat = functions.get_participation(st.data, ripples.starts, ripples.stops)
+    # restrict to state
+    if states is not None:
+        if states == "nrem":
+            st = st[nrem_epochs]
+            ripples = ripples[nrem_epochs]
+        elif states == "wake":
+            st = st[wake_epochs]
+            ripples = ripples[wake_epochs]
+        else:
+            raise ValueError("states must be 'nrem' or 'wake'")
+
+    unit_mat = functions.get_participation(st.data, ripples.starts, ripples.stops, par_type="counts")
     rho, pval, corr_c = functions.pairwise_corr(unit_mat)
 
     # get ccg
@@ -70,7 +87,7 @@ def main(basepath):
     return results
 
 
-def session_loop(basepath, df, save_path):
+def session_loop(basepath, df, save_path, states):
 
     save_file = os.path.join(
         save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
@@ -78,13 +95,13 @@ def session_loop(basepath, df, save_path):
     if os.path.exists(save_file):
         return
 
-    results = main(basepath)
+    results = main(basepath, states)
     # save file
     with open(save_file, "wb") as f:
         pickle.dump(results, f)
 
 
-def run(df, save_path, parallel=True):
+def run(df, save_path, parallel=True, states=None):
     # find sessions to run
     basepaths = pd.unique(df.basepath)
 
@@ -94,15 +111,15 @@ def run(df, save_path, parallel=True):
     if parallel:
         num_cores = multiprocessing.cpu_count()
         processed_list = Parallel(n_jobs=num_cores)(
-            delayed(session_loop)(basepath, df, save_path) for basepath in basepaths
+            delayed(session_loop)(basepath, df, save_path, states) for basepath in basepaths
         )
     else:
         for basepath in basepaths:
             print(basepath)
-            session_loop(basepath, df, save_path)
+            session_loop(basepath, df, save_path, states)
 
 
-def load_data(save_path):
+def load_results(save_path):
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
     ccgs = pd.DataFrame()
