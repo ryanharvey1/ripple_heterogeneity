@@ -10,6 +10,7 @@ from numba import typeof
 import sys
 import nelpy as nel
 import warnings
+from scipy import stats
 
 
 def set_plotting_defaults():
@@ -184,6 +185,26 @@ def compute_AutoCorrs(spks, binsize=0.001, nbins=100):
     autocorrs.loc[0] = 0.0
     return autocorrs
 
+def pairwise_corr(X):
+    """
+    Compute pairwise correlations between all rows of matrix
+    Input: 
+        X: numpy array of shape (n,p)
+    Output:
+        corr: numpy array spearmanr rho
+        pval: numpy array spearmanr pval
+        c: numpy array ref and target from which the correlation was computed
+    """
+    x = np.arange(0, X.shape[0])
+    c = np.array(list(itertools.combinations(x, 2)))
+    rho = []
+    pval = []
+    for i, s in enumerate(c):
+        rho_, pval_ = stats.spearmanr(X[s[0], :], X[s[1], :])
+        rho.append(rho_)
+        pval.append(pval_)
+    return rho, pval, c
+
 def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False):
     # Get unique combo without repeats
     x = np.arange(0, spks.shape[0])
@@ -196,7 +217,7 @@ def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False):
     for i, s in enumerate(c):
         # Calling the crossCorr function
         crosscorrs[i] = crossCorr(spks[s[0]], spks[s[1]], binsize, nbins)
-        
+
     if return_index:
         return crosscorrs, c
     else:
