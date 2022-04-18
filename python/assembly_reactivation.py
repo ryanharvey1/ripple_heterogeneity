@@ -11,6 +11,7 @@ from scipy import stats
 
 sys.path.append("D:/github/neurocode/reactivation/assemblies")
 import assembly
+import functions
 
 
 class AssemblyReact(object):
@@ -110,6 +111,18 @@ class AssemblyReact(object):
         self.load_ripples()
         self.load_epoch()
 
+    def restrict_epochs_to_pre_task_post(self):
+        """
+        Restricts the epochs to the specified epochs
+        """
+        epoch_df = loading.load_epoch(self.basepath)
+        idx = functions.find_pre_task_post(epoch_df.environment)
+        epoch_df = epoch_df[idx[0]]
+        self.epochs = nel.EpochArray(
+            [np.array([epoch_df.startTime, epoch_df.stopTime]).T],
+            label=epoch_df.environment.values,
+        )
+
     def restrict_to_epoch(self, epoch):
         """
         Restricts the spike data to a specific epoch
@@ -164,3 +177,80 @@ class AssemblyReact(object):
         self.load_data()
         self.get_weights(self.ripples[self.epochs[1]])
         self.get_assembly_act()
+
+
+def get_peak_activity(m1, epochs):
+    """
+    Gets the peak activity of the assembly activity
+    """
+    strengths = []
+    assembly_id = []
+    for assembly_act in m1.assembly_act[epochs]:
+        strengths.append(assembly_act.max())
+        assembly_id.append(np.arange(assembly_act.n_signals))
+
+    return np.hstack(assembly_id), np.hstack(strengths)
+
+
+def get_pre_post_assembly_strengths(basepath):
+    """
+    Gets the pre and post assembly strengths
+    """
+    # initialize session
+    m1 = AssemblyReact(basepath)
+    # load data
+    m1.load_data()
+    # restrict to pre/task/post epochs
+    m1.restrict_epochs_to_pre_task_post()
+    # get weights for task
+    m1.get_weights(m1.ripples[m1.epochs[1]])
+
+    
+    df = pd.DataFrame()
+    for ep in [0, 2]:
+        # get assembly activity
+        m1.get_assembly_act(epoch=m1.ripples[m1.epochs[ep]])
+        # get pre assembly activity
+        assembly_id, strengths = get_peak_activity(m1, m1.ripples[m1.epochs[ep]])
+        temp_df = pd.DataFrame()
+        temp_df["assembly_id"] = assembly_id
+        temp_df["strengths"] = strengths
+        temp_df["epoch"] = ep
+        temp_df["basepath"] = basepath
+        temp_df["brainRegion"] = m1.brainRegion
+        temp_df["putativeCellType"] = m1.putativeCellType
+
+        df = pd.concat([df, temp_df], ignore_index=True)
+    results = {"df": df, "react": m1}
+    return results
+
+
+def session_loop(basepath, save_path):
+
+    save_file = os.path.join(
+        save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
+    )
+    if os.path.exists(save_file):
+        return
+    results = get_pre_post_assembly_strengths(basepath)
+    # save file
+    with open(save_file, "wb") as f:
+        pickle.dump(results, f)
+
+
+def run(df, save_path, parallel=True):
+    # find sessions to run
+    basepaths = pd.unique(df.basepath)
+
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+
+    if parallel:
+        num_cores = multiprocessing.cpu_count()
+        processed_list = Parallel(n_jobs=num_cores)(
+            delayed(session_loop)(basepath, save_path) for basepath in basepaths
+        )
+    else:
+        for basepath in basepaths:
+            print(basepath)
+            session_loop(basepath, save_path)
