@@ -6,9 +6,6 @@ import numpy as np
 import glob
 import nelpy as nel
 import warnings
-from warnings import simplefilter
-simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
-import math
 
 def loadXML(basepath):
     """
