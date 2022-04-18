@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import loading
+from ripple_heterogeneity.utils import loading
 
 def add_new_deep_sup_class(df, layer_dist=30):
     """
