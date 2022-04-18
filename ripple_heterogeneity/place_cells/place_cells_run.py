@@ -2,7 +2,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import pandas as pd
 import numpy as np 
-import functions,loading
+from ripple_heterogeneity.utils import functions,loading
 import statistics
 import nelpy as nel 
 import multiprocessing

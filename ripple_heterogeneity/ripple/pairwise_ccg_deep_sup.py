@@ -1,5 +1,4 @@
 import glob
-import sys
 import pandas as pd
 import numpy as np
 import os
@@ -7,9 +6,7 @@ import pickle
 import nelpy as nel
 import multiprocessing
 from joblib import Parallel, delayed
-
-sys.path.append(r"D:\github\ripple_heterogeneity\python")
-import functions, loading, add_new_deep_sup
+from ripple_heterogeneity.utils import functions,loading,add_new_deep_sup
 
 
 def load_data(basepath):

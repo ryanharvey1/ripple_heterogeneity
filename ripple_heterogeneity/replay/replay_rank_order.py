@@ -1,5 +1,4 @@
-import loading
-import functions
+from ripple_heterogeneity.utils import functions,loading
 import numpy as np
 from joblib import Parallel, delayed
 import multiprocessing
@@ -9,9 +8,7 @@ import pickle
 import os
 import glob
 import pandas as pd
-import sys
 
-sys.path.append(r"D:\github\ripple_heterogeneity\python")
 warnings.filterwarnings("ignore", message="All-NaN slice encountered")
 warnings.filterwarnings(
     "ignore", message="fs was not specified, so we try to estimate it from the data..."

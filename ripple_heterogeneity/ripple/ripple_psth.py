@@ -1,7 +1,5 @@
 import nelpy as nel
-import functions,loading
-import sys
-sys.path.append(r'D:\github\neurocode\reactivation\assemblies')
+from ripple_heterogeneity.utils import functions,loading
 import numpy as np
 import pickle
 import pandas as pd

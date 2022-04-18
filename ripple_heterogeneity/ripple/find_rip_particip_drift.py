@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np 
 import os
-import functions,loading
+from ripple_heterogeneity.utils import functions,loading
 import nelpy as nel 
 import multiprocessing
 from joblib import Parallel, delayed

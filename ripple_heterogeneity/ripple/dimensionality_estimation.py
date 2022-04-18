@@ -1,11 +1,7 @@
 import copy
-import sys
-sys.path.append(r'D:\github\ripple_heterogeneity\python')
-import functions,loading
-
+from ripple_heterogeneity.utils import functions,loading
 import pandas as pd
 import numpy as np 
-import glob
 import os
 import pickle
 import seaborn as sns

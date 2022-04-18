@@ -3,7 +3,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import nelpy as nel
 import nelpy.plotting as npl
 import numpy as np
-import functions
+from ripple_heterogeneity.utils import functions
 
 
 def plot_all_replay(

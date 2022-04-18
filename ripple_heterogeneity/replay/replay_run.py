@@ -1,7 +1,7 @@
 import numpy as np
 import nelpy as nel
 from nelpy.analysis import replay
-import functions
+from ripple_heterogeneity.utils import functions,loading
 import os
 import pandas as pd
 import statistics
@@ -10,7 +10,6 @@ import multiprocessing
 from joblib import Parallel, delayed
 import pickle
 import copy
-import loading
 
 
 def decode_and_score(bst, tc, pos):
