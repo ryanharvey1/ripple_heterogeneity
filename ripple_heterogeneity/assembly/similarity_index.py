@@ -37,21 +37,26 @@ def similarity_index(patterns, n_shuffles=1000):
             shuffled_patterns.append(np.random.permutation(pattern))
         return np.array(shuffled_patterns)
 
+    # calculate absolute inner product between patterns
     def get_si(patterns):
         x = np.arange(0, patterns.shape[0])
+        # use itertools to get all combinations of patterns
         combos = np.array(list(itertools.combinations(x, 2)))
         si = []
         for s in combos:
             si.append(np.abs(np.inner(patterns[s[0], :], patterns[s[1], :])))
         return si, combos
 
+    # calculate observed si
     si, combos = get_si(patterns)
 
+    # shuffle patterns and calculate si
     si_shuffles = []
     for _ in range(n_shuffles):
         si_shuffled, _ = get_si(shuffle_patterns(patterns))
         si_shuffles.append(si_shuffled)
 
+    # calculate p-values for each pattern combination
     _, pvalues = functions.get_significant_events(np.array(si), np.array(si_shuffles))
 
     return si, combos, pvalues
