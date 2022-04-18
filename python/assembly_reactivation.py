@@ -161,11 +161,12 @@ class AssemblyReact(object):
         else:
             zactmat, ts = self.get_z_mat(self.st)
 
-        self.assembly_act = nel.AnalogSignalArray(
+        assembly_act = nel.AnalogSignalArray(
             data=assembly.computeAssemblyActivity(self.patterns, zactmat),
             timestamps=ts,
             fs=1 / self.z_mat_dt,
         )
+        return assembly_act
 
     def session_loop_activation(self):
         pass
@@ -179,13 +180,13 @@ class AssemblyReact(object):
         self.get_assembly_act()
 
 
-def get_peak_activity(m1, epochs):
+def get_peak_activity(assembly_act, epochs):
     """
     Gets the peak activity of the assembly activity
     """
     strengths = []
     assembly_id = []
-    for assembly_act in m1.assembly_act[epochs]:
+    for assembly_act in assembly_act[epochs]:
         strengths.append(assembly_act.max())
         assembly_id.append(np.arange(assembly_act.n_signals))
 
@@ -205,23 +206,31 @@ def get_pre_post_assembly_strengths(basepath):
     # get weights for task
     m1.get_weights(m1.ripples[m1.epochs[1]])
 
-    
-    df = pd.DataFrame()
-    for ep in [0, 2]:
-        # get assembly activity
-        m1.get_assembly_act(epoch=m1.ripples[m1.epochs[ep]])
-        # get pre assembly activity
-        assembly_id, strengths = get_peak_activity(m1, m1.ripples[m1.epochs[ep]])
-        temp_df = pd.DataFrame()
-        temp_df["assembly_id"] = assembly_id
-        temp_df["strengths"] = strengths
-        temp_df["epoch"] = ep
-        temp_df["basepath"] = basepath
-        temp_df["brainRegion"] = m1.brainRegion
-        temp_df["putativeCellType"] = m1.putativeCellType
+    # get assembly activity
+    assembly_act_pre = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[0]])
+    assembly_act_post = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[2]])
+    results = {
+        "assembly_act_pre": assembly_act_pre,
+        "assembly_act_post": assembly_act_post,
+        "react": m1,
+    }
 
-        df = pd.concat([df, temp_df], ignore_index=True)
-    results = {"df": df, "react": m1}
+    # df = pd.DataFrame()
+    # for ep in [0, 2]:
+    #     # get assembly activity
+    #     m1.get_assembly_act(epoch=m1.ripples[m1.epochs[ep]])
+    #     # get pre assembly activity
+    #     assembly_id, strengths = get_peak_activity(m1, m1.ripples[m1.epochs[ep]])
+    #     temp_df = pd.DataFrame()
+    #     temp_df["assembly_id"] = assembly_id
+    #     temp_df["strengths"] = strengths
+    #     temp_df["epoch"] = ep
+    #     temp_df["basepath"] = basepath
+    #     temp_df["brainRegion"] = m1.brainRegion
+    #     temp_df["putativeCellType"] = m1.putativeCellType
+
+    #     df = pd.concat([df, temp_df], ignore_index=True)
+    # results = {"df": df, "react": m1}
     return results
 
 
