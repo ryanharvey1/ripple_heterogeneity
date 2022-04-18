@@ -1,0 +1,78 @@
+---
+title: "pairwise_corr"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+
+```
+
+```{r}
+
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/pairwise_ccg_deep_sup_using_counts_par_id_df.csv")
+
+data = data[data$layer_label != "unknown",]
+
+data$basepath = factor(data$basepath)
+data$animal_id = factor(data$animal_id)
+data$deepSuperficial_ref = factor(data$deepSuperficial_ref)
+data$deepSuperficial_target = factor(data$deepSuperficial_target)
+data$deepSuperficial_target = factor(data$deepSuperficial_target)
+
+data$layer_label  = factor(data$layer_label)
+
+
+summary(data)
+```
+
+
+
+```{r}
+data$y_trans <- log(data$rho+1)
+
+
+m1 = lmer(y_trans ~ layer_label + (1 | animal_id/basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
