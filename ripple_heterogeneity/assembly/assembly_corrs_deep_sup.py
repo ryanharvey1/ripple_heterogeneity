@@ -2,13 +2,14 @@ import numpy as np
 import pandas as pd
 import itertools
 from scipy import stats
-import functions, assembly_run, loading
 import nelpy as nel
 import os
 import multiprocessing
 from joblib import Parallel, delayed
-import add_new_deep_sup
 
+from ripple_heterogeneity.utils import functions,loading
+from ripple_heterogeneity.utils import add_new_deep_sup
+from ripple_heterogeneity.assembly import assembly_run
 
 def pairwise_corr(unit_mat):
     x = np.arange(0, unit_mat.shape[0])

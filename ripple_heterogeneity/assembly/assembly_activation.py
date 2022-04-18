@@ -6,10 +6,8 @@ import numpy as np
 import nelpy as nel
 import pickle
 import assembly_run
-import loading
-import sys
-sys.path.append(r'D:\github\neurocode\reactivation\assemblies')
-import assembly
+from ripple_heterogeneity.utils import loading
+from ripple_heterogeneity.assembly import assembly
 
 def session_loop_activation(basepath,save_path,save_path_assembly):
 

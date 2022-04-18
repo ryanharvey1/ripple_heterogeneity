@@ -5,14 +5,11 @@ import pandas as pd
 import numpy as np
 import nelpy as nel
 import pickle
-import loading
 import sys
 from scipy import stats
-
-sys.path.append("D:/github/neurocode/reactivation/assemblies")
-import assembly
-import functions
-
+from ripple_heterogeneity.utils import functions
+from ripple_heterogeneity.utils import loading
+from ripple_heterogeneity.assembly import assembly
 
 class AssemblyReact(object):
     """
