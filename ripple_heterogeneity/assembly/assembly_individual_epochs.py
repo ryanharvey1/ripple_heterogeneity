@@ -97,7 +97,10 @@ def session_loop(basepath, save_path, rip_window=0.050):
     if os.path.exists(save_file):
         return
 
-    _, _, ripples, fs_dat = loading.load_basic_data(basepath)
+    # get ripple epochs
+    ripples = loading.load_ripples_events(basepath)
+    ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
+    ripple_epochs = ripple_epochs.expand(rip_window, direction="both")
 
     st, cell_metrics = loading.load_spikes(
         basepath, brainRegion="CA1", putativeCellType="Pyramidal"
@@ -106,18 +109,13 @@ def session_loop(basepath, save_path, rip_window=0.050):
     if cell_metrics.shape[0] == 0:
         return
 
-    # get ripple epochs
-    ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
-    ripple_epochs = ripple_epochs.expand(rip_window, direction="both")
-
     # behavioral epochs
     epoch_df = loading.load_epoch(basepath)
-
-    idx = functions.find_epoch_pattern(
-        epoch_df.environment, ["sleep", "linear", "sleep"]
-    )
+    # locate pre / task / post epochs
+    idx = functions.find_pre_task_post(epoch_df.environment)
+    # restrict to pre / task / post epochs
     epoch_df = epoch_df[idx[0]]
-
+    # add epochs to epoch array
     behavioral_epochs = nel.EpochArray(
         [np.array([epoch_df.startTime, epoch_df.stopTime]).T]
     )
@@ -170,7 +168,7 @@ def load_assem_epoch_data(save_path):
     Output:
         results: dataframe of results
     """
-    
+
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
     sessions_df = pd.DataFrame()
@@ -218,7 +216,6 @@ def load_assem_epoch_data(save_path):
                 assembly_path.append([session] * len(pattern))
                 epoch.append([results["env"][i_epoch]] * len(pattern))
                 epoch_n.append(np.tile(i_epoch, len(pattern)))
-
 
     df["UID"] = np.hstack(UID)
     df["deepSuperficial"] = np.hstack(deepSuperficial)
