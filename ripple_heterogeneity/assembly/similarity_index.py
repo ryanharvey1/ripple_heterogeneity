@@ -1,6 +1,8 @@
 import itertools
 import numpy as np
 from ripple_heterogeneity.utils import functions
+import multiprocessing
+from joblib import Parallel, delayed
 
 
 def similarity_index(patterns, n_shuffles=1000):
@@ -53,10 +55,13 @@ def similarity_index(patterns, n_shuffles=1000):
     si, combos = get_si(patterns)
 
     # shuffle patterns and calculate si
-    si_shuffles = []
-    for _ in range(n_shuffles):
-        si_shuffled, _ = get_si(shuffle_patterns(patterns))
-        si_shuffles.append(si_shuffled)
+    num_cores = multiprocessing.cpu_count()
+    si_shuffles = Parallel(n_jobs=num_cores)(
+        delayed(get_si)(shuffle_patterns(patterns)) for _ in range(n_shuffles)
+    )
+
+    # tuple to list
+    si_shuffles = [item[0] for item in si_shuffles]
 
     # calculate p-values for each pattern combination
     _, pvalues = functions.get_significant_events(np.array(si), np.array(si_shuffles))
