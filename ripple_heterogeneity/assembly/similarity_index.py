@@ -24,11 +24,18 @@ def similarity_index(patterns, n_shuffles=1000):
         combos: list of all possible combinations of patterns
         pvalues: list of p-values for each pattern combination
     """
+    # check to see if patterns are numpy arrays
+    if not isinstance(patterns, np.ndarray):
+        patterns = np.array(patterns)
 
     # check to see if patterns have more rows than columns and transpose if necessary
     # should have fewer patterns than neurons
     if len(patterns) > len(patterns[0]):
-        patterns = np.array(patterns).T
+        patterns = patterns.T
+
+    # check if all values in matrix are less than 1
+    if not all(i <= 1 for i in patterns.flatten()):
+        raise ValueError("All values in matrix must be less than 1")
 
     # shuffle patterns over neurons
     def shuffle_patterns(patterns):
