@@ -193,6 +193,8 @@ def load_assem_epoch_data(save_path):
 
         # iterate over epochs
         for i_epoch, patterns in enumerate(results["patterns"]):
+            if np.isnan(patterns).all():
+                continue
             # locate sig assemblies and assembly members
             (
                 patterns,
