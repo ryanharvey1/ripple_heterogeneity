@@ -5,7 +5,7 @@ import multiprocessing
 from joblib import Parallel, delayed
 
 
-def similarity_index(patterns, n_shuffles=1000):
+def similarity_index(patterns, n_shuffles=1000, parallel=True):
     """
     Calculate the similarity index of a set of patterns.
 
@@ -36,34 +36,35 @@ def similarity_index(patterns, n_shuffles=1000):
 
     # shuffle patterns over neurons
     def shuffle_patterns(patterns):
-        shuffled_patterns = []
-        for pattern in patterns:
-            shuffled_patterns.append(np.random.permutation(pattern))
-        return np.array(shuffled_patterns)
+        return np.random.permutation(patterns.flatten()).reshape(patterns.shape)
 
     # calculate absolute inner product between patterns
-    def get_si(patterns):
+    def get_si(patterns,return_combo=False):
         x = np.arange(0, patterns.shape[0])
         # use itertools to get all combinations of patterns
         combos = np.array(list(itertools.combinations(x, 2)))
         si = []
         for s in combos:
             si.append(np.abs(np.inner(patterns[s[0], :], patterns[s[1], :])))
-        return si, combos
+
+        if return_combo:
+            return np.array(si), combos
+        else:
+            return np.array(si)
 
     # calculate observed si
-    si, combos = get_si(patterns)
+    si, combos = get_si(patterns,return_combo=True)
 
     # shuffle patterns and calculate si
-    num_cores = multiprocessing.cpu_count()
-    si_shuffles = Parallel(n_jobs=num_cores)(
-        delayed(get_si)(shuffle_patterns(patterns)) for _ in range(n_shuffles)
-    )
-
-    # tuple to list
-    si_shuffles = [item[0] for item in si_shuffles]
+    if parallel:
+        num_cores = multiprocessing.cpu_count()
+        si_shuffles = Parallel(n_jobs=num_cores)(
+            delayed(get_si)(shuffle_patterns(patterns)) for _ in range(n_shuffles)
+        )
+    else:
+        si_shuffles = [get_si(shuffle_patterns(patterns)) for _ in range(n_shuffles)]
 
     # calculate p-values for each pattern combination
-    _, pvalues = functions.get_significant_events(np.array(si), np.array(si_shuffles))
+    _, pvalues = functions.get_significant_events(si, np.array(si_shuffles))
 
-    return np.array(si), combos, pvalues
+    return si, combos, pvalues
