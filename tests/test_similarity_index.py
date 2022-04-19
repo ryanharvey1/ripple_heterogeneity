@@ -9,3 +9,4 @@ def test_similarityindex():
     assert all(i <= 1 for i in si)
     assert combos[0,0] == 0
     assert all(i <= 1 for i in pvalues)
+    assert combos.shape[0] == pvalues.shape[0] == si.shape[0]
