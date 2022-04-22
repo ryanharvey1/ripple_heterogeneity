@@ -5,11 +5,10 @@ import pandas as pd
 import numpy as np
 import nelpy as nel
 import pickle
-import sys
 from scipy import stats
-from ripple_heterogeneity.utils import functions
-from ripple_heterogeneity.utils import loading
+from ripple_heterogeneity.utils import functions, loading, compress_repeated_epochs
 from ripple_heterogeneity.assembly import assembly
+
 
 class AssemblyReact(object):
     """
@@ -112,9 +111,14 @@ class AssemblyReact(object):
         """
         Restricts the epochs to the specified epochs
         """
+        # fetch data
         epoch_df = loading.load_epoch(self.basepath)
+        # compress back to back sleep epochs (an issue further up the pipeline)
+        epoch_df = compress_repeated_epochs.main(epoch_df)
+        # restrict to pre task post epochs
         idx = functions.find_pre_task_post(epoch_df.environment)
         epoch_df = epoch_df[idx[0]]
+        # convert to epoch array and add to object
         self.epochs = nel.EpochArray(
             [np.array([epoch_df.startTime, epoch_df.stopTime]).T],
             label=epoch_df.environment.values,
@@ -200,8 +204,8 @@ def get_pre_post_assembly_strengths(basepath):
     m1.load_data()
     # restrict to pre/task/post epochs
     m1.restrict_epochs_to_pre_task_post()
-    # get weights for task
-    m1.get_weights(m1.ripples[m1.epochs[1]])
+    # get weights for task (TODO: use more robust method to locate epochs than index)
+    m1.get_weights(m1.epochs[1])
 
     # get assembly activity
     assembly_act_pre = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[0]])
@@ -212,22 +216,6 @@ def get_pre_post_assembly_strengths(basepath):
         "react": m1,
     }
 
-    # df = pd.DataFrame()
-    # for ep in [0, 2]:
-    #     # get assembly activity
-    #     m1.get_assembly_act(epoch=m1.ripples[m1.epochs[ep]])
-    #     # get pre assembly activity
-    #     assembly_id, strengths = get_peak_activity(m1, m1.ripples[m1.epochs[ep]])
-    #     temp_df = pd.DataFrame()
-    #     temp_df["assembly_id"] = assembly_id
-    #     temp_df["strengths"] = strengths
-    #     temp_df["epoch"] = ep
-    #     temp_df["basepath"] = basepath
-    #     temp_df["brainRegion"] = m1.brainRegion
-    #     temp_df["putativeCellType"] = m1.putativeCellType
-
-    #     df = pd.concat([df, temp_df], ignore_index=True)
-    # results = {"df": df, "react": m1}
     return results
 
 
