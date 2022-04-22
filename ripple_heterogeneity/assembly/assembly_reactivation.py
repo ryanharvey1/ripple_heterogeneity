@@ -1,3 +1,4 @@
+import glob
 import multiprocessing
 from joblib import Parallel, delayed
 import os
@@ -195,6 +196,9 @@ def get_pre_post_assembly_strengths(basepath):
     m1 = AssemblyReact(basepath, weight_dt=0.2)
     # load data
     m1.load_data()
+    # check if no cells were found
+    if m1.cell_metrics.shape[0] == 0:
+        return None
     # restrict to pre/task/post epochs
     m1.restrict_epochs_to_pre_task_post()
     # get weights for task outside ripples
@@ -244,3 +248,14 @@ def run(df, save_path, parallel=True):
         for basepath in basepaths:
             print(basepath)
             session_loop(basepath, save_path)
+
+def load_results(save_path):
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+    all_results = {}
+    for session in sessions:
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+            if results is None:
+                continue
+        all_results[results['react'].basepath] = results
+    return all_results
