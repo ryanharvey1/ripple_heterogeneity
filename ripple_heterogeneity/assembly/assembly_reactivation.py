@@ -193,7 +193,7 @@ def get_pre_post_assembly_strengths(basepath):
     Gets the pre and post assembly strengths
     """
     # initialize session
-    m1 = AssemblyReact(basepath, weight_dt=0.2)
+    m1 = AssemblyReact(basepath, weight_dt=0.02)
     # load data
     m1.load_data()
     # check if no cells were found
@@ -249,6 +249,7 @@ def run(df, save_path, parallel=True):
             print(basepath)
             session_loop(basepath, save_path)
 
+
 def load_results(save_path):
     sessions = glob.glob(save_path + os.sep + "*.pkl")
     all_results = {}
@@ -257,5 +258,5 @@ def load_results(save_path):
             results = pickle.load(f)
             if results is None:
                 continue
-        all_results[results['react'].basepath] = results
+        all_results[results["react"].basepath] = results
     return all_results
