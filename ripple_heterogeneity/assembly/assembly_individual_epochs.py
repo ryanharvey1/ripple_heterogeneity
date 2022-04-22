@@ -1,7 +1,6 @@
 import nelpy as nel
 import glob
-from ripple_heterogeneity.utils import functions
-from ripple_heterogeneity.utils import loading
+from ripple_heterogeneity.utils import functions, compress_repeated_epochs, loading
 from ripple_heterogeneity.assembly import assembly
 import numpy as np
 import pickle
@@ -111,6 +110,8 @@ def session_loop(basepath, save_path, rip_window=0.050):
 
     # behavioral epochs
     epoch_df = loading.load_epoch(basepath)
+    # compress sleep epochs
+    epoch_df = compress_repeated_epochs.main(epoch_df)
     # locate pre / task / post epochs
     idx = functions.find_pre_task_post(epoch_df.environment)
     # restrict to pre / task / post epochs
@@ -124,6 +125,8 @@ def session_loop(basepath, save_path, rip_window=0.050):
     state_dict = loading.load_SleepState_states(basepath)
     nrem_epochs = nel.EpochArray(state_dict["NREMstate"])
     wake_epochs = nel.EpochArray(state_dict["WAKEstate"])
+    if (wake_epochs.data is None) | (nrem_epochs.data is None):
+        return
 
     results = main_analysis(
         st, ripple_epochs, behavioral_epochs, epoch_df, nrem_epochs, wake_epochs
