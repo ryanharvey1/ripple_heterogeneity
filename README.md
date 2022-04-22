@@ -5,12 +5,9 @@ Analyses to accompany "Hippocampal cellular diversity support flexible mnemonic 
 Installation
 ============
 
-.. code-block:: bash
-
+```
     $ git clone https://github.com/ryanharvey1/ripple_heterogeneity.git
-
     $ cd ripple_heterogeneity
-
     $ conda env create --name ripple_heterogeneity --file=environments.yml
-
     $ pip install -e .
+```
