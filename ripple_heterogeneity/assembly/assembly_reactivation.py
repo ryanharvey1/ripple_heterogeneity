@@ -169,17 +169,6 @@ class AssemblyReact(object):
         )
         return assembly_act
 
-    def session_loop_activation(self):
-        pass
-
-    def standard_task_react(self):
-        """
-        Runs the standard task reactivation analysis
-        """
-        self.load_data()
-        self.get_weights(self.ripples[self.epochs[1]])
-        self.get_assembly_act()
-
 
 def get_peak_activity(assembly_act, epochs):
     """
@@ -199,7 +188,7 @@ def get_pre_post_assembly_strengths(basepath):
     Gets the pre and post assembly strengths
     """
     # initialize session
-    m1 = AssemblyReact(basepath)
+    m1 = AssemblyReact(basepath, weight_dt=0.2)
     # load data
     m1.load_data()
     # restrict to pre/task/post epochs
