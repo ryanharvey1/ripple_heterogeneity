@@ -142,8 +142,12 @@ class AssemblyReact(object):
         # gaussian kernel to match the bin-size used to identify the assembly patterns
         sigma = self.weight_dt / np.sqrt(int(1000 * self.weight_dt / 2))
         z_t.smooth(sigma=sigma, inplace=True)
-        # zscore and return
-        return stats.zscore(z_t.data, axis=1), z_t.bin_centers
+        # zscore the z matrix
+        z_scored_bst = stats.zscore(z_t.data, axis=1)
+        # make sure there are no nans, important as strengths will all be nan otherwise
+        z_scored_bst[np.isnan(z_scored_bst).any(axis=1)] = 0
+
+        return z_scored_bst, z_t.bin_centers
 
     def get_weights(self, epoch=None):
         """
@@ -193,14 +197,17 @@ def get_pre_post_assembly_strengths(basepath):
     m1.load_data()
     # restrict to pre/task/post epochs
     m1.restrict_epochs_to_pre_task_post()
-    # get weights for task (TODO: use more robust method to locate epochs than index)
-    m1.get_weights(m1.epochs[1])
+    # get weights for task outside ripples
+    # % (TODO: use more robust method to locate epochs than index)
+    m1.get_weights(m1.epochs[1][~m1.ripples])
 
     # get assembly activity
     assembly_act_pre = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[0]])
+    assembly_act_task = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[1]])
     assembly_act_post = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[2]])
     results = {
         "assembly_act_pre": assembly_act_pre,
+        "assembly_act_task": assembly_act_task,
         "assembly_act_post": assembly_act_post,
         "react": m1,
     }
