@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def compress_repeated_epochs(epoch_df):
+def main(epoch_df):
     """
     Compress back to back sleep epoch
     """
@@ -30,13 +30,11 @@ def compress_repeated_epochs(epoch_df):
     results = pd.DataFrame()
     no_nan_match = match[~np.isnan(match)]
     for m in pd.unique(no_nan_match):
-        temp_dict = {'name': epoch_df[match==m].name.iloc[0],
-                    'startTime':epoch_df[match==m].startTime.iloc[0],
-                    'stopTime':epoch_df[match==m].stopTime.iloc[-1],
-                    'environment':epoch_df[match==m].environment.iloc[0],
-                    'behavioralParadigm':epoch_df[match==m].behavioralParadigm.iloc[0],
-                    }
+        temp_dict = {}
+        for item in epoch_df.keys():
+            temp_dict[item] = epoch_df[match==m][item].iloc[0]   
+
         temp_df = pd.DataFrame.from_dict(temp_dict,orient='index').T
 
-        results = results.append(temp_df,ignore_index=True)
+        results = pd.concat([results,temp_df],ignore_index=True)
     return results
