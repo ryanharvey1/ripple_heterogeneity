@@ -2,7 +2,6 @@
 
 Analyses to accompany "Hippocampal cellular diversity support flexible mnemonic demands".
 
-[![black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Installation
 ============
