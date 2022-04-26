@@ -10,7 +10,9 @@ import multiprocessing
 from joblib import Parallel, delayed
 import pickle
 import copy
-
+import warnings
+warnings.filterwarnings('ignore', 'UserWarning: ignoring signal outside of support', )
+warnings.filterwarnings('ignore', 'series tags have not yet been specified', )
 
 def decode_and_score(bst, tc, pos):
     # access decoding accuracy on behavioral time scale
@@ -325,6 +327,8 @@ def run_all(
     pattern_idx, _ = functions.find_epoch_pattern(
         epoch_df.environment, ["sleep", "linear", "sleep"]
     )
+    if pattern_idx is None:
+        return
     epoch_df = epoch_df[pattern_idx]
     beh_epochs = nel.EpochArray([np.array([epoch_df.startTime, epoch_df.stopTime]).T])
 
