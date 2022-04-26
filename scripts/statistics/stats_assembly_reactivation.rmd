@@ -1,0 +1,129 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+library(emmeans)
+
+```
+
+```{r}
+
+data <- read.csv('D:/github/ripple_heterogeneity/data/react_df.csv')
+data = data[data$strength >= 5,]
+
+data$basepath = factor(data$basepath)
+data$animal_id = factor(data$animal_id)
+data$deepSuperficial = factor(data$deepSuperficial)
+data$epoch = factor(data$epoch,levels=c('pre','task','post'))
+data$assembly_id = factor(data$assembly_id)
+data$layer_epoch  = factor(data$layer_epoch)
+
+
+summary(data)
+```
+
+```{r}
+p <- ggplot(data, aes(x = epoch,y = strength_baseline_adj, fill=deepSuperficial))
+p + geom_boxplot()
+
+
+```
+
+```{r}
+temp_data = data
+
+m1 = lmer(strength_baseline_adj ~ deepSuperficial + epoch + (1 | animal_id/basepath/assembly_id), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+```
+
+
+```{r}
+temp_data = data[data$epoch=="pre",]
+
+
+m1 = lmer(strength_baseline_adj ~ deepSuperficial + (1 | basepath/assembly_id), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+```
+
+```{r}
+temp_data = data[data$epoch=="task",]
+
+
+m1 = lmer(strength_baseline_adj ~ deepSuperficial + (1 | animal_id/basepath/assembly_id), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+```
+
+
+
+```{r}
+temp_data = data[data$epoch=="post",]
+
+
+m1 = lmer(strength_baseline_adj ~ deepSuperficial + (1 | animal_id/basepath/assembly_id), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+```
+
+```{r}
+temp_data = data[data$epoch=="pre",]
+
+temp_data$y_trans <- log(log(temp_data$strength))
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal_id/basepath/assembly_id), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+emmeans(m1,"deepSuperficial")
+```
