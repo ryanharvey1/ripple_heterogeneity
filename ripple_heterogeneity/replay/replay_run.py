@@ -298,8 +298,6 @@ def run_all(
     """
     Main function that conducts the replay analysis
     """
-
-    # maze_size_cm,pos,st_all = get_base_data(data_path,spike_path,session)
     cell_metrics, data, ripples, fs_dat = loading.load_basic_data(basepath)
 
     restrict_idx = (
