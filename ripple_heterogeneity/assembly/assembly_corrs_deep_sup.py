@@ -6,9 +6,10 @@ import nelpy as nel
 import os
 import multiprocessing
 from joblib import Parallel, delayed
-from ripple_heterogeneity.utils import functions,loading
+from ripple_heterogeneity.utils import functions, loading
 from ripple_heterogeneity.utils import add_new_deep_sup
 from ripple_heterogeneity.assembly import assembly_run
+
 
 def pairwise_corr(unit_mat):
     x = np.arange(0, unit_mat.shape[0])
@@ -188,12 +189,13 @@ def get_group_cor_vectors(df, temp_df, basepath):
     )
 
 
-def get_pairwise_corrs(basepath, epoch):
+def get_pairwise_corrs(basepath, epoch, within_events=True):
     """
     Get pairwise correlations for all assemblies.
     Input:
         basepath: path to the directory containing the data
         epoch: epoch of interest
+        within_events: whether to use within-event correlations or bst correlations
     Output:
         Data frame with pairwise correlations for all assemblies:
             deep: deep layer correlations
@@ -243,11 +245,14 @@ def get_pairwise_corrs(basepath, epoch):
         else:
             raise ValueError("Invalid epoch")
 
-    spk_count_rip = functions.get_participation(
-        st_unit.data, ripple_epochs.starts, ripple_epochs.stops
-    )
-
-    rho, pval, c = pairwise_corr(spk_count_rip)
+    if within_events:
+        spk_count = functions.get_participation(
+            st_unit.data, ripple_epochs.starts, ripple_epochs.stops
+        )
+        rho, pval, c = pairwise_corr(spk_count)
+    else:
+        bst = st_unit.bin(ds=0.2)
+        rho, pval, c = pairwise_corr(bst.data)
 
     temp_df = pd.DataFrame()
     temp_df["ref"] = c[:, 0]
@@ -265,9 +270,9 @@ def get_pairwise_corrs(basepath, epoch):
     return temp_df
 
 
-def get_and_organize_pairwise_corrs(basepath, df, epoch):
+def get_and_organize_pairwise_corrs(basepath, df, epoch, within_events):
 
-    temp_df = get_pairwise_corrs(basepath, epoch)
+    temp_df = get_pairwise_corrs(basepath, epoch, within_events)
     (
         deep,
         sup,
@@ -333,7 +338,7 @@ def get_and_organize_pairwise_corrs(basepath, df, epoch):
     return df_save
 
 
-def session_loop(basepath, df, save_path, epoch):
+def session_loop(basepath, df, save_path, epoch, within_events):
 
     save_file = os.path.join(
         save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".csv"
@@ -341,11 +346,11 @@ def session_loop(basepath, df, save_path, epoch):
     if os.path.exists(save_file):
         return
 
-    df_save = get_and_organize_pairwise_corrs(basepath, df, epoch)
+    df_save = get_and_organize_pairwise_corrs(basepath, df, epoch, within_events)
     df_save.to_csv(save_file)
 
 
-def assembly_corr_run(df, save_path, parallel=True, epoch=None):
+def assembly_corr_run(df, save_path, parallel=True, epoch=None, within_events=True):
     """
     Run the pairwise correlation analysis on all assemblies in the dataframe.
     Input:
@@ -363,10 +368,10 @@ def assembly_corr_run(df, save_path, parallel=True, epoch=None):
     if parallel:
         num_cores = multiprocessing.cpu_count()
         processed_list = Parallel(n_jobs=num_cores)(
-            delayed(session_loop)(basepath, df, save_path, epoch)
+            delayed(session_loop)(basepath, df, save_path, epoch, within_events)
             for basepath in basepaths
         )
     else:
         for basepath in basepaths:
             print(basepath)
-            session_loop(basepath, df, save_path, epoch)
+            session_loop(basepath, df, save_path, epoch, within_events)
