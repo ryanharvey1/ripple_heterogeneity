@@ -11,13 +11,21 @@ from ripple_heterogeneity.utils import add_new_deep_sup
 from ripple_heterogeneity.assembly import assembly_run
 
 
-def pairwise_corr(unit_mat):
+def pairwise_corr(unit_mat,method="spearman"):
     x = np.arange(0, unit_mat.shape[0])
     c = np.array(list(itertools.combinations(x, 2)))
     rho = []
     pval = []
     for i, s in enumerate(c):
-        rho_, pval_ = stats.spearmanr(unit_mat[s[0], :], unit_mat[s[1], :])
+        if method == "pearson":
+            rho_, pval_ = stats.pearsonr(unit_mat[s[0], :], unit_mat[s[1], :])
+        elif method == "spearman":
+            rho_, pval_ = stats.spearmanr(unit_mat[s[0], :], unit_mat[s[1], :])
+        elif method == "kendall":
+            rho_, pval_ = stats.kendalltau(unit_mat[s[0], :], unit_mat[s[1], :])
+        else:
+            raise ValueError("Method not recognized") 
+
         rho.append(rho_)
         pval.append(pval_)
     return rho, pval, c
@@ -251,7 +259,7 @@ def get_pairwise_corrs(basepath, epoch, within_events=True):
         )
         rho, pval, c = pairwise_corr(spk_count)
     else:
-        bst = st_unit.bin(ds=0.2)
+        bst = st_unit.bin(ds=0.02)
         rho, pval, c = pairwise_corr(bst.data)
 
     temp_df = pd.DataFrame()
