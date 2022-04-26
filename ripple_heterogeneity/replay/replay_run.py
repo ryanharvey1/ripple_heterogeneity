@@ -1,7 +1,7 @@
 import numpy as np
 import nelpy as nel
 from nelpy.analysis import replay
-from ripple_heterogeneity.utils import functions,loading
+from ripple_heterogeneity.utils import functions, loading
 import os
 import pandas as pd
 import statistics
@@ -190,6 +190,11 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     # find linear track
     idx = np.where(epoch_df.environment == "linear")[0]
     beh_epochs_linear = beh_epochs[idx]
+
+    # remove nan values
+    bad_idx = np.isnan(beh_df.x) | np.isnan(beh_df.y)
+    beh_df = beh_df[~bad_idx]
+
     # make position array
     pos = nel.AnalogSignalArray(
         data=np.array(beh_df.linearized),
