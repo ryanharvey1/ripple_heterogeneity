@@ -181,11 +181,13 @@ def get_peak_activity(assembly_act, epochs):
     """
     strengths = []
     assembly_id = []
-    for assembly_act in assembly_act[epochs]:
+    centers = []
+    for assembly_act, ep in zip(assembly_act[epochs], epochs):
         strengths.append(assembly_act.max())
         assembly_id.append(np.arange(assembly_act.n_signals))
+        centers.append(np.tile(ep.centers, assembly_act.n_signals))
 
-    return np.hstack(assembly_id), np.hstack(strengths)
+    return np.hstack(assembly_id), np.hstack(strengths), np.hstack(centers)
 
 
 def get_pre_post_assembly_strengths(basepath):
