@@ -32,7 +32,8 @@ data$deepSuperficial = factor(data$deepSuperficial)
 data$epoch = factor(data$epoch,levels=c('pre','task','post'))
 data$assembly_id = factor(data$assembly_id)
 data$layer_epoch  = factor(data$layer_epoch)
-
+data$rip_n = factor(data$rip_n)
+data$rip_n_session = factor(data$rip_n_session)
 
 summary(data)
 ```
@@ -47,7 +48,7 @@ p + geom_boxplot()
 ```{r}
 temp_data = data
 
-m1 = lmer(strength_baseline_adj ~ deepSuperficial + epoch + (1 | animal_id/basepath/assembly_id), data = temp_data,REML=FALSE)
+m1 = lmer(strength_baseline_adj ~ deepSuperficial + epoch + (1 | animal_id/basepath/rip_n/assembly_id), data = temp_data,REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
