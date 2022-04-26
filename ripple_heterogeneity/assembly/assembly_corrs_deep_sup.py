@@ -11,7 +11,7 @@ from ripple_heterogeneity.utils import add_new_deep_sup
 from ripple_heterogeneity.assembly import assembly_run
 
 
-def pairwise_corr(unit_mat,method="spearman"):
+def pairwise_corr(unit_mat, method="spearman"):
     x = np.arange(0, unit_mat.shape[0])
     c = np.array(list(itertools.combinations(x, 2)))
     rho = []
@@ -24,7 +24,7 @@ def pairwise_corr(unit_mat,method="spearman"):
         elif method == "kendall":
             rho_, pval_ = stats.kendalltau(unit_mat[s[0], :], unit_mat[s[1], :])
         else:
-            raise ValueError("Method not recognized") 
+            raise ValueError("Method not recognized")
 
         rho.append(rho_)
         pval.append(pval_)
@@ -197,13 +197,16 @@ def get_group_cor_vectors(df, temp_df, basepath):
     )
 
 
-def get_pairwise_corrs(basepath, epoch, within_events=True):
+def get_pairwise_corrs(
+    basepath, epoch, within_events=True, restrict_outside_ripples=False, bst_ds=.120
+):
     """
     Get pairwise correlations for all assemblies.
     Input:
         basepath: path to the directory containing the data
         epoch: epoch of interest
         within_events: whether to use within-event correlations or bst correlations
+        restrict_outside_ripples: whether to restrict the analysis to moments outside of ripples
     Output:
         Data frame with pairwise correlations for all assemblies:
             deep: deep layer correlations
@@ -259,8 +262,12 @@ def get_pairwise_corrs(basepath, epoch, within_events=True):
         )
         rho, pval, c = pairwise_corr(spk_count)
     else:
-        bst = st_unit.bin(ds=0.02)
-        rho, pval, c = pairwise_corr(bst.data)
+        if restrict_outside_ripples:
+            bst = st_unit[~ripple_epochs].bin(ds=bst_ds)
+            rho, pval, c = pairwise_corr(bst.data)
+        else:
+            bst = st_unit.bin(ds=bst_ds)
+            rho, pval, c = pairwise_corr(bst.data)
 
     temp_df = pd.DataFrame()
     temp_df["ref"] = c[:, 0]
@@ -278,9 +285,13 @@ def get_pairwise_corrs(basepath, epoch, within_events=True):
     return temp_df
 
 
-def get_and_organize_pairwise_corrs(basepath, df, epoch, within_events):
+def get_and_organize_pairwise_corrs(
+    basepath, df, epoch, within_events, restrict_outside_ripples
+):
 
-    temp_df = get_pairwise_corrs(basepath, epoch, within_events)
+    temp_df = get_pairwise_corrs(
+        basepath, epoch, within_events, restrict_outside_ripples
+    )
     (
         deep,
         sup,
@@ -346,7 +357,9 @@ def get_and_organize_pairwise_corrs(basepath, df, epoch, within_events):
     return df_save
 
 
-def session_loop(basepath, df, save_path, epoch, within_events):
+def session_loop(
+    basepath, df, save_path, epoch, within_events, restrict_outside_ripples
+):
 
     save_file = os.path.join(
         save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".csv"
@@ -354,11 +367,20 @@ def session_loop(basepath, df, save_path, epoch, within_events):
     if os.path.exists(save_file):
         return
 
-    df_save = get_and_organize_pairwise_corrs(basepath, df, epoch, within_events)
+    df_save = get_and_organize_pairwise_corrs(
+        basepath, df, epoch, within_events, restrict_outside_ripples
+    )
     df_save.to_csv(save_file)
 
 
-def assembly_corr_run(df, save_path, parallel=True, epoch=None, within_events=True):
+def assembly_corr_run(
+    df,
+    save_path,
+    parallel=True,
+    epoch=None,
+    within_events=True,
+    restrict_outside_ripples=False,
+):
     """
     Run the pairwise correlation analysis on all assemblies in the dataframe.
     Input:
@@ -376,10 +398,14 @@ def assembly_corr_run(df, save_path, parallel=True, epoch=None, within_events=Tr
     if parallel:
         num_cores = multiprocessing.cpu_count()
         processed_list = Parallel(n_jobs=num_cores)(
-            delayed(session_loop)(basepath, df, save_path, epoch, within_events)
+            delayed(session_loop)(
+                basepath, df, save_path, epoch, within_events, restrict_outside_ripples
+            )
             for basepath in basepaths
         )
     else:
         for basepath in basepaths:
             print(basepath)
-            session_loop(basepath, df, save_path, epoch, within_events)
+            session_loop(
+                basepath, df, save_path, epoch, within_events, restrict_outside_ripples
+            )
