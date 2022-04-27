@@ -194,12 +194,15 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     idx = np.where(epoch_df.environment == "linear")[0]
     beh_epochs_linear = beh_epochs[idx]
 
-    # interpolate behavior to minimize nan gaps using second order spline
-    # will only interpolate out to 2 seconds
+    if np.isnan(beh_df.linearized).all():
+        x, _ = functions.linearize_position(beh_df.x,beh_df.y)
+        beh_df.linearized = x  
+
+    # interpolate behavior to minimize nan gaps using linear
+    # will only interpolate out to 5 seconds
     beh_df.linearized = beh_df.linearized.interpolate(
-        method="spline",
-        order=2,
-        limit=int(1 / statistics.mode(np.diff(beh_df.time))) * 2,
+        method="linear",
+        limit=int(1 / statistics.mode(np.diff(beh_df.time))) * 5,
     )
 
     # remove nan values
@@ -296,6 +299,7 @@ def restrict_to_place_cells(
 def run_all(
     basepath,  # basepath to session
     traj_shuff=1500,  # number of shuffles to determine sig replay
+    behav_shuff=500,  # number of shuffles to determine sig decoding
     ds_50ms=0.05,  # bin width to bin st for tuning curve
     s_binsize=3,  # spatial bins in tuning curve
     speed_thres=4,  # running threshold to determine tuning curves
@@ -308,6 +312,21 @@ def run_all(
 ):
     """
     Main function that conducts the replay analysis
+    Inputs:
+        basepath: path to session
+        traj_shuff: number of shuffles to determine sig replay
+        behav_shuff: number of shuffles to determine sig decoding
+        ds_50ms: bin width to bin st for tuning curve
+        s_binsize: spatial bins in tuning curve
+        speed_thres: running threshold to determine tuning curves
+        min_rip_dur: min ripple duration for replay
+        place_cell_min_rate: min peak rate of tuning curve
+        place_cell_min_spks: at least 100 spikes while running above speed_thres
+        place_cell_peak_mean_ratio: peak firing rate / mean firing rate
+        replay_binsize: bin size to decode replay
+        tuning_curve_sigma: 3 cm sd of smoothing on tuning curve
+    Outputs:
+        results: dictionary of results
     """
     cell_metrics, data, ripples, fs_dat = loading.load_basic_data(basepath)
 
@@ -384,7 +403,7 @@ def run_all(
 
         # access decoding accuracy on behavioral time scale
         decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(
-            bst_run, tc, pos[dir_epoch], n_shuffles=traj_shuff
+            bst_run, tc, pos[dir_epoch], n_shuffles=behav_shuff
         )
         # check decoding quality against chance distribution
         _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
