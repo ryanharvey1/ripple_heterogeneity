@@ -11,8 +11,8 @@ from joblib import Parallel, delayed
 import pickle
 import copy
 import warnings
-warnings.filterwarnings('ignore', 'UserWarning: ignoring signal outside of support', )
-warnings.filterwarnings('ignore', 'series tags have not yet been specified', )
+warnings.filterwarnings('ignore', message='*UserWarning: ignoring signal outside of support*')
+warnings.filterwarnings('ignore', message='*series tags have not yet been specified*')
 
 def decode_and_score(bst, tc, pos):
     # access decoding accuracy on behavioral time scale
