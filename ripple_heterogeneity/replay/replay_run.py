@@ -11,7 +11,9 @@ from joblib import Parallel, delayed
 import pickle
 import copy
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
+
 
 def decode_and_score(bst, tc, pos):
     # access decoding accuracy on behavioral time scale
@@ -192,8 +194,16 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     idx = np.where(epoch_df.environment == "linear")[0]
     beh_epochs_linear = beh_epochs[idx]
 
+    # interpolate behavior to minimize nan gaps using second order spline
+    # will only interpolate out to 2 seconds
+    beh_df.linearized = beh_df.linearized.interpolate(
+        method="spline",
+        order=2,
+        limit=int(1 / statistics.mode(np.diff(beh_df.time))) * 2,
+    )
+
     # remove nan values
-    bad_idx = np.isnan(beh_df.x) | np.isnan(beh_df.y)
+    bad_idx = np.isnan(beh_df.linearized)
     beh_df = beh_df[~bad_idx]
 
     # make position array
