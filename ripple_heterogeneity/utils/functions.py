@@ -93,6 +93,14 @@ def linearize_position(x, y):
     use PCA (a dimensionality reduction technique) to find
     the direction of maximal variance in our position data,
     and we use this as our new 1D linear track axis.
+    
+    Input:
+        x: numpy array of shape (n,1)
+        y: numpy array of shape (n,1)
+    Output:
+        x_lin: numpy array of shape (n,1)
+        y_lin: numpy array of shape (n,1)
+
     -Ryan H
     """
     # locate and remove nans (sklearn pca does not like nans)
