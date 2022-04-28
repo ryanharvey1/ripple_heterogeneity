@@ -370,6 +370,10 @@ def run_all(
             fs=fs_dat,
             support=session_bounds,
         )
+        
+    # skip if less than 5 cells    
+    if st_all.n_active < 5:
+        return
 
     # make position and sort out track data
     pos, outbound_epochs, inbound_epochs = handle_behavior(
