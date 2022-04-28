@@ -193,15 +193,15 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     # find linear track
     idx = epoch_df.environment == "linear"
     # if multiple linear tracks, take the one with longest duration
-    if sum(idx)>1:
+    if sum(idx) > 1:
         duration = epoch_df.stopTime - epoch_df.startTime
         idx = idx & (duration == max(duration[idx]))
 
     beh_epochs_linear = beh_epochs[idx]
 
     if np.isnan(beh_df.linearized).all():
-        x, _ = functions.linearize_position(beh_df.x,beh_df.y)
-        beh_df.linearized = x  
+        x, _ = functions.linearize_position(beh_df.x, beh_df.y)
+        beh_df.linearized = x
 
     # interpolate behavior to minimize nan gaps using linear
     # will only interpolate out to 5 seconds
@@ -346,21 +346,31 @@ def run_all(
 
     if cell_metrics.shape[0] == 0:
         return
+
+    # load session epoch data
+    epoch_df = loading.load_epoch(basepath)
+    # get session bounds to provide support
+    session_bounds = nel.EpochArray(
+        [epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[-1]]
+    )
+    # compress repeated sleep sessions
+    epoch_df = compress_repeated_epochs.main(epoch_df)
+    # put into nel format
+    beh_epochs = nel.EpochArray([np.array([epoch_df.startTime, epoch_df.stopTime]).T])
+
     try:
         st_all = nel.SpikeTrainArray(
-            timestamps=np.array(data["spikes"], dtype=object)[restrict_idx], fs=fs_dat
+            timestamps=np.array(data["spikes"], dtype=object)[restrict_idx],
+            fs=fs_dat,
+            support=session_bounds,
         )
     except:
         st_all = nel.SpikeTrainArray(
             timestamps=np.array(data["spikes"], dtype=object)[restrict_idx][0],
             fs=fs_dat,
+            support=session_bounds,
         )
-    # load session epoch data
-    epoch_df = loading.load_epoch(basepath)
-    # compress repeated sleep sessions
-    epoch_df = compress_repeated_epochs.main(epoch_df)
-    # put into nel format
-    beh_epochs = nel.EpochArray([np.array([epoch_df.startTime, epoch_df.stopTime]).T])
+
     # make position and sort out track data
     pos, outbound_epochs, inbound_epochs = handle_behavior(
         basepath, epoch_df, beh_epochs
