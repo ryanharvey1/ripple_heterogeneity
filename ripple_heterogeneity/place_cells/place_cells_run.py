@@ -82,7 +82,7 @@ def surrogate_test_spatial_info(ts, x, y, s, n_shuff=500, bin_width=3):
     return pvalue(null_ic, obs_ic), null_ic, obs_ic
 
 
-def run(basepath):
+def run(basepath, n_shuff=500, min_session_duration=5, bin_width=3, speed_thres=4):
 
     st_unit, cell_metrics = loading.load_spikes(
         basepath, brainRegion="CA1", putativeCellType="Pyr"
@@ -96,7 +96,9 @@ def run(basepath):
         (epoch_df.environment != "sleep") & (epoch_df.environment != "wheel")
     ]
     # remove sessions < 5 minutes
-    epoch_df = epoch_df[(epoch_df.stopTime - epoch_df.startTime) / 60 > 5]
+    epoch_df = epoch_df[
+        (epoch_df.stopTime - epoch_df.startTime) / 60 > min_session_duration
+    ]
 
     if len(beh_df) == 0:
         print("no beh data")
@@ -108,7 +110,7 @@ def run(basepath):
 
     # make linear track linear
     for ep in epoch_df.itertuples():
-        if ep.environment.str.contains("linear"):
+        if "linear" in ep.environment:
             x = beh_df[beh_df["time"].between(ep.startTime, ep.stopTime)].x
             y = beh_df[beh_df["time"].between(ep.startTime, ep.stopTime)].y
 
@@ -190,7 +192,7 @@ def run(basepath):
             occupancies.append(occupancy)
 
             pval, null_ic, spatial_info = surrogate_test_spatial_info(
-                ts, x, y, st_run.data[cell_id], bin_width=bin_width
+                ts, x, y, st_run.data[cell_id], bin_width=bin_width, n_shuff=n_shuff
             )
             pvals.append(pval)
             null_ics.append(null_ic)
