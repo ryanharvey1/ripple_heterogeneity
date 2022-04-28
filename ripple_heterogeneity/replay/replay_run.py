@@ -1,7 +1,7 @@
 import numpy as np
 import nelpy as nel
 from nelpy.analysis import replay
-from ripple_heterogeneity.utils import functions, loading
+from ripple_heterogeneity.utils import functions, loading, compress_repeated_epochs
 import os
 import pandas as pd
 import statistics
@@ -191,7 +191,12 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     beh_df = loading.load_animal_behavior(basepath)
 
     # find linear track
-    idx = np.where(epoch_df.environment == "linear")[0]
+    idx = epoch_df.environment == "linear"
+    # if multiple linear tracks, take the one with longest duration
+    if sum(idx)>1:
+        duration = epoch_df.stopTime - epoch_df.startTime
+        idx = idx & (duration == max(duration[idx]))
+
     beh_epochs_linear = beh_epochs[idx]
 
     if np.isnan(beh_df.linearized).all():
@@ -299,7 +304,7 @@ def restrict_to_place_cells(
 def run_all(
     basepath,  # basepath to session
     traj_shuff=1500,  # number of shuffles to determine sig replay
-    behav_shuff=500,  # number of shuffles to determine sig decoding
+    behav_shuff=250,  # number of shuffles to determine sig decoding
     ds_50ms=0.05,  # bin width to bin st for tuning curve
     s_binsize=3,  # spatial bins in tuning curve
     speed_thres=4,  # running threshold to determine tuning curves
@@ -350,16 +355,13 @@ def run_all(
             timestamps=np.array(data["spikes"], dtype=object)[restrict_idx][0],
             fs=fs_dat,
         )
-
+    # load session epoch data
     epoch_df = loading.load_epoch(basepath)
-    pattern_idx, _ = functions.find_epoch_pattern(
-        epoch_df.environment, ["sleep", "linear", "sleep"]
-    )
-    if pattern_idx is None:
-        return
-    epoch_df = epoch_df[pattern_idx]
+    # compress repeated sleep sessions
+    epoch_df = compress_repeated_epochs.main(epoch_df)
+    # put into nel format
     beh_epochs = nel.EpochArray([np.array([epoch_df.startTime, epoch_df.stopTime]).T])
-
+    # make position and sort out track data
     pos, outbound_epochs, inbound_epochs = handle_behavior(
         basepath, epoch_df, beh_epochs
     )
