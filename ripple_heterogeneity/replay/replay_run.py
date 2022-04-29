@@ -188,8 +188,10 @@ def flip_pos_within_epoch(pos, dir_epoch):
 
 
 def handle_behavior(basepath, epoch_df, beh_epochs):
+    # load behavior
     beh_df = loading.load_animal_behavior(basepath)
 
+    # if there is no behavior data, return
     if beh_df is None:
         return None,None,None
 
@@ -199,12 +201,17 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     if sum(idx) > 1:
         duration = epoch_df.stopTime - epoch_df.startTime
         idx = idx & (duration == max(duration[idx]))
-
+    # define the linear track epoch
     beh_epochs_linear = beh_epochs[idx]
 
+    # if there is no linearized data, make it
     if np.isnan(beh_df.linearized).all():
         x, _ = functions.linearize_position(beh_df.x, beh_df.y)
         beh_df.linearized = x
+
+    # if there is no linear track tracking data, return
+    if np.isnan(beh_df.linearized).all():
+        return None,None,None
 
     # interpolate behavior to minimize nan gaps using linear
     # will only interpolate out to 5 seconds
@@ -384,7 +391,7 @@ def run_all(
     )
     if pos is None:
         return
-        
+
     # restrict to events at least xx s long
     ripples = ripples[ripples.duration >= min_rip_dur]
 
