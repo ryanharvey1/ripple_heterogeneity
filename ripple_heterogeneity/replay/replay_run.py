@@ -190,6 +190,9 @@ def flip_pos_within_epoch(pos, dir_epoch):
 def handle_behavior(basepath, epoch_df, beh_epochs):
     beh_df = loading.load_animal_behavior(basepath)
 
+    if beh_df is None:
+        return None,None,None
+
     # find linear track
     idx = epoch_df.environment == "linear"
     # if multiple linear tracks, take the one with longest duration
@@ -370,7 +373,7 @@ def run_all(
             fs=fs_dat,
             support=session_bounds,
         )
-        
+
     # skip if less than 5 cells    
     if st_all.n_active < 5:
         return
@@ -379,7 +382,9 @@ def run_all(
     pos, outbound_epochs, inbound_epochs = handle_behavior(
         basepath, epoch_df, beh_epochs
     )
-
+    if pos is None:
+        return
+        
     # restrict to events at least xx s long
     ripples = ripples[ripples.duration >= min_rip_dur]
 
