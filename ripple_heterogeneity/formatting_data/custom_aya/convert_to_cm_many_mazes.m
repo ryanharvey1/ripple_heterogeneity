@@ -1,10 +1,10 @@
 df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
-df = df(contains(df.basepath,'AYA'),:);
+df = df(contains(df.basepath,'AYA') | contains(df.basepath,'AB'),:);
 % df = df(contains(df.basepath,'Kenji'),:);
 % maze_type = 'tmaze';
 % maze_sizes = 160;
 
-maze_type = 'box';
+maze_type = 'cheeseboard';
 maze_sizes = 120;
 
 for i = 1:length(df.basepath)
@@ -49,7 +49,7 @@ if ~isempty(behavior.position.x)
         
         figure;
         plot(behavior.position.x(idx),behavior.position.y(idx))
-
+        
         linpos = behavior.position.x(idx);
         pos_range = max(linpos) - min(linpos);
         convert_pix_to_cm_ratio = (pos_range / maze_sizes);
@@ -61,10 +61,10 @@ if ~isempty(behavior.position.x)
             behavior.position.y(idx) = behavior.position.y(idx) /...
                 convert_pix_to_cm_ratio;
         end
-    end   
+    end
+    behavior.position.units = 'cm';
+    save(fullfile(basepath,[basename,'.animal.behavior.mat']),'behavior')
 end
-behavior.position.units = 'cm';
-save(fullfile(basepath,[basename,'.animal.behavior.mat']),'behavior')
 end
 
 % df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
