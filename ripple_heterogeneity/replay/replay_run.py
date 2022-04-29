@@ -192,7 +192,7 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     beh_df = loading.load_animal_behavior(basepath)
 
     # if there is no behavior data, return
-    if beh_df is None:
+    if (beh_df is None) | (len(beh_df) == 0):
         return None,None,None
 
     # find linear track
@@ -204,8 +204,15 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     # define the linear track epoch
     beh_epochs_linear = beh_epochs[idx]
 
+    if 'linearized' not in beh_df.columns:
+        beh_df['linearized'] = np.nan
+
     # if there is no linearized data, make it
     if np.isnan(beh_df.linearized).all():
+        if 'x' not in beh_df.columns:
+            return None,None,None
+        if np.isnan(beh_df.x).all():
+            return None,None,None
         x, _ = functions.linearize_position(beh_df.x, beh_df.y)
         beh_df.linearized = x
 
