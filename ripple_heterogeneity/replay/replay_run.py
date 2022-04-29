@@ -567,7 +567,8 @@ def load_results(save_path):
     for session in sessions:
         with open(session, "rb") as f:
             results = pickle.load(f)
-
+        if results is None:
+            continue
         for key_ in results.keys():
 
             # calc and add ripple participation
@@ -593,31 +594,31 @@ def load_results(save_path):
             results[key_]["df"]["direction"] = key_
 
             # add epoch
-            if len(results[key_]["df"]) > 0:
-                results[key_]["df"]["epoch"] = "unknown"
-                epoch_df = loading.load_epoch(results[key_]["session"])
-                pattern_idx, _ = functions.find_epoch_pattern(
-                    epoch_df.environment, ["sleep", "linear", "sleep"]
-                )
-                epoch_df = epoch_df[pattern_idx]
-                results[key_]["df"].loc[
-                    results[key_]["df"].start.between(
-                        epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[0]
-                    ),
-                    "epoch",
-                ] = "pre_sleep"
-                results[key_]["df"].loc[
-                    results[key_]["df"].start.between(
-                        epoch_df.startTime.iloc[1], epoch_df.stopTime.iloc[1]
-                    ),
-                    "epoch",
-                ] = "linear"
-                results[key_]["df"].loc[
-                    results[key_]["df"].start.between(
-                        epoch_df.startTime.iloc[2], epoch_df.stopTime.iloc[2]
-                    ),
-                    "epoch",
-                ] = "post_sleep"
+            # if len(results[key_]["df"]) > 0:
+            #     results[key_]["df"]["epoch"] = "unknown"
+            #     epoch_df = loading.load_epoch(results[key_]["session"])
+            #     pattern_idx, _ = functions.find_epoch_pattern(
+            #         epoch_df.environment, ["sleep", "linear", "sleep"]
+            #     )
+            #     epoch_df = epoch_df[pattern_idx]
+            #     results[key_]["df"].loc[
+            #         results[key_]["df"].start.between(
+            #             epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[0]
+            #         ),
+            #         "epoch",
+            #     ] = "pre_sleep"
+            #     results[key_]["df"].loc[
+            #         results[key_]["df"].start.between(
+            #             epoch_df.startTime.iloc[1], epoch_df.stopTime.iloc[1]
+            #         ),
+            #         "epoch",
+            #     ] = "linear"
+            #     results[key_]["df"].loc[
+            #         results[key_]["df"].start.between(
+            #             epoch_df.startTime.iloc[2], epoch_df.stopTime.iloc[2]
+            #         ),
+            #         "epoch",
+            #     ] = "post_sleep"
 
             df = pd.concat([df, results[key_]["df"]], ignore_index=True)
     return df
