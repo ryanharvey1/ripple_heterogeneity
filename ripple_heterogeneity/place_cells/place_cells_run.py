@@ -87,7 +87,9 @@ def run(basepath, n_shuff=500, min_session_duration=5, bin_width=3, speed_thres=
     st_unit, cell_metrics = loading.load_spikes(
         basepath, brainRegion="CA1", putativeCellType="Pyr"
     )
-
+    if cell_metrics.shape[0] == 0:
+        return
+        
     beh_df = loading.load_animal_behavior(basepath)
 
     epoch_df = loading.load_epoch(basepath)
