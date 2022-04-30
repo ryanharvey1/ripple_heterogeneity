@@ -150,6 +150,10 @@ def run(basepath, n_shuff=500, min_session_duration=5, bin_width=3, speed_thres=
     null_ics = []
     UID = []
     epoch = pd.DataFrame()
+    env = []
+    name = []
+    startTime = []
+    stopTime = []
     xs = []
     ys = []
     tss = []
@@ -201,15 +205,23 @@ def run(basepath, n_shuff=500, min_session_duration=5, bin_width=3, speed_thres=
             spatial_infos.append(spatial_info)
 
             UID.append(cell_metrics.iloc[cell_id].UID)
-            epoch = pd.concat([epoch, epoch_df.iloc[ep_i]], ignore_index=True)
+            env.append(epoch_df.iloc[ep_i].environment)
+            name.append(epoch_df.name.iloc[ep_i])
+            startTime.append(epoch_df.iloc[ep_i].startTime)
+            stopTime.append(epoch_df.iloc[ep_i].stopTime)
+            # epoch = pd.concat([epoch, epoch_df.iloc[ep_i]], ignore_index=True)
             xs.append(x)
             ys.append(y)
             tss.append(ts)
             st.append(st_run.data[cell_id])
 
-    epoch["UID"] = np.array(UID)
-    epoch["spatial_infos"] = np.array(spatial_infos)
-    epoch["pvals"] = np.array(pvals)
+    epoch["UID"] = np.hstack(UID)
+    epoch["environment"] = np.hstack(env)
+    epoch["name"] = np.hstack(name)
+    epoch["startTime"] = np.hstack(startTime)
+    epoch["stopTime"] = np.hstack(stopTime)
+    epoch["spatial_infos"] = np.hstack(spatial_infos)
+    epoch["pvals"] = np.hstack(pvals)
     epoch["basepath"] = basepath
 
     results = {}
