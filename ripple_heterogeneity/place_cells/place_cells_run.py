@@ -200,16 +200,16 @@ def run(basepath, n_shuff=500, min_session_duration=5, bin_width=3, speed_thres=
             null_ics.append(null_ic)
             spatial_infos.append(spatial_info)
 
-            UID.append(cell_metrics.UID.iloc[cell_id])
-            epoch = epoch.append(epoch_df.iloc[ep_i], ignore_index=True)
+            UID.append(cell_metrics.iloc[cell_id].UID)
+            epoch = pd.concat([epoch, epoch_df.iloc[ep_i]], ignore_index=True)
             xs.append(x)
             ys.append(y)
             tss.append(ts)
             st.append(st_run.data[cell_id])
 
-    epoch["UID"] = UID
-    epoch["spatial_infos"] = spatial_infos
-    epoch["pvals"] = pvals
+    epoch["UID"] = np.array(UID)
+    epoch["spatial_infos"] = np.array(spatial_infos)
+    epoch["pvals"] = np.array(pvals)
     epoch["basepath"] = basepath
 
     results = {}
