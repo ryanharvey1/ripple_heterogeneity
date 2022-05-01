@@ -89,8 +89,14 @@ def run(basepath, n_shuff=500, min_session_duration=5, bin_width=3, speed_thres=
     )
     if cell_metrics.shape[0] == 0:
         return
-        
+
     beh_df = loading.load_animal_behavior(basepath)
+    if (
+        np.isnan(beh_df.x).all()
+        & np.isnan(beh_df.y).all()
+        & np.isnan(beh_df.linearized).all()
+    ):
+        return
 
     epoch_df = loading.load_epoch(basepath)
     # remove sleep and wheel running
