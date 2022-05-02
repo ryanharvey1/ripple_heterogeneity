@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="src",
+    name="ripple_heterogeneity",
     packages=find_packages(),
 )
