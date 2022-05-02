@@ -112,14 +112,6 @@ def run(
     if cell_metrics.shape[0] == 0:
         return
 
-    beh_df = loading.load_animal_behavior(basepath)
-    if (
-        np.isnan(beh_df.x).all()
-        & np.isnan(beh_df.y).all()
-        & np.isnan(beh_df.linearized).all()
-    ):
-        return
-
     epoch_df = loading.load_epoch(basepath)
 
     # remove sleep and wheel running and others
@@ -130,11 +122,23 @@ def run(
     epoch_df = epoch_df[
         (epoch_df.stopTime - epoch_df.startTime) / 60 > min_session_duration
     ]
-
-    if len(beh_df) == 0:
-        print("no beh data")
+    # exit if no sessions left
+    if epoch_df.shape[0] == 0:
         return
 
+    beh_df = loading.load_animal_behavior(basepath)
+
+    # exist if no behavior data
+    if len(beh_df) == 0:
+        return
+    if (
+        np.isnan(beh_df.x).all()
+        & np.isnan(beh_df.y).all()
+        & np.isnan(beh_df.linearized).all()
+    ):
+        return
+
+    # if no x, use linearized
     if np.isnan(beh_df.x).all():
         beh_df.x = beh_df.linearized
         beh_df.y = np.zeros_like(beh_df.x)
