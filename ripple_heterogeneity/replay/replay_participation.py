@@ -1,78 +1,38 @@
+import os
 import pickle
 import numpy as np
 import pandas as pd
-from ripple_heterogeneity.utils import (
-    functions,
-    loading,
-    compress_repeated_epochs
-)
+from ripple_heterogeneity.utils import functions, loading, compress_repeated_epochs
 import nelpy as nel
 
-def get_replay_epochs(results, direction, alpha=0.05):
-    """
-    Get replay epochs from results
-    Inputs:
-        results: pandas dataframe of results
-        direction: 'forward' or 'reverse'
-        alpha: p value threshold
-    Outputs:
-        replay_epochs: list of replay epochs
-    
-    """
-    # check replay direction input
-    if not np.any((direction == "forward") | (direction == "reverse")):
-        print("wrong direction")
-        return
 
-    starts = []
-    stops = []
-    # get sig replay epochs from outbound
-    idx = (results["outbound_epochs"]["df"].score_pval_time_swap <= alpha) & (
-        results["outbound_epochs"]["df"].replay_type == direction
-    )
-    starts.append(results["outbound_epochs"]["df"][idx].start)
-    stops.append(results["outbound_epochs"]["df"][idx].stop)
-
-    # get sig replay epochs from inbound
-    idx = (results["inbound_epochs"]["df"].score_pval_time_swap <= alpha) & (
-        results["inbound_epochs"]["df"].replay_type == direction
-    )
-    starts.append(results["inbound_epochs"]["df"][idx].start)
-    stops.append(results["inbound_epochs"]["df"][idx].stop)
-
-    # get sorted replay epochs and sort
-    sort_idx = np.argsort(np.hstack(starts))
-    starts = np.hstack(starts)[sort_idx]
-    stops = np.hstack(stops)[sort_idx]
-
-    return nel.EpochArray(np.array([starts, stops]).T)
-
-def run(session):
+def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05):
     """
     Compile replay participation for a session
     Inputs:
         session: session directory
     Outputs:
         temp_df: pandas dataframe of replay and ripple participation
-    
+
     """
-    # load results
-    with open(session, "rb") as f:
-        results = pickle.load(f)
+    # select current session from replay_df
+    replay_df = replay_df[replay_df.basepath == basepath]
 
-    # skip if no results
-    if results is None:
-        return pd.DataFrame()
+    starts = replay_df[
+        (replay_df.score_pval_time_swap <= alpha) & (replay_df.replay_type == "forward")
+    ].start
+    stops = replay_df[
+        (replay_df.score_pval_time_swap <= alpha) & (replay_df.replay_type == "forward")
+    ].stop
+    forward_replay = nel.EpochArray(np.array([starts, stops]).T)
 
-    # retrive basepath
-    try:
-        basepath = results["outbound_epochs"]['session']
-    except:
-        basepath = results["inbound_epochs"]['session']
-
-    # get forward and reverse replay epochs
-    forward_replay = get_replay_epochs(results, "forward")
-    reverse_replay = get_replay_epochs(results, "reverse")
+    starts = replay_df[
+        (replay_df.score_pval_time_swap <= alpha) & (replay_df.replay_type == "reverse")
+    ].start
+    stops = replay_df[
+        (replay_df.score_pval_time_swap <= alpha) & (replay_df.replay_type == "reverse")
+    ].stop
+    reverse_replay = nel.EpochArray(np.array([starts, stops]).T)
 
     # get session epochs
     epoch_df = loading.load_epoch(basepath)
@@ -95,6 +55,13 @@ def run(session):
     # always load cell metrics from source to get most up to date data
     st, cell_metrics = loading.load_spikes(basepath)
 
+    session = os.path.join(
+        replay_save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
+    )
+
+    with open(session, "rb") as f:
+        results = pickle.load(f)
+
     # get active units from cell metrics
     uid = pd.unique(
         np.hstack(
@@ -111,7 +78,7 @@ def run(session):
         b = set(uid)
         c = b.difference(a)
         uid = np.sort(np.array(list(c)))
-    
+
     _, x_ind, _ = np.intersect1d(cell_metrics.UID, uid, return_indices=True)
     unit_ids_to_keep = (x_ind + 1).squeeze().tolist()
     sta_placecells = st._unit_subset(unit_ids_to_keep)
@@ -136,39 +103,66 @@ def run(session):
     avg_fr = []
     # iterate through all behavioral epochs and get ripple and replay participation
     for beh_ep_i, beh_ep in enumerate(behavior_epochs):
+
+        current_st = sta_placecells[beh_ep]
+
         # get avg firing rate over epoch
-        avg_fr.append(sta_placecells[beh_ep].n_events / beh_ep.length)
+        avg_fr.append(current_st.n_events / beh_ep.length)
+        
         # get ripple firing rate
         # check if any spikes left in epoch
         if sta_placecells[beh_ep][all_replay].data is None:
-            replay_fr.append((sta_placecells[beh_ep].n_events / beh_ep.length)*np.nan)
+            replay_fr.append(current_st.n_events * np.nan)
         else:
-            replay_fr.append(sta_placecells[beh_ep][all_replay].n_events / beh_ep.length)
+            replay_fr.append(
+                sta_placecells[beh_ep][all_replay].n_events / beh_ep.length
+            )
+
         # get ripple firing rate
-        ripple_fr.append(sta_placecells[beh_ep][ripple_outside_replay].n_events / beh_ep.length)
+        if sta_placecells[beh_ep][ripple_outside_replay].data is None:
+            ripple_fr.append(current_st.n_events * np.nan)
+        else:
+            ripple_fr.append(
+                sta_placecells[beh_ep][ripple_outside_replay].n_events / beh_ep.length
+            )
+
         # get replay participation
-        replay_par.append(functions.get_participation(
-            sta_placecells[beh_ep].data,
-            all_replay[beh_ep].starts,
-            all_replay[beh_ep].stops,
-        ).mean(axis=1))
+        replay_par.append(
+            functions.get_participation(
+                current_st.data,
+                all_replay[beh_ep].starts,
+                all_replay[beh_ep].stops,
+            ).mean(axis=1)
+        )
+
         # get ripple participation
-        ripple_par.append(functions.get_participation(
-            sta_placecells[beh_ep].data,
-            ripple_outside_replay[beh_ep].starts,
-            ripple_outside_replay[beh_ep].stops,
-        ).mean(axis=1))
+        ripple_par.append(
+            functions.get_participation(
+                current_st.data,
+                ripple_outside_replay[beh_ep].starts,
+                ripple_outside_replay[beh_ep].stops,
+            ).mean(axis=1)
+        )
+
         # get epoch info
-        epoch.append([epoch_df.environment.values[beh_ep_i]]*sta_placecells.data.shape[0])
-        epoch_i.append(np.tile(beh_ep_i,sta_placecells.data.shape[0]))
+        epoch.append(
+            [epoch_df.environment.values[beh_ep_i]] * sta_placecells.data.shape[0]
+        )
+        epoch_i.append(np.tile(beh_ep_i, sta_placecells.data.shape[0]))
         # get UID
         UID.append(cell_metrics.UID.values)
         # get deep superficial distance
         deepSuperficialDistance.append(cell_metrics.deepSuperficialDistance.values)
         # get number of ripples and replays
-        n_replays.append(np.tile(all_replay[beh_ep].n_intervals,sta_placecells.data.shape[0]))
-        n_ripples.append(np.tile(ripple_outside_replay[beh_ep].n_intervals,sta_placecells.data.shape[0]))
-        
+        n_replays.append(
+            np.tile(all_replay[beh_ep].n_intervals, sta_placecells.data.shape[0])
+        )
+        n_ripples.append(
+            np.tile(
+                ripple_outside_replay[beh_ep].n_intervals, sta_placecells.data.shape[0]
+            )
+        )
+
     # stack all data
     temp_df = pd.DataFrame()
     temp_df["avg_fr"] = np.hstack(avg_fr)
@@ -185,4 +179,3 @@ def run(session):
     temp_df["basepath"] = basepath
 
     return temp_df
-
