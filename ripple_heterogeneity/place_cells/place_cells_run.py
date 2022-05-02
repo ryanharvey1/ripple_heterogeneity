@@ -224,9 +224,9 @@ def run(
             )
             for dir_epoch_i, dir_epoch in enumerate([outbound_epochs, inbound_epochs]):
                 # check if no laps in this direction
-                if dir_epoch.lengths == 0:
+                if dir_epoch.n_intervals == 0:
                     continue
-                
+
                 ts = pos_run[dir_epoch].abscissa_vals
                 x = pos_run[dir_epoch].data[0, :]
                 y = np.ones_like(x)
