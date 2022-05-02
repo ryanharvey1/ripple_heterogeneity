@@ -130,36 +130,56 @@ def run(session):
     UID = []
     n_ripples = []
     n_replays = []
+    deepSuperficialDistance = []
+    replay_fr = []
+    ripple_fr = []
+    avg_fr = []
     # iterate through all behavioral epochs and get ripple and replay participation
     for beh_ep_i, beh_ep in enumerate(behavior_epochs):
-
+        # get avg firing rate over epoch
+        avg_fr.append(sta_placecells[beh_ep].n_events / beh_ep.length)
+        # get ripple firing rate
+        # check if any spikes left in epoch
+        if sta_placecells[beh_ep][all_replay].data is None:
+            replay_fr.append((sta_placecells[beh_ep].n_events / beh_ep.length)*np.nan)
+        else:
+            replay_fr.append(sta_placecells[beh_ep][all_replay].n_events / beh_ep.length)
+        # get ripple firing rate
+        ripple_fr.append(sta_placecells[beh_ep][ripple_outside_replay].n_events / beh_ep.length)
+        # get replay participation
         replay_par.append(functions.get_participation(
             sta_placecells[beh_ep].data,
             all_replay[beh_ep].starts,
             all_replay[beh_ep].stops,
         ).mean(axis=1))
-
+        # get ripple participation
         ripple_par.append(functions.get_participation(
             sta_placecells[beh_ep].data,
             ripple_outside_replay[beh_ep].starts,
             ripple_outside_replay[beh_ep].stops,
         ).mean(axis=1))
-
+        # get epoch info
         epoch.append([epoch_df.environment.values[beh_ep_i]]*sta_placecells.data.shape[0])
         epoch_i.append(np.tile(beh_ep_i,sta_placecells.data.shape[0]))
-
+        # get UID
         UID.append(cell_metrics.UID.values)
-
+        # get deep superficial distance
+        deepSuperficialDistance.append(cell_metrics.deepSuperficialDistance.values)
+        # get number of ripples and replays
         n_replays.append(np.tile(all_replay[beh_ep].n_intervals,sta_placecells.data.shape[0]))
         n_ripples.append(np.tile(ripple_outside_replay[beh_ep].n_intervals,sta_placecells.data.shape[0]))
         
     # stack all data
     temp_df = pd.DataFrame()
+    temp_df["avg_fr"] = np.hstack(avg_fr)
+    temp_df["replay_fr"] = np.hstack(replay_fr)
+    temp_df["ripple_fr"] = np.hstack(ripple_fr)
     temp_df["replay_par"] = np.hstack(replay_par)
     temp_df["ripple_par"] = np.hstack(ripple_par)
     temp_df["epoch"] = np.hstack(epoch)
     temp_df["epoch_i"] = np.hstack(epoch_i)
     temp_df["UID"] = np.hstack(UID)
+    temp_df["deepSuperficialDistance"] = np.hstack(deepSuperficialDistance)
     temp_df["n_replays"] = np.hstack(n_replays)
     temp_df["n_ripples"] = np.hstack(n_ripples)
     temp_df["basepath"] = basepath
