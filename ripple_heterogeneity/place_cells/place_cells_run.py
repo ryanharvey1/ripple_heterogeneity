@@ -102,8 +102,8 @@ def run(
     bin_width=3,
     speed_thres=4,
     epochs_to_skip=["sleep", "wheel", "cheeseboard"],
-    brainRegion = "CA1",
-    cell_type = "Pyr",
+    brainRegion="CA1",
+    cell_type="Pyr",
 ):
 
     st_unit, cell_metrics = loading.load_spikes(
@@ -231,7 +231,7 @@ def run(
                         null_ic,
                         spatial_info,
                     ) = get_maps_and_score(
-                        cell_id, st_run, x, y, ts, bin_width, n_shuff
+                        cell_id, st_run[dir_epoch], x, y, ts, bin_width, n_shuff
                     )
 
                     pvals.append(pval)
@@ -245,7 +245,7 @@ def run(
                     xs.append(x)
                     ys.append(y)
                     tss.append(ts)
-                    st.append(st_run.data[cell_id])
+                    st.append(st_run[dir_epoch].data[cell_id])
                     ratemaps.append(ratemap_)
                     occupancies.append(occupancy_)
                     linear_dir.append(dir_epoch_i)
