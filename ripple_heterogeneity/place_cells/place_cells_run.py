@@ -223,8 +223,8 @@ def run(
                 pos_run[ep].abscissa_vals, pos_run.data[0], newLapThreshold=20
             )
             for dir_epoch_i, dir_epoch in enumerate([outbound_epochs, inbound_epochs]):
-                # check if no laps in this direction
-                if dir_epoch.n_intervals == 0:
+                # check if < 5 laps in this direction
+                if dir_epoch.n_intervals < 5:
                     continue
 
                 ts = pos_run[dir_epoch].abscissa_vals
