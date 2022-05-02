@@ -279,34 +279,9 @@ def run(
                 occupancies.append(occupancy_)
                 linear_dir.append(np.nan)
 
-                # epoch = pd.concat([epoch, epoch_temp], ignore_index=True)
-
-    #     # iter over cells
-    #     for cell_id in range(st_run.data.shape[0]):
-
-    #         ratemap, occupancy = get_ratemap(
-    #             ts, x, y, st_run.data[cell_id], bin_width=bin_width
-    #         )
-    #         ratemaps.append(ratemap)
-    #         occupancies.append(occupancy)
-
-    #         pval, null_ic, spatial_info = surrogate_test_spatial_info(
-    #             ts, x, y, st_run.data[cell_id], bin_width=bin_width, n_shuff=n_shuff
-    #         )
-    #         pvals.append(pval)
-    #         null_ics.append(null_ic)
-    #         spatial_infos.append(spatial_info)
-
-    #         UID.append(cell_metrics.iloc[cell_id].UID)
-    #         env.append(epoch_df.iloc[ep_i].environment)
-    #         name.append(epoch_df.name.iloc[ep_i])
-    #         startTime.append(epoch_df.iloc[ep_i].startTime)
-    #         stopTime.append(epoch_df.iloc[ep_i].stopTime)
-    #         # epoch = pd.concat([epoch, epoch_df.iloc[ep_i]], ignore_index=True)
-    #         xs.append(x)
-    #         ys.append(y)
-    #         tss.append(ts)
-    #         st.append(st_run.data[cell_id])
+    if len(UID) == 0:
+        print("no data in epoch")
+        return None
 
     epoch["UID"] = np.hstack(UID)
     epoch["environment"] = np.hstack(env)
