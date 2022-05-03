@@ -120,6 +120,8 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
     non_replay_par = []
     forward_replay_par = []
     reverse_replay_par = []
+    non_replay_fr = []
+
     # iterate through all behavioral epochs and get ripple and replay participation
     for beh_ep_i, beh_ep in enumerate(behavior_epochs):
 
@@ -133,13 +135,26 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
         if current_st[all_replay].isempty:
             replay_fr.append(current_st.n_events * np.nan)
         else:
-            replay_fr.append(current_st[all_replay].n_events / all_replay.length)
+            replay_fr.append(
+                current_st[all_replay].n_events / all_replay[beh_ep].length
+            )
+
+        if current_st[all_replay].isempty:
+            non_replay_fr.append(current_st.n_events * np.nan)
+        else:
+            non_replay_fr.append(
+                current_st[canidate_non_replay].n_events
+                / canidate_non_replay[beh_ep].length
+            )
 
         # get ripple firing rate
         if current_st[ripple_outside_replay].isempty:
             ripple_fr.append(current_st.n_events * np.nan)
         else:
-            ripple_fr.append(current_st[ripple_outside_replay].n_events / ripple_outside_replay.length)
+            ripple_fr.append(
+                current_st[ripple_outside_replay].n_events
+                / ripple_outside_replay[beh_ep].length
+            )
 
         # get replay participation
         replay_par.append(
@@ -220,6 +235,7 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
     temp_df["avg_fr"] = np.hstack(avg_fr)
     temp_df["replay_fr"] = np.hstack(replay_fr)
     temp_df["ripple_fr"] = np.hstack(ripple_fr)
+    temp_df["non_replay_fr"] = np.hstack(non_replay_fr)
     temp_df["replay_par"] = np.hstack(replay_par)
     temp_df["ripple_par"] = np.hstack(ripple_par)
     temp_df["non_replay_par"] = np.hstack(non_replay_par)
