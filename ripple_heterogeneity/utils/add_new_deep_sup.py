@@ -6,7 +6,11 @@ from ripple_heterogeneity.utils import loading
 def add_new_deep_sup_class(df, layer_dist=30):
     """
     Take df dataframe and update deepSuperficial classification
-
+    Inputs:
+        df: dataframe with at least basepath and UID
+        layer_dist: distance from pyramidal layer
+    Outputs:
+        df: dataframe with deepSuperficial classification
     """
 
     def assign_region(df, cell_metrics_):
@@ -47,3 +51,32 @@ def add_new_deep_sup_class(df, layer_dist=30):
     df_out.loc[df_out.deepSuperficialDistance >= sup, "deepSuperficial"] = "Superficial"
 
     return df_out
+
+
+def deep_sup_from_deepSuperficialDistance(cell_metrics, layer_dist=30):
+    """
+    Assign deepSuperficial classification based on distance from the pyramidal layer
+    Will work if you already have the (up to date) deepSuperficialDistance in the cell_metrics dataframe
+
+    Input:
+        cell_metrics: dataframe with deepSuperficialDistance
+    Output:
+        deepSuperficial: dataframe with deepSuperficial classification
+    """
+
+    deep = -layer_dist
+    middle = [-layer_dist, layer_dist]
+    sup = layer_dist
+    cell_metrics.loc[
+        cell_metrics.deepSuperficialDistance <= deep, "deepSuperficial"
+    ] = "Deep"
+    cell_metrics.loc[
+        (cell_metrics.deepSuperficialDistance > middle[0])
+        & (cell_metrics.deepSuperficialDistance < middle[1]),
+        "deepSuperficial",
+    ] = "middle"
+    cell_metrics.loc[
+        cell_metrics.deepSuperficialDistance >= sup, "deepSuperficial"
+    ] = "Superficial"
+
+    return cell_metrics
