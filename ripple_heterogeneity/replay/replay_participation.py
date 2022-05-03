@@ -6,7 +6,7 @@ from ripple_heterogeneity.utils import functions, loading, compress_repeated_epo
 import nelpy as nel
 
 
-def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=0.05):
+def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=0.05, min_spk_count=200):
     """
     Compile replay participation for a session
     Inputs:
@@ -59,7 +59,15 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
     # locate active units that were used in anlysis
     # because out/inbound templates were used seperately, we need to include both
     # always load cell metrics from source to get most up to date data
-    st, cell_metrics = loading.load_spikes(basepath)
+    st, cell_metrics = loading.load_spikes(basepath, putativeCellType="Pyr", brainRegion="CA1")
+
+    st._data = st.data[(cell_metrics.spikeCount > min_spk_count)]
+    cell_metrics = cell_metrics[(cell_metrics.spikeCount > min_spk_count)]
+    try:
+        st._data = st.data[(cell_metrics.tags_bad_waveform != True)]
+        cell_metrics = cell_metrics[(cell_metrics.tags_bad_waveform != True)]
+    except:
+        pass
 
     session = os.path.join(
         replay_save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
