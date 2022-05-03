@@ -133,13 +133,13 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
         if current_st[all_replay].isempty:
             replay_fr.append(current_st.n_events * np.nan)
         else:
-            replay_fr.append(current_st[all_replay].n_events / beh_ep.length)
+            replay_fr.append(current_st[all_replay].n_events / all_replay.length)
 
         # get ripple firing rate
         if current_st[ripple_outside_replay].isempty:
             ripple_fr.append(current_st.n_events * np.nan)
         else:
-            ripple_fr.append(current_st[ripple_outside_replay].n_events / beh_ep.length)
+            ripple_fr.append(current_st[ripple_outside_replay].n_events / ripple_outside_replay.length)
 
         # get replay participation
         replay_par.append(
