@@ -233,7 +233,8 @@ def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False):
 
 def compute_psth(spikes, event, bin_width=0.002, n_bins=100):
 
-    times = np.arange(0, bin_width * (n_bins + 1), bin_width) - (n_bins * bin_width) / 2
+    # times = np.arange(0, bin_width * (n_bins + 1), bin_width) - (n_bins * bin_width) / 2
+    times = np.linspace(-(n_bins*bin_width)/2,(n_bins*bin_width)/2,n_bins+1)
     ccg = pd.DataFrame(index=times, columns=np.arange(len(spikes)))
     # Now we can iterate over spikes
     for i, s in enumerate(spikes):
