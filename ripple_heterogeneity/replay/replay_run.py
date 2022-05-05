@@ -559,7 +559,11 @@ def main(df, save_path, parallel=True):
             main_loop(basepath, save_path)
 
 
-def load_results(save_path):
+def load_results(save_path,add_epochs=False):
+    """
+    load_results: load results from a directory
+    
+    """
     import glob
 
     sessions = glob.glob(save_path + os.sep + "*.pkl")
@@ -594,31 +598,32 @@ def load_results(save_path):
             results[key_]["df"]["direction"] = key_
 
             # add epoch
-            # if len(results[key_]["df"]) > 0:
-            #     results[key_]["df"]["epoch"] = "unknown"
-            #     epoch_df = loading.load_epoch(results[key_]["session"])
-            #     pattern_idx, _ = functions.find_epoch_pattern(
-            #         epoch_df.environment, ["sleep", "linear", "sleep"]
-            #     )
-            #     epoch_df = epoch_df[pattern_idx]
-            #     results[key_]["df"].loc[
-            #         results[key_]["df"].start.between(
-            #             epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[0]
-            #         ),
-            #         "epoch",
-            #     ] = "pre_sleep"
-            #     results[key_]["df"].loc[
-            #         results[key_]["df"].start.between(
-            #             epoch_df.startTime.iloc[1], epoch_df.stopTime.iloc[1]
-            #         ),
-            #         "epoch",
-            #     ] = "linear"
-            #     results[key_]["df"].loc[
-            #         results[key_]["df"].start.between(
-            #             epoch_df.startTime.iloc[2], epoch_df.stopTime.iloc[2]
-            #         ),
-            #         "epoch",
-            #     ] = "post_sleep"
+            if add_epochs:
+                if len(results[key_]["df"]) > 0:
+                    results[key_]["df"]["epoch"] = "unknown"
+                    epoch_df = loading.load_epoch(results[key_]["session"])
+                    pattern_idx, _ = functions.find_epoch_pattern(
+                        epoch_df.environment, ["sleep", "linear", "sleep"]
+                    )
+                    epoch_df = epoch_df[pattern_idx]
+                    results[key_]["df"].loc[
+                        results[key_]["df"].start.between(
+                            epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[0]
+                        ),
+                        "epoch",
+                    ] = "pre_sleep"
+                    results[key_]["df"].loc[
+                        results[key_]["df"].start.between(
+                            epoch_df.startTime.iloc[1], epoch_df.stopTime.iloc[1]
+                        ),
+                        "epoch",
+                    ] = "linear"
+                    results[key_]["df"].loc[
+                        results[key_]["df"].start.between(
+                            epoch_df.startTime.iloc[2], epoch_df.stopTime.iloc[2]
+                        ),
+                        "epoch",
+                    ] = "post_sleep"
 
             df = pd.concat([df, results[key_]["df"]], ignore_index=True)
     return df
