@@ -1,0 +1,98 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+
+```
+
+```{r}
+
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/temp_replay_participation_df.csv")
+
+data$basepath = factor(data$basepath)
+data$animal_id = factor(data$animal_id)
+data$deepSuperficial = factor(data$deepSuperficial)
+data$epoch  = factor(data$epoch)
+data$epoch_i  = factor(data$epoch_i)
+data$epoch_rel_i  = factor(data$epoch_rel_i)
+data$UID  = factor(data$UID)
+
+# data$replay_type  = factor(data$replay_type)
+# data$replay_layer  = factor(data$replay_layer)
+
+summary(data)
+```
+
+```{r}
+
+
+```
+
+
+```{r}
+temp_data <- data[data$animal_id != "Rat10" & data$animal_id != "Rat11" & data$animal_id != "Rat08",]
+
+
+m1 = lmer(replay_par_rel_baseline ~ deepSuperficial + (1 | basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+```
+
+```{r}
+temp_data <- data[data$animal_id != "Rat10" & data$animal_id != "Rat11" & data$animal_id != "Rat08",]
+
+
+m1 = lmer(replay_fr_rel_baseline ~ deepSuperficial + (1 | basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+
+```
+
+```{r}
+data$y_trans <- log(data$participation+1)
+
+temp_data <- data[data$epoch == "post",]
+
+m1 = lmer(y_trans ~ deepSuperficial + (1 | basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+```
