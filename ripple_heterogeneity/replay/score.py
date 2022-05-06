@@ -17,14 +17,12 @@ def shuffle_and_score(posterior_array, w, normalize, tc):
     scores_col_cycle = replay.trajectory_score_array(
         posterior=posterior_cs, w=w, normalize=normalize
     )
-    diff_mode_pth_tc = np.diff(get_mode_pth_from_array(posterior_ts, tuningcurve=tc))
     diff_mode_pth_cs = np.diff(get_mode_pth_from_array(posterior_cs, tuningcurve=tc))
 
     return (
         scores_time_swap,
         scores_col_cycle,
-        np.abs(np.nanmean(diff_mode_pth_tc)),
-        np.abs(np.nanmean(diff_mode_pth_cs))
+        np.abs(np.nanmean(diff_mode_pth_cs)),
     )
 
 
@@ -103,7 +101,7 @@ def trajectory_score_bst(
     else:
         raise ValueError("n_shuffles must be an integer!")
 
-    posterior, bdries, mode_pth, mean_pth = decode(bst=bst, ratemap=tuningcurve)
+    posterior, bdries, _, _ = decode(bst=bst, ratemap=tuningcurve)
 
     # idea: cycle each column so that the top w rows are the band
     # surrounding the regression line
@@ -124,12 +122,17 @@ def trajectory_score_bst(
         scores[idx] = replay.trajectory_score_array(
             posterior=posterior_array, w=w, normalize=normalize
         )
-        avg_jump[idx] = np.abs(np.nanmean(np.diff(get_mode_pth_from_array(posterior_array, tuningcurve=tuningcurve))))
+        avg_jump[idx] = np.abs(
+            np.nanmean(
+                np.diff(
+                    get_mode_pth_from_array(posterior_array, tuningcurve=tuningcurve)
+                )
+            )
+        )
 
         (
             scores_time_swap[:, idx],
             scores_col_cycle[:, idx],
-            jump_time_swap[:, idx],
             jump_col_cycle[:, idx],
         ) = zip(
             *Parallel(n_jobs=num_cores)(
@@ -144,7 +147,6 @@ def trajectory_score_bst(
             avg_jump,
             scores_time_swap,
             scores_col_cycle,
-            jump_time_swap,
             jump_col_cycle,
         )
     return scores, avg_jump
