@@ -23,8 +23,8 @@ def shuffle_and_score(posterior_array, w, normalize, tc):
     return (
         scores_time_swap,
         scores_col_cycle,
-        diff_mode_pth_tc.mean(),
-        diff_mode_pth_cs.mean(),
+        np.nanmean(diff_mode_pth_tc),
+        np.nanmean(diff_mode_pth_cs)
     )
 
 
