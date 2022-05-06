@@ -22,7 +22,8 @@ library(EMAtools)
 
 ```{r}
 
-data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/temp_replay_participation_df.csv")
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/temp_replay_participation_df")
+data <- data[data$deepSuperficial != "middle",]
 
 data$basepath = factor(data$basepath)
 data$animal_id = factor(data$animal_id)
@@ -80,12 +81,22 @@ lme.dscore(m1,data=temp_data,type="lme4")
 ```
 
 ```{r}
-data$y_trans <- log(data$participation+1)
+temp_data <- data[data$n_replays > 2 & data$epoch_rel_i == 0 & data$epoch == "linear",]
 
-temp_data <- data[data$epoch == "post",]
+hist(temp_data$normed_replay_fr)
 
-m1 = lmer(y_trans ~ deepSuperficial + (1 | basepath), data = temp_data,REML=FALSE)
+plot(normed_replay_fr ~ deepSuperficial, temp_data)
+```
+
+
+```{r}
+# temp_data <- data[data$n_replays > 2 & data$epoch_rel_i == 0 & data$epoch == "linear" & data$animal_id != "Rat10" & data$animal_id != "Rat11" & data$animal_id != "Rat08" & data$normed_replay_fr > -1,]
+
+temp_data <- data[data$n_replays > 2 & data$epoch_rel_i == 0 & data$epoch == "linear",]
+
+m1 = lmer(normed_replay_fr ~ deepSuperficial + (1 | basepath), data = temp_data, REML=FALSE)
 summary(m1)
+
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
 plot(simulationOutput)
