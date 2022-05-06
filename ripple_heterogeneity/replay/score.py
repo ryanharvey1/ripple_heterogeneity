@@ -23,8 +23,8 @@ def shuffle_and_score(posterior_array, w, normalize, tc):
     return (
         scores_time_swap,
         scores_col_cycle,
-        np.nanmean(diff_mode_pth_tc),
-        np.nanmean(diff_mode_pth_cs)
+        np.abs(np.nanmean(diff_mode_pth_tc)),
+        np.abs(np.nanmean(diff_mode_pth_cs))
     )
 
 
@@ -124,7 +124,7 @@ def trajectory_score_bst(
         scores[idx] = replay.trajectory_score_array(
             posterior=posterior_array, w=w, normalize=normalize
         )
-        avg_jump[idx] = np.diff(get_mode_pth_from_array(posterior_array, tuningcurve=tuningcurve)).mean()
+        avg_jump[idx] = np.abs(np.nanmean(np.diff(get_mode_pth_from_array(posterior_array, tuningcurve=tuningcurve))))
 
         (
             scores_time_swap[:, idx],
