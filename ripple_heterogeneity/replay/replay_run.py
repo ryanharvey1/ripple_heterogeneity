@@ -559,10 +559,10 @@ def main(df, save_path, parallel=True):
             main_loop(basepath, save_path)
 
 
-def load_results(save_path,add_epochs=False):
+def load_results(save_path,pre_task_post=False):
     """
     load_results: load results from a directory
-    
+
     """
     import glob
 
@@ -573,6 +573,19 @@ def load_results(save_path,add_epochs=False):
             results = pickle.load(f)
         if results is None:
             continue
+
+        if pre_task_post:
+            try:
+                epoch_df = loading.load_epoch(results["outbound_epochs"]["session"])
+            except:
+                epoch_df = loading.load_epoch(results["inbound_epochs"]["session"])
+
+            pattern_idx, _ = functions.find_epoch_pattern(
+                epoch_df.environment, ["sleep", "linear", "sleep"]
+                )
+            if pattern_idx is None:
+                continue
+
         for key_ in results.keys():
 
             # calc and add ripple participation
@@ -598,7 +611,7 @@ def load_results(save_path,add_epochs=False):
             results[key_]["df"]["direction"] = key_
 
             # add epoch
-            if add_epochs:
+            if pre_task_post:
                 if len(results[key_]["df"]) > 0:
                     results[key_]["df"]["epoch"] = "unknown"
                     epoch_df = loading.load_epoch(results[key_]["session"])
