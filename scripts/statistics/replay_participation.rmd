@@ -24,10 +24,11 @@ library(EMAtools)
 
 data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/replay_participation_df.csv")
 
+data <- data[data$n_replays > 0,]
 data$basepath = factor(data$basepath)
 data$animal = factor(data$animal)
 data$deepSuperficial = factor(data$deepSuperficial)
-data$epoch  = factor(data$epoch)
+data$epoch  = factor(data$epoch,levels=c('pre','task','post'))
 data$replay_type  = factor(data$replay_type)
 data$replay_layer  = factor(data$replay_layer)
 
@@ -36,7 +37,42 @@ summary(data)
 
 ```{r}
 
-m1 = glmer(participation ~ deepSuperficial + epoch + (1|basepath/replay_type), weights=n_replays, data=data,family="binomial")
+m1 = glmer(participation ~ deepSuperficial + epoch + (1|basepath), weights=n_replays, data=data,family="binomial")
+m1_red = glmer(participation ~ deepSuperficial + epoch + deepSuperficial*epoch + (1|basepath), weights=n_replays, data=data,family="binomial")
+
+anova(m1,m1_red)
+
+summary(m1_red)
+
+testDispersion(m1_red)
+
+simulationOutput <- simulateResiduals(fittedModel = m1_red, plot = F)
+plot(simulationOutput)
+# 
+# lme.dscore(m1,data=temp_data,type="lme4")
+plot(participation ~ deepSuperficial*epoch, data = data)
+
+```
+
+```{r}
+m1_red = glmer(participation ~ deepSuperficial + (1|basepath), weights=n_replays, data=data,family="binomial")
+
+summary(m1_red)
+
+testDispersion(m1_red)
+
+simulationOutput <- simulateResiduals(fittedModel = m1_red, plot = F)
+plot(simulationOutput)
+# 
+# lme.dscore(m1,data=temp_data,type="lme4")
+plot(participation ~ deepSuperficial*epoch, data = data)
+```
+
+
+## task and post together
+
+```{r}
+m1 = glmer(participation ~ deepSuperficial + (1|basepath/epoch), weights=n_replays, data=data[data$epoch == "task" | data$epoch == "post",],family="binomial")
 
 summary(m1)
 
@@ -46,9 +82,9 @@ simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
 plot(simulationOutput)
 # 
 # lme.dscore(m1,data=temp_data,type="lme4")
-plot(participation ~ deepSuperficial, data = data)
-
+plot(participation ~ deepSuperficial, data = data[data$epoch == "task" | data$epoch == "post",])
 ```
+
 
 ```{r}
 
@@ -99,9 +135,39 @@ plot(participation ~ deepSuperficial, data = data[data$epoch == "post",])
 
 ```
 
+## forward replay
 
+```{r}
+data$forward_reverse_ratio <- data[data$replay_type == "forward",]$participation / data[data$replay_type == "reverse",]$participation
 
+m1 = glmer(participation ~ deepSuperficial + (1|basepath/animal), weights=n_replays, data=data[data$replay_type == "forward",],family="binomial")
 
+summary(m1)
+
+testDispersion(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+plot(participation ~ deepSuperficial, data = data[data$replay_type == "forward",])
+
+```
+
+# reverse replay
+```{r}
+
+m1 = glmer(participation ~ deepSuperficial + (1|basepath/animal), weights=n_replays, data=data[data$replay_type == "reverse",],family="binomial")
+
+summary(m1)
+
+testDispersion(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+plot(participation ~ deepSuperficial, data = data[data$replay_type == "reverse",])
+
+```
 
 # Same with lmer
 
@@ -158,5 +224,22 @@ a1 = anova(m1)
 F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
 lme.dscore(m1,data=temp_data,type="lme4")
+
+```
+
+```{r}
+library(lmerTest)
+# temp_data$y_trans <- log(temp_data$participation+1)
+  
+m1 = lmer(participation ~ deepSuperficial + epoch  + (1 | basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
 
 ```
