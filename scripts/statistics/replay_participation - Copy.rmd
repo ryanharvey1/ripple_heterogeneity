@@ -39,14 +39,14 @@ data$UID  = factor(data$UID)
 summary(data)
 ```
 ```{r}
-temp_data <- data[data$epoch_rel_i == 0 & data$n_replays > 2 & data$epoch == "linear",]
+temp_data <- data[data$epoch_rel_i == 0 & data$n_replays > 25 & data$epoch == "linear",]
 summary(temp_data)
 ```
 
 
 
 ```{r}
-temp_data <- data[data$epoch_rel_i == 0 & data$n_replays > 40 & data$epoch == "linear",]
+temp_data <- data[data$epoch_rel_i == 0 & data$n_replays > 30 & data$epoch == "linear",]
 
 m1 = glmer(replay_par ~ deepSuperficial + (1|animal_id/basepath), weights=n_replays, data=temp_data,family="binomial")
 

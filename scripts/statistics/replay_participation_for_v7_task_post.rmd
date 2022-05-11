@@ -21,9 +21,16 @@ library(EMAtools)
 ```
 
 ```{r}
-data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/replay_participation_for_v7_task_post.csv")
+citation("DHARMa")
+```
+
+
+```{r}
+# data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/replay_participation_for_v7_task_post.csv")
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/replay_participation_for_all_sessions_task_post.csv")
+
 data <- data[data$deepSuperficial != "middle",]
-data <- data[data$n_replays > 0,]
+data <- data[data$n_replays > 30,]
 data <- data[!is.nan(data$replay_par),]
 
 data$basepath = factor(data$basepath)
@@ -34,6 +41,9 @@ data$epoch_i  = factor(data$epoch_i)
 data$UID  = factor(data$UID)
 
 summary(data)
+```
+```{r}
+unique(data$animal_id)
 ```
 
 ```{r}
@@ -50,12 +60,20 @@ plot(simulationOutput)
 # lme.dscore(m1,data=temp_data,type="lme4")
 plot(replay_par ~ deepSuperficial, data = data)
 ```
+```{r}
+plot(m1)
+```
 
 ```{r}
 
-# temp_data$y_trans <- log(temp_data$participation+1)
-  
-m1 = lmer(forward_reverse_ratio ~ deepSuperficial + (1 | basepath), data = data,REML=FALSE)
+data$forward_reverse_ratio <- (data$forward_replay_par / data$reverse_replay_par)
+
+temp_data <- data[!is.infinite(data$forward_reverse_ratio),]
+temp_data <- temp_data[!is.nan(temp_data$forward_reverse_ratio),]
+
+temp_data$forward_reverse_ratio <- log(temp_data$forward_reverse_ratio+2)
+
+m1 = lmer(forward_reverse_ratio ~ deepSuperficial + (1 | basepath), data = temp_data,REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
@@ -64,7 +82,9 @@ plot(simulationOutput)
 a1 = anova(m1)
 F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
-lme.dscore(m1,data=data,type="lme4")
+lme.dscore(m1,data=temp_data,type="lme4")
+plot(forward_reverse_ratio ~ deepSuperficial , data = temp_data)
+
 ```
 
 ```{r}
@@ -80,7 +100,12 @@ F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 ```
 
 ```{r}
+data$forward_reverse_ratio <- (data$forward_replay_par / data$reverse_replay_par)
 
+temp_data <- data[!is.infinite(data$forward_reverse_ratio),]
+temp_data <- temp_data[!is.nan(temp_data$forward_reverse_ratio),]
+temp_data$forward_reverse_ratio
+log(temp_data$forward_reverse_ratio+1)
 ```
 
 ```{r}
