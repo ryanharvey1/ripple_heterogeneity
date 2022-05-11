@@ -60,6 +60,7 @@ plot(simulationOutput)
 # lme.dscore(m1,data=temp_data,type="lme4")
 plot(replay_par ~ deepSuperficial, data = data)
 ```
+
 ```{r}
 plot(m1)
 ```
