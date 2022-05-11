@@ -1,0 +1,61 @@
+---
+title: "per_cell_contibution"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+
+```
+
+
+```{r}
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/replay_score_reduction.csv")
+
+data <- data[data$deepSuperficial != "middle",]
+data <- data[data$n_replay > 30,]
+# 
+data$basepath = factor(data$basepath)
+data$animal_id = factor(data$animal_id)
+data$deepSuperficial = factor(data$deepSuperficial)
+data$UID  = factor(data$UID)
+
+summary(data)
+```
+
+
+
+```{r}
+
+# data$forward_reverse_ratio <- (data$forward_replay_par / data$reverse_replay_par)
+# 
+# temp_data <- data[!is.infinite(data$forward_reverse_ratio),]
+# temp_data <- temp_data[!is.nan(temp_data$forward_reverse_ratio),]
+# 
+data$y_trans <- (log(data$per_cell_contribution+1))
+
+m1 = lmer(per_cell_contribution ~ deepSuperficial + (1 | animal_id/basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(per_cell_contribution ~ deepSuperficial , data = data)
+
+```
