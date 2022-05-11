@@ -59,6 +59,11 @@ plot(simulationOutput)
 # 
 # lme.dscore(m1,data=temp_data,type="lme4")
 plot(replay_par ~ deepSuperficial, data = data)
+
+# a1 = anova(m1)
+# F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
 ```
 
 ```{r}
