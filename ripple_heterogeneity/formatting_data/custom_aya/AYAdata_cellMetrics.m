@@ -17,7 +17,7 @@ basename = bz_BasenameFromBasepath(pwd);
                 
                 
 %% AYA data
-basename = bz_BasenameFromBasepath(pwd);
+basename = basenameFromBasepath(pwd);
 load([basename '.session.mat']);
 load([basename '.spikes.cellinfo.mat']);
 load('cell_waveforms.mat');
