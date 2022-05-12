@@ -63,27 +63,7 @@ cell_metrics = ProcessCellMetrics('basepath',basepath,...
     'manualAdjustMonoSyn',false,...
     'session',session,'forceReload',true);
 
-%%
-opts = spreadsheetImportOptions("NumVariables", 7);
 
-% Specify sheet and range
-opts.Sheet = "Hoja1";
-opts.DataRange = "A1:G77";
-
-% Specify column names and types
-opts.VariableNames = ["VarName1", "QUALITY", "REGION", "LAYER", "TYPE", "SHANK", "SUBTYPE"];
-opts.VariableTypes = ["double", "double", "double", "double", "double", "double", "string"];
-
-% Specify variable properties
-opts = setvaropts(opts, "SUBTYPE", "WhitespaceRule", "preserve");
-opts = setvaropts(opts, "SUBTYPE", "EmptyFieldRule", "auto");
-
-% Import the data
-whowhat = readtable("Z:\Data\AYAold\AYA10\day12\day12.xlsx", opts, "UseExcel", false);
-
-whowhat(1,:) = [];
-% Clear temporary variables
-clear opts
 %%
 whowhat = readwhowhat("Z:\Data\AYAold\AYA10\day12\day12.xlsx");
 
