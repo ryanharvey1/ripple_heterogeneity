@@ -78,7 +78,7 @@ def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc
 
 def run(
     basepath=None,
-    df=None,
+    replay_df=None,
     n_shuffles=1000,
     q_perc=90,
     expand_replay_epoch=0.05,
@@ -90,7 +90,7 @@ def run(
         of the number of deep and superficial cells
     Input:
         basepath: base path to the data
-        df: dataframe with the data from replay_run.load_results
+        replay_df: dataframe with the data from replay_run.load_results
         n_shuffles: number of shuffles for the label shuffling
         q_perc: percentile for the significance test
     Output:
@@ -99,13 +99,13 @@ def run(
     """
     if basepath is None:
         raise ValueError("basepath is required")
-    if df is None:
+    if replay_df is None:
         raise ValueError("df is required")
 
-    df_idx = (df.score_pval_time_swap < 0.05) & (df.basepath == basepath)
+    df_idx = (replay_df.score_pval_time_swap < 0.05) & (replay_df.basepath == basepath)
     # get the replay epochs for this basepath
-    start = df[df_idx].start
-    stop = df[df_idx].stop
+    start = replay_df[df_idx].start
+    stop = replay_df[df_idx].stop
     replay_epochs = nel.EpochArray(np.array([start, stop]).T)
     # expand the epochs by xxms
     replay_epochs = replay_epochs.expand(expand_replay_epoch)
@@ -124,7 +124,7 @@ def run(
         cell_metrics, replay_par_mat, n_shuffles=n_shuffles, q_perc=q_perc
     )
     # add the significant event identifiers to the dataframe
-    temp_df = df[df_idx]
+    temp_df = replay_df[df_idx]
     temp_df.reset_index(inplace=True)
     temp_df["sig_unit_bias"] = "unknown"
     temp_df.loc[sig_idx_sup, "sig_bias"] = "sup"
