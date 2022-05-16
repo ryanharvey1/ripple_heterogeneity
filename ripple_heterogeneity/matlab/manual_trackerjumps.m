@@ -18,9 +18,15 @@ function good_idx = manual_trackerjumps(ts,x,y,StartofRec,EndofRec,basepath,vara
 p = inputParser;
 addParameter(p,'darkmode',true,@islogical);
 addParameter(p,'restic_dir',1,@isnumeric);
+addParameter(p,'axis_equal',true,@islogical);
+addParameter(p,'alpha',.2,@isnumeric);
+
 parse(p,varargin{:});
 darkmode = p.Results.darkmode;
 restic_dir = p.Results.restic_dir;
+axis_equal = p.Results.axis_equal;
+alpha = p.Results.alpha;
+
 
 savets=[];
 for i=1:length(StartofRec)
@@ -29,7 +35,7 @@ for i=1:length(StartofRec)
     ytemp=y(ts>=StartofRec(i) & ts<=EndofRec(i));
     tstemp=ts(ts>=StartofRec(i) & ts<=EndofRec(i));
     % use the gui to cut out points
-    [~,~,in]=restrictMovement(xtemp,ytemp,restic_dir,darkmode);
+    [~,~,in]=restrictMovement(xtemp,ytemp,restic_dir,darkmode,axis_equal,alpha);
     % save the ts where the tracker error exists
     savets=[savets,tstemp(in)];
 end
@@ -41,7 +47,7 @@ basename = basenameFromBasepath(basepath);
 save(fullfile(basepath,[basename,'.restrictxy.mat']),'good_idx')
 end
 
-function [x,y,in]=restrictMovement(x,y,direction,darkmode)
+function [x,y,in]=restrictMovement(x,y,direction,darkmode,axis_equal,alpha)
 % restrictMovement allows you to draw a line around xy coordinates in order
 % to eliminate certain points you don't want...ie when the rat jumps out of
 % maze or tracker errors. 
@@ -68,18 +74,22 @@ end
 
 % set up figure
 if darkmode
-    fig=figure;plot(x,y,'Color',[1,1,1,0.2]);hold on
+    fig=figure;plot(x,y,'Color',[1,1,1,alpha]);hold on
     title('Click around the points you want to keep')
     xlabel('X')
     ylabel('Y')
-    axis equal
+    if axis_equal
+        axis equal
+    end
     darkBackground(gcf,[0.1 0.1 0.1],[0.7 0.7 0.7])
 else
-    fig=figure;plot(x,y,'Color',[0,0,0,0.2]);hold on
+    fig=figure;plot(x,y,'Color',[0,0,0,alpha]);hold on
     title('Click around the points you want to keep')
     xlabel('X')
     ylabel('Y')
-    axis equal
+    if axis_equal
+        axis equal
+    end
 end
 disp('PRESS "ENTER" TO EXIT')
 i=1;
