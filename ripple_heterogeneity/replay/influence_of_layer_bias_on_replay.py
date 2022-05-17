@@ -168,6 +168,14 @@ def get_weighted_avg_pyr_dist(cell_metrics, replay_par_mat):
         data = pd.DataFrame()
         data["classes"] = temp_df.deepSuperficial.values
 
+        # if no data, skip, but add nans
+        if len(data) == 0:
+            for method in weight_methods_options:
+                avg_pyr_dist.append(np.nan)
+                weight_methods.append(method)
+                event_id.append(i)
+            continue
+
         # iterate through weight methods
         for method in weight_methods_options:
 
@@ -182,7 +190,7 @@ def get_weighted_avg_pyr_dist(cell_metrics, replay_par_mat):
                 weight_methods.append(np.nan)
                 event_id.append(i)
                 continue
-            
+
             # calculate average distance
             avg_pyr_dist.append(
                 np.average(
