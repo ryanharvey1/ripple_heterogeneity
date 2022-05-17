@@ -1,6 +1,103 @@
+import os
+import pickle
 import numpy as np
+import pandas as pd
 from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
 import nelpy as nel
+import glob
+
+
+def sample_weight_calculator(data, sample_weighting_method, beta=None):
+    """
+    Calculate sample weights for a given dataframe.
+    Inputs:
+        data: pandas dataframe of categorical data
+        sample_weighting_method: string, one of "effective", "ins", "balance", "equal"
+        beta: float, only used if sample_weighting_method is
+            "effective" default: ((len(data) - 1) / len(data))
+    Returns:
+        sample_weights: numpy array of sample weights
+
+    example:
+        data = pd.DataFrame()
+        data["classes"] = ["Deep", "Superficial", "Deep", "Deep", "Superficial", "Deep"]
+
+        print(sample_weight_calculator(data, "effective"))
+        print(sample_weight_calculator(data, "ins"))
+        print(sample_weight_calculator(data, "isns"))
+        print(sample_weight_calculator(data, "balance"))
+        print(sample_weight_calculator(data, "equal"))
+
+        >> [0.742 1.258]
+        >> [0.667 1.333]
+        >> [0.828 1.172]
+        >> [0.75, 1.5]
+        >> [1 1]
+
+    https://www.kaggle.com/code/pnarerdoan/xgboost-imbalance-data/notebook
+
+    """
+
+    def get_weights_inverse_num_of_samples(data, power):
+        samples_per_class = list(data.value_counts(sort=False))
+        number_of_class = len(samples_per_class)
+        weights_for_samples = 1.0 / np.array(np.power(list(samples_per_class), power))
+        weights_for_samples = (
+            weights_for_samples / np.sum(weights_for_samples) * number_of_class
+        )
+        return weights_for_samples
+
+    def get_weights_effective_num_of_samples(data, beta):
+        if beta is None:
+            beta = (len(data) - 1) / len(data)
+
+        samples_per_class = list(data.value_counts(sort=False))
+        number_of_class = len(samples_per_class)
+
+        effective_num = 1.0 - np.power(beta, list(samples_per_class))
+        weights_for_samples = (1.0 - beta) / np.array(effective_num)
+        weights_for_samples = (
+            weights_for_samples / np.sum(weights_for_samples) * number_of_class
+        )
+
+        return weights_for_samples
+
+    def get_balance_sample_weights(data):
+
+        total_number_instace = len(data)
+        samples_per_class = list(data.value_counts(sort=False))
+        number_of_class = len(samples_per_class)
+
+        weights_for_samples = []
+
+        for i in range(len(samples_per_class)):
+            weights_for_samples.append(
+                total_number_instace / (number_of_class * list(samples_per_class)[i])
+            )
+
+        return weights_for_samples
+
+    def get_equal_weights(data):
+        samples_per_class = list(data.value_counts(sort=False))
+        number_of_class = len(samples_per_class)
+        weights_for_samples = np.ones((number_of_class,), dtype=int)
+
+        return weights_for_samples
+
+    if sample_weighting_method == "effective":
+        weights_for_samples = get_weights_effective_num_of_samples(data, beta)
+    elif sample_weighting_method == "ins":
+        weights_for_samples = get_weights_inverse_num_of_samples(data, power=1)
+    elif sample_weighting_method == "isns":
+        weights_for_samples = get_weights_inverse_num_of_samples(data, power=0.5)
+    elif sample_weighting_method == "balance":
+        weights_for_samples = get_balance_sample_weights(data)
+    elif sample_weighting_method == "equal":
+        weights_for_samples = get_equal_weights(data)
+    else:
+        raise ValueError("sample_weighting_method not recognized")
+
+    return weights_for_samples
 
 
 def shuffle_labels(labels):
@@ -35,6 +132,74 @@ def get_shuffled_labels(cell_metrics, replay_par_mat, ep, n_shuffles=1000):
     return n_deep, n_sup
 
 
+def get_weighted_avg_pyr_dist(cell_metrics, replay_par_mat):
+    """
+    Calculate weighted average pyr distance
+    Input:
+        cell_metrics: cell metrics dataframe
+        replay_par_mat: binary participation matrix
+    Output:
+        df: weighted average pyr distance
+    """
+
+    avg_pyr_dist = []
+    weight_methods = []
+    event_id = []
+    weight_methods_options = ["equal", "balance", "ins", "isns", "effective"]
+
+    for i in range(replay_par_mat.shape[1]):
+
+        # pull out index of active cells
+        cur_idx = replay_par_mat[:, i] == 1
+
+        # get active cells
+        temp_df = cell_metrics[cur_idx]
+
+        # keep only deep and superficial cells
+        temp_df = temp_df[
+            (temp_df.deepSuperficial == "Deep")
+            | (temp_df.deepSuperficial == "Superficial")
+        ]
+
+        # initiate weights
+        weights = np.tile(1.0, len(temp_df))
+
+        # make df of class labels
+        data = pd.DataFrame()
+        data["classes"] = temp_df.deepSuperficial.values
+
+        # iterate through weight methods
+        for method in weight_methods_options:
+
+            # add weights to respective locations
+            for weight, classes in zip(
+                sample_weight_calculator(data, method),
+                data.value_counts(sort=False).reset_index().classes.values,
+            ):
+                weights[np.where(temp_df.deepSuperficial.values == classes)[0]] = weight
+
+            # calculate average distance
+            avg_pyr_dist.append(
+                np.average(
+                    temp_df.deepSuperficialDistance.values,
+                    weights=weights,
+                )
+            )
+            # store weight method
+            weight_methods.append(method)
+            event_id.append(i)
+
+    df = pd.DataFrame()
+    df["avg_pyr_dist"] = np.hstack(avg_pyr_dist)
+    df["weight_methods"] = np.hstack(weight_methods)
+    df["event_id"] = np.hstack(event_id)
+
+    # make df long to wide format
+    df = pd.pivot(df, index='event_id', columns='weight_methods', values='avg_pyr_dist').reset_index()
+
+    return df
+
+
 def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc=90):
     """
     Get the number of significant events
@@ -60,10 +225,14 @@ def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc
     # get the number of observed deep and superficial cells
     n_deep_obs = []
     n_sup_obs = []
+    weighted_avg_pyr_dist = []
     for i in range(replay_par_mat.shape[1]):
         cur_idx = replay_par_mat[:, i] == 1
-        n_deep_obs.append(sum(cell_metrics[cur_idx].deepSuperficial == "Deep"))
-        n_sup_obs.append(sum(cell_metrics[cur_idx].deepSuperficial == "Superficial"))
+        deep_idx = cell_metrics[cur_idx].deepSuperficial.values == "Deep"
+        sup_idx = cell_metrics[cur_idx].deepSuperficial.values == "Superficial"
+
+        n_deep_obs.append(sum(deep_idx))
+        n_sup_obs.append(sum(sup_idx))
 
     # get the index of significant events
     sig_idx_deep, _ = functions.get_significant_events(
@@ -73,7 +242,7 @@ def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc
         np.hstack(n_sup_obs), n_sup, q=q_perc
     )
 
-    return sig_idx_deep, sig_idx_sup
+    return sig_idx_deep, sig_idx_sup, n_deep_obs, n_sup_obs
 
 
 def run(
@@ -120,14 +289,38 @@ def run(
         st.data, replay_epochs.starts, replay_epochs.stops, par_type="binary"
     )
     # get the significant events
-    sig_idx_deep, sig_idx_sup = get_significant_events(
+    (sig_idx_deep, sig_idx_sup, n_deep_obs, n_sup_obs,) = get_significant_events(
         cell_metrics, replay_par_mat, n_shuffles=n_shuffles, q_perc=q_perc
     )
+
+    weighted_df = get_weighted_avg_pyr_dist(
+        cell_metrics, replay_par_mat
+    )
+
     # add the significant event identifiers to the dataframe
     temp_df = replay_df[df_idx]
-    temp_df.reset_index(inplace=True)
+    temp_df.reset_index(drop=True, inplace=True)
     temp_df["sig_unit_bias"] = "unknown"
-    temp_df.loc[sig_idx_sup, "sig_bias"] = "sup"
-    temp_df.loc[sig_idx_deep, "sig_bias"] = "deep"
+    temp_df.loc[sig_idx_sup, "sig_unit_bias"] = "sup"
+    temp_df.loc[sig_idx_deep, "sig_unit_bias"] = "deep"
+    temp_df["n_deep_obs"] = n_deep_obs
+    temp_df["n_sup_obs"] = n_sup_obs
+
+    temp_df = pd.concat([temp_df, weighted_df], axis=1)
 
     return temp_df
+
+
+def load_results(save_path):
+    """
+    load_results: load results from a directory
+    """
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+    df = pd.DataFrame()
+    for session in sessions:
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+        if results is None:
+            continue
+        df = pd.concat([df, results], ignore_index=True)
+    return df
