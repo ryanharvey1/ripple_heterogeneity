@@ -208,7 +208,9 @@ def get_weighted_avg_pyr_dist(cell_metrics, replay_par_mat):
     df["event_id"] = np.hstack(event_id)
 
     # make df long to wide format
-    df = pd.pivot(df, index='event_id', columns='weight_methods', values='avg_pyr_dist').reset_index()
+    df = pd.pivot(
+        df, index="event_id", columns="weight_methods", values="avg_pyr_dist"
+    ).reset_index()
 
     return df
 
@@ -266,6 +268,7 @@ def run(
     expand_replay_epoch=0.05,
     brainRegion="CA1",
     putativeCellType="Pyr",
+    only_significant_replay=False,
 ):
     """
     Run the analysis to locate replay events with significant bias
@@ -284,34 +287,39 @@ def run(
     if replay_df is None:
         raise ValueError("df is required")
 
-    df_idx = (replay_df.score_pval_time_swap < 0.05) & (replay_df.basepath == basepath)
+    if only_significant_replay:
+        df_idx = (replay_df.score_pval_time_swap < 0.05) & (
+            replay_df.basepath == basepath
+        )
+        replay_df = replay_df[df_idx]
+
     # get the replay epochs for this basepath
-    start = replay_df[df_idx].start
-    stop = replay_df[df_idx].stop
-    replay_epochs = nel.EpochArray(np.array([start, stop]).T)
+    replay_epochs = nel.EpochArray(np.array([replay_df.start, replay_df.stop]).T)
     # expand the epochs by xxms
     replay_epochs = replay_epochs.expand(expand_replay_epoch)
+
     # load the spikes
     st, cell_metrics = loading.load_spikes(
         basepath, brainRegion=brainRegion, putativeCellType=putativeCellType
     )
+
     # add deep superficial labels
     cell_metrics = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cell_metrics)
+
     # get the participation matrix
     replay_par_mat = functions.get_participation(
         st.data, replay_epochs.starts, replay_epochs.stops, par_type="binary"
     )
+
     # get the significant events
     (sig_idx_deep, sig_idx_sup, n_deep_obs, n_sup_obs,) = get_significant_events(
         cell_metrics, replay_par_mat, n_shuffles=n_shuffles, q_perc=q_perc
     )
 
-    weighted_df = get_weighted_avg_pyr_dist(
-        cell_metrics, replay_par_mat
-    )
+    weighted_df = get_weighted_avg_pyr_dist(cell_metrics, replay_par_mat)
 
     # add the significant event identifiers to the dataframe
-    temp_df = replay_df[df_idx]
+    temp_df = replay_df
     temp_df.reset_index(drop=True, inplace=True)
     temp_df["sig_unit_bias"] = "unknown"
     temp_df.loc[sig_idx_sup, "sig_unit_bias"] = "sup"
