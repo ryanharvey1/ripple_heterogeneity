@@ -120,6 +120,8 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
     UID = []
     n_ripples = []
     n_replays = []
+    n_forward_replays = []
+    n_reverse_replays = []
     deepSuperficialDistance = []
     replay_fr = []
     ripple_fr = []
@@ -228,6 +230,17 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
         n_replays.append(
             np.tile(all_replay[beh_ep].n_intervals, sta_placecells.data.shape[0])
         )
+        n_forward_replays.append(
+            np.tile(
+                forward_replay[beh_ep].n_intervals, sta_placecells.data.shape[0]
+            )
+        )
+        n_reverse_replays.append(
+            np.tile(
+                reverse_replay[beh_ep].n_intervals, sta_placecells.data.shape[0]
+            )
+        )
+
         n_ripples.append(
             np.tile(
                 ripple_outside_replay[beh_ep].n_intervals, sta_placecells.data.shape[0]
@@ -250,6 +263,8 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
     temp_df["UID"] = np.hstack(UID)
     temp_df["deepSuperficialDistance"] = np.hstack(deepSuperficialDistance)
     temp_df["n_replays"] = np.hstack(n_replays)
+    temp_df["n_forward_replays"] = np.hstack(n_forward_replays)
+    temp_df["n_reverse_replays"] = np.hstack(n_reverse_replays)
     temp_df["n_ripples"] = np.hstack(n_ripples)
     temp_df["basepath"] = basepath
 
