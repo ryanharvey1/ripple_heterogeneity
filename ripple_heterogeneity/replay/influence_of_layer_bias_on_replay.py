@@ -240,7 +240,6 @@ def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc
     # get the number of observed deep and superficial cells
     n_deep_obs = []
     n_sup_obs = []
-    weighted_avg_pyr_dist = []
     for i in range(replay_par_mat.shape[1]):
         cur_idx = replay_par_mat[:, i] == 1
         deep_idx = cell_metrics[cur_idx].deepSuperficial.values == "Deep"
@@ -291,6 +290,9 @@ def run(
         df_idx = (replay_df.score_pval_time_swap < 0.05) & (
             replay_df.basepath == basepath
         )
+        replay_df = replay_df[df_idx]
+    else:
+        df_idx = (replay_df.basepath == basepath)
         replay_df = replay_df[df_idx]
 
     # get the replay epochs for this basepath
