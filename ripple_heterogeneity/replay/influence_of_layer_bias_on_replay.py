@@ -178,6 +178,11 @@ def get_weighted_avg_pyr_dist(cell_metrics, replay_par_mat):
             ):
                 weights[np.where(temp_df.deepSuperficial.values == classes)[0]] = weight
 
+            if len(weights) == 0:
+                weight_methods.append(np.nan)
+                event_id.append(i)
+                continue
+            
             # calculate average distance
             avg_pyr_dist.append(
                 np.average(
