@@ -46,7 +46,7 @@ summary(data)
 # 
 data$y_trans <- (log(data$per_cell_contribution+1))
 
-m1 = lmer(per_cell_contribution ~ deepSuperficial + (1 | animal_id/basepath), data = data,REML=FALSE)
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal_id/basepath), data = data,REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
@@ -56,6 +56,6 @@ a1 = anova(m1)
 F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
 lme.dscore(m1,data=data,type="lme4")
-plot(per_cell_contribution ~ deepSuperficial , data = data)
+plot(y_trans ~ deepSuperficial , data = data)
 
 ```
