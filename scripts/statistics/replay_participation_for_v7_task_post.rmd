@@ -67,7 +67,43 @@ lme.dscore(m1,data=temp_data,type="lme4")
 ```
 
 ```{r}
-plot(m1)
+m1 = glmer(forward_replay_par ~ deepSuperficial + (1|animal_id/basepath), weights=n_forward_replays, data=data,family="binomial")
+
+
+summary(m1)
+
+testDispersion(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+# 
+# lme.dscore(m1,data=temp_data,type="lme4")
+plot(forward_replay_par ~ deepSuperficial, data = data)
+
+# a1 = anova(m1)
+# F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+```
+
+```{r}
+m1 = glmer(reverse_replay_par ~ deepSuperficial + (1|animal_id/basepath), weights=n_reverse_replays, data=data,family="binomial")
+
+
+summary(m1)
+
+testDispersion(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+# 
+# lme.dscore(m1,data=temp_data,type="lme4")
+plot(reverse_replay_par ~ deepSuperficial, data = data)
+
+# a1 = anova(m1)
+# F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
 ```
 
 ```{r}
@@ -114,9 +150,20 @@ temp_data$forward_reverse_ratio
 log(temp_data$forward_reverse_ratio+1)
 ```
 
-```{r}
+## replay gain
 
+```{r}
+data$y_trans <- log(data$replay_df_gain_avg_to_replay+1)
+m1 = lmer(y_trans ~ deepSuperficial + (1 |  basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 ```
+
 
 ```{r}
 
