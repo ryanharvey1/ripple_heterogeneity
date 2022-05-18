@@ -130,6 +130,7 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
     forward_replay_par = []
     reverse_replay_par = []
     non_replay_fr = []
+    non_ripple_avg_fr = []
 
     # iterate through all behavioral epochs and get ripple and replay participation
     for beh_ep_i, beh_ep in enumerate(behavior_epochs):
@@ -138,6 +139,8 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
 
         # get avg firing rate over epoch
         avg_fr.append(current_st.n_events / beh_ep.length)
+        # get avg firing rate outside of ripples
+        non_ripple_avg_fr.append(current_st[~ripple_epochs].n_events / beh_ep[~ripple_epochs].length)
 
         # get ripple firing rate
         # check if any spikes left in epoch
@@ -250,6 +253,7 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
     # stack all data
     temp_df = pd.DataFrame()
     temp_df["avg_fr"] = np.hstack(avg_fr)
+    temp_df["non_ripple_avg_fr"] = np.hstack(non_ripple_avg_fr)
     temp_df["replay_fr"] = np.hstack(replay_fr)
     temp_df["ripple_fr"] = np.hstack(ripple_fr)
     temp_df["non_replay_fr"] = np.hstack(non_replay_fr)
