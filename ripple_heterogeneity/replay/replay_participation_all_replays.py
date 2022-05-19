@@ -6,7 +6,7 @@ from ripple_heterogeneity.utils import functions, loading, compress_repeated_epo
 import nelpy as nel
 
 
-def handle_epochs(basepath, environments, epochs_to_combine):
+def handle_epochs(basepath, environments, epochs_to_combine, min_env_criteria):
     """
     handle_epochs takes in a list of epochs and combines them into a single epoch
     
@@ -26,41 +26,50 @@ def handle_epochs(basepath, environments, epochs_to_combine):
     idx, _ = functions.find_epoch_pattern(epoch_df.environment, environments)
     if idx is None:
         print('No epochs found for {}'.format(environments))
-    else:
-        epoch_df = epoch_df[idx]
+        idx, _ = functions.find_epoch_pattern(epoch_df.environment, min_env_criteria)
+    if idx is None:
+        print('No epochs found for {}'.format(min_env_criteria))
+        return None,None
+    epoch_df = epoch_df[idx]
 
     # get index of epochs to combine
     idx, _ = functions.find_epoch_pattern(epoch_df.environment, epochs_to_combine)
-
-    epoch_labels = []
-    # get epoch array of remaining individual epochs
-    if not idx.all():
-        non_combined_epochs = nel.EpochArray(
-            [np.array([epoch_df[~idx].startTime, epoch_df[~idx].stopTime]).T]
-        )
-        epoch_labels.append(epoch_df[~idx].environment)
-
-    # get epoch array of combined epochs
-    behavior_epochs_ = nel.EpochArray(
-        [np.array([epoch_df[idx].iloc[0].startTime, epoch_df[idx].iloc[-1].stopTime]).T]
-    )
-    # concatenate combined epoch labels
-    epoch_labels.append("_".join(epoch_df[idx].environment))
-
-    # stack epoch labels into a list
-    epoch_labels = np.hstack(epoch_labels)
-
-    # align epochs labels by start times that way, behavior_epochs and epoch_labels will match
-    sort_idx = np.argsort(
-        np.array([non_combined_epochs.starts, behavior_epochs_.starts]).T
-    )
-    epoch_labels = epoch_labels[sort_idx][0]
-
-    # see if non_combined_epochs is a variable and if so, combine with behavior_epochs
-    if "non_combined_epochs" in locals():
-        behavior_epochs = behavior_epochs_ | non_combined_epochs
+    if idx is None:
+        print('No epochs found for {}'.format(epochs_to_combine))
+        epoch_labels = epoch_df.environment.values
+        behavior_epochs = nel.EpochArray(
+                [np.array([epoch_df.startTime, epoch_df.stopTime]).T]
+            )
     else:
-        behavior_epochs = behavior_epochs_
+        epoch_labels = []
+        # get epoch array of remaining individual epochs
+        if not idx.all():
+            non_combined_epochs = nel.EpochArray(
+                [np.array([epoch_df[~idx].startTime, epoch_df[~idx].stopTime]).T]
+            )
+            epoch_labels.append(epoch_df[~idx].environment)
+
+        # get epoch array of combined epochs
+        behavior_epochs_ = nel.EpochArray(
+            [np.array([epoch_df[idx].iloc[0].startTime, epoch_df[idx].iloc[-1].stopTime]).T]
+        )
+        # concatenate combined epoch labels
+        epoch_labels.append("_".join(epoch_df[idx].environment))
+
+        # stack epoch labels into a list
+        epoch_labels = np.hstack(epoch_labels)
+
+        # align epochs labels by start times that way, behavior_epochs and epoch_labels will match
+        sort_idx = np.argsort(
+            np.array([non_combined_epochs.starts, behavior_epochs_.starts]).T
+        )
+        epoch_labels = epoch_labels[sort_idx][0]
+
+        # see if non_combined_epochs is a variable and if so, combine with behavior_epochs
+        if "non_combined_epochs" in locals():
+            behavior_epochs = behavior_epochs_ | non_combined_epochs
+        else:
+            behavior_epochs = behavior_epochs_
 
     return behavior_epochs, epoch_labels
 
@@ -74,7 +83,8 @@ def run(
     min_spk_count=200,
     type_shuffle_for_replay="score_pval_time_swap",
     environments=["linear", "sleep"],
-    epochs_to_combine=["linear", "sleep"],  # combines tasks replay participation
+    min_env_criteria = None,
+    epochs_to_combine=["linear", "sleep"],
 ):
     """
     Compile replay participation for a session
@@ -88,6 +98,7 @@ def run(
         min_spk_count: minimum number of spikes to include in replay participation
         type_shuffle_for_replay: type of shuffle to use for replay participation
         environments: list of environments to use
+        min_env_criteria: if environments pattern doesn't exist in data, use this criteria
         epochs_to_combine: list of epochs to combine
 
     Outputs:
@@ -121,7 +132,7 @@ def run(
     canidate_non_replay = nel.EpochArray(np.array([starts, stops]).T)
 
     behavior_epochs, epoch_labels = handle_epochs(
-        basepath, environments, epochs_to_combine
+        basepath, environments, epochs_to_combine, min_env_criteria
     )
     if behavior_epochs is None:
         return None
