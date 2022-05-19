@@ -5,21 +5,107 @@ import pandas as pd
 from ripple_heterogeneity.utils import functions, loading, compress_repeated_epochs
 import nelpy as nel
 
-# combines task (linear track) and post task replay participation
 
-def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=0.05, min_spk_count=200):
+def handle_epochs(basepath, environments, epochs_to_combine):
+    """
+    handle_epochs takes in a list of epochs and combines them into a single epoch
+    
+    Inputs:
+        basepath: string, path to session
+        environments: list of strings, environments to use
+        epochs_to_combine: list of strings, epochs to combine
+    Outputs:
+        combined_epochs: nelpy epoch array, combined epochs
+
+    """
+    # get session epochs
+    epoch_df = loading.load_epoch(basepath)
+    # compress back to back sleep epochs
+    epoch_df = compress_repeated_epochs.main(epoch_df)
+    # just keep these epochs in var 'environments'
+    idx, _ = functions.find_epoch_pattern(epoch_df.environment, environments)
+    if idx is None:
+        print('No epochs found for {}'.format(environments))
+    else:
+        epoch_df = epoch_df[idx]
+
+    # get index of epochs to combine
+    idx, _ = functions.find_epoch_pattern(epoch_df.environment, epochs_to_combine)
+
+    epoch_labels = []
+    # get epoch array of remaining individual epochs
+    if not idx.all():
+        non_combined_epochs = nel.EpochArray(
+            [np.array([epoch_df[~idx].startTime, epoch_df[~idx].stopTime]).T]
+        )
+        epoch_labels.append(epoch_df[~idx].environment)
+
+    # get epoch array of combined epochs
+    behavior_epochs_ = nel.EpochArray(
+        [np.array([epoch_df[idx].iloc[0].startTime, epoch_df[idx].iloc[-1].stopTime]).T]
+    )
+    # concatenate combined epoch labels
+    epoch_labels.append("_".join(epoch_df[idx].environment))
+
+    # stack epoch labels into a list
+    epoch_labels = np.hstack(epoch_labels)
+
+    # align epochs labels by start times that way, behavior_epochs and epoch_labels will match
+    sort_idx = np.argsort(
+        np.array([non_combined_epochs.starts, behavior_epochs_.starts]).T
+    )
+    epoch_labels = epoch_labels[sort_idx][0]
+
+    # see if non_combined_epochs is a variable and if so, combine with behavior_epochs
+    if "non_combined_epochs" in locals():
+        behavior_epochs = behavior_epochs_ | non_combined_epochs
+    else:
+        behavior_epochs = behavior_epochs_
+
+    return behavior_epochs, epoch_labels
+
+
+def run(
+    basepath=None,
+    replay_df=None,
+    replay_save_path=None,
+    alpha=0.05,
+    partic_pad=0.05,
+    min_spk_count=200,
+    type_shuffle_for_replay="score_pval_time_swap",
+    environments=["linear", "sleep"],
+    epochs_to_combine=["linear", "sleep"],  # combines tasks replay participation
+):
     """
     Compile replay participation for a session
+
     Inputs:
-        session: session directory
+        basepath: session directory
+        replay_df: dataframe of replay data
+        replay_save_path: path to save replay participation data
+        alpha: alpha value for replay participation
+        partic_pad: padding for replay participation
+        min_spk_count: minimum number of spikes to include in replay participation
+        type_shuffle_for_replay: type of shuffle to use for replay participation
+        environments: list of environments to use
+        epochs_to_combine: list of epochs to combine
+
     Outputs:
         temp_df: pandas dataframe of replay and ripple participation
 
     """
+
+    if basepath is None:
+        raise ValueError("basepath is required")
+    if replay_df is None:
+        raise ValueError("replay_df is required")
+    if replay_save_path is None:
+        raise ValueError("replay_save_path is required")
+
     # select current session from replay_df
     replay_df = replay_df[replay_df.basepath == basepath]
 
-    sig_replay_idx = replay_df.score_pval_time_swap <= alpha
+    sig_replay_idx = replay_df[type_shuffle_for_replay] <= alpha
 
     starts = replay_df[sig_replay_idx & (replay_df.replay_type == "forward")].start
     stops = replay_df[sig_replay_idx & (replay_df.replay_type == "forward")].stop
@@ -29,24 +115,16 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
     stops = replay_df[sig_replay_idx & (replay_df.replay_type == "reverse")].stop
     reverse_replay = nel.EpochArray(np.array([starts, stops]).T)
 
-    non_sig_replay_idx = replay_df.score_pval_time_swap > alpha
+    non_sig_replay_idx = replay_df[type_shuffle_for_replay] > alpha
     starts = replay_df[non_sig_replay_idx].start
     stops = replay_df[non_sig_replay_idx].stop
     canidate_non_replay = nel.EpochArray(np.array([starts, stops]).T)
 
-    # get session epochs
-    epoch_df = loading.load_epoch(basepath)
-    # compress back to back sleep epochs
-    epoch_df = compress_repeated_epochs.main(epoch_df)
-    # just keep linear and sleep epochs
-    idx, _ = functions.find_epoch_pattern(epoch_df.environment, ["linear","sleep"])
-    epoch_df = epoch_df[idx]
- 
-    # add session epochs into nelpy epoch array
-    behavior_epochs = nel.EpochArray(
-        [np.array([epoch_df.iloc[0].startTime, epoch_df.iloc[-1].stopTime]).T]
+    behavior_epochs, epoch_labels = handle_epochs(
+        basepath, environments, epochs_to_combine
     )
-
+    if behavior_epochs is None:
+        return None
     # get ripple epochs
     ripples = loading.load_ripples_events(basepath)
     ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
@@ -58,7 +136,9 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
     # locate active units that were used in anlysis
     # because out/inbound templates were used seperately, we need to include both
     # always load cell metrics from source to get most up to date data
-    st, cell_metrics = loading.load_spikes(basepath, putativeCellType="Pyr", brainRegion="CA1")
+    st, cell_metrics = loading.load_spikes(
+        basepath, putativeCellType="Pyr", brainRegion="CA1"
+    )
 
     st._data = st.data[(cell_metrics.spikeCount > min_spk_count)]
     cell_metrics = cell_metrics[(cell_metrics.spikeCount > min_spk_count)]
@@ -140,7 +220,9 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
         # get avg firing rate over epoch
         avg_fr.append(current_st.n_events / beh_ep.length)
         # get avg firing rate outside of ripples
-        non_ripple_avg_fr.append(current_st[~ripple_epochs].n_events / beh_ep[~ripple_epochs].length)
+        non_ripple_avg_fr.append(
+            current_st[~ripple_epochs].n_events / beh_ep[~ripple_epochs].length
+        )
 
         # get ripple firing rate
         # check if any spikes left in epoch
@@ -221,7 +303,7 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
 
         # get epoch info
         epoch.append(
-            [epoch_df.environment.values[beh_ep_i]] * sta_placecells.data.shape[0]
+            [epoch_labels[beh_ep_i]] * sta_placecells.data.shape[0]
         )
         epoch_i.append(np.tile(beh_ep_i, sta_placecells.data.shape[0]))
 
@@ -234,14 +316,10 @@ def run(basepath, replay_df=None, replay_save_path=None, alpha=0.05, partic_pad=
             np.tile(all_replay[beh_ep].n_intervals, sta_placecells.data.shape[0])
         )
         n_forward_replays.append(
-            np.tile(
-                forward_replay[beh_ep].n_intervals, sta_placecells.data.shape[0]
-            )
+            np.tile(forward_replay[beh_ep].n_intervals, sta_placecells.data.shape[0])
         )
         n_reverse_replays.append(
-            np.tile(
-                reverse_replay[beh_ep].n_intervals, sta_placecells.data.shape[0]
-            )
+            np.tile(reverse_replay[beh_ep].n_intervals, sta_placecells.data.shape[0])
         )
 
         n_ripples.append(
