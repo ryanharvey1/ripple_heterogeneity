@@ -67,7 +67,8 @@ def handle_epochs(basepath, environments, epochs_to_combine, min_env_criteria):
 
         # see if non_combined_epochs is a variable and if so, combine with behavior_epochs
         if "non_combined_epochs" in locals():
-            behavior_epochs = behavior_epochs_ | non_combined_epochs
+            # Set addition of epochs to behavior_epochs
+            behavior_epochs = behavior_epochs_ + non_combined_epochs
         else:
             behavior_epochs = behavior_epochs_
 
