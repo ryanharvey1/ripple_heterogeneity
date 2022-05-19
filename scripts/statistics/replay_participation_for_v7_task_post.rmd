@@ -31,7 +31,11 @@ data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/replay_participati
 
 data <- data[data$deepSuperficial != "middle",]
 data <- data[data$n_replays > 30,]
+# data <- data[!is.nan(data$replay_df_gain_avg_to_replay),]
 data <- data[!is.nan(data$replay_par),]
+
+data <- data[data$epoch == "linear_sleep",]
+
 
 data$basepath = factor(data$basepath)
 data$animal_id = factor(data$animal_id)
@@ -153,8 +157,28 @@ log(temp_data$forward_reverse_ratio+1)
 ## replay gain
 
 ```{r}
-data$y_trans <- log(data$replay_df_gain_avg_to_replay+1)
-m1 = lmer(y_trans ~ deepSuperficial + (1 |  basepath), data = data,REML=FALSE)
+
+data[data$animal_id == "Rat08" | data$animal_id == "Gatsby" ,]
+```
+
+```{r}
+temp_data <- data[data$animal_id != "Rat08" & data$animal_id != "Gatsby" ,]
+
+temp_data$y_trans <- temp_data$replay_df_gain_avg_to_replay+1
+
+mdl_boxcox <- boxcox(y_trans ~ deepSuperficial,data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+max_lambda
+
+summary(temp_data)
+```
+
+```{r}
+temp_data <- data[data$animal_id != "Rat08" & data$animal_id != "Gatsby" ,]
+
+temp_data$y_trans <- (temp_data$replay_df_gain_avg_to_replay+1)^max_lambda
+
+m1 = lmer(y_trans ~ deepSuperficial + (1|animal_id/basepath), data = temp_data,REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
@@ -162,14 +186,24 @@ plot(simulationOutput)
 
 a1 = anova(m1)
 F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+plot(y_trans ~ deepSuperficial , data = temp_data)
 ```
 
 
-```{r}
 
+```{r}
+data$y_trans <- (data$replay_df_gain_avg_to_replay+2)^max_lambda
+
+m1 = lm(y_trans ~ deepSuperficial, data = data)
+summary(m1)
+
+plot(m1)
 ```
 
 ```{r}
+hist(sqrt(data$replay_df_gain_avg_to_replay+10),50)
+hist(data$replay_df_gain_avg_to_replay,50)
 
 ```
 
