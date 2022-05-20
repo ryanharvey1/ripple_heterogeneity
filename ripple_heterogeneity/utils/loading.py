@@ -900,7 +900,7 @@ def load_mua_events(basepath):
     try:
         filename = glob.glob(basepath+os.sep+'*mua_ca1_pyr.events.mat')[0]
     except:
-        # warnings.warn("file does not exist")
+        warnings.warn("file does not exist")
         return pd.DataFrame()
 
     # load matfile
