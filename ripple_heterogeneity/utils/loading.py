@@ -884,13 +884,16 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
 def load_mua(basepath):
     """
     Loads the MUA data from the basepath.
+    Meant to load .mat file created by find_HSE.m
+
     input:
         basepath: str
             The path to the folder containing the MUA data.
     output:
         mua_data: pandas.DataFrame
             The pandas.DataFrame containing the MUA data
-
+            
+    TODO: if none exist in basepath, create one
     """
 
     # locate .mat file
