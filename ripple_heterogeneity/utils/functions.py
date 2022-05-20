@@ -446,7 +446,7 @@ def get_participation(st, event_starts, event_stops, par_type="binary"):
     return unit_mat
 
 
-def get_significant_events(scores, shuffled_scores, q=95):
+def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
     """Return the significant events based on percentiles.
     NOTE: The score is compared to the distribution of scores obtained
     using the randomized data and a Monte Carlo p-value can be computed
@@ -470,7 +470,14 @@ def get_significant_events(scores, shuffled_scores, q=95):
         shuffled_scores = shuffled_scores.T
 
     n, _ = shuffled_scores.shape
-    r = np.sum(abs(shuffled_scores) >= abs(scores), axis=0)
+    if tail == "both":
+        r = np.sum(abs(shuffled_scores) >= abs(scores), axis=0)
+    elif tail == "right":
+        r = np.sum(shuffled_scores >= scores, axis=0)
+    elif tail == "left":
+        r = np.sum(shuffled_scores <= scores, axis=0)
+    else:
+        raise ValueError("tail must be 'left', 'right', or 'both'")
     pvalues = (r + 1) / (n + 1)
 
     # set nan scores to 1
@@ -1150,3 +1157,24 @@ def get_rank_order(
         raise Exception("other method, " + method + " is not implemented")
 
     return np.nanmedian(rank_order, axis=1), rank_order
+
+def overlap_intersect(epoch,interval):
+    """
+    Returns the epochs with overlap with interval
+    Input:
+        epoch: nelpy.EpochArray
+            The epochs to check
+        interval: nelpy.IntervalArray
+            The interval to check for overlap
+    Output:
+        epoch: nelpy.EpochArray
+            The epochs with overlap with interval
+    """
+    new_intervals = []
+    for epa in (epoch):
+        if any((interval.starts < epa.stop) & (interval.stops > epa.start)):
+            new_intervals.append([epa.start, epa.stop])
+
+    out = type(epoch)(new_intervals)
+    out._domain = epoch.domain
+    return out
