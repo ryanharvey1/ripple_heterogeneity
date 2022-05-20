@@ -1158,7 +1158,7 @@ def get_rank_order(
 
     return np.nanmedian(rank_order, axis=1), rank_order
 
-def overlap_intersect(epoch,interval):
+def overlap_intersect(epoch,interval,return_indices=True):
     """
     Returns the epochs with overlap with interval
     Input:
@@ -1166,15 +1166,21 @@ def overlap_intersect(epoch,interval):
             The epochs to check
         interval: nelpy.IntervalArray
             The interval to check for overlap
+        return_indices: bool
+            If True, returns the indices of the epochs (interval) that overlap    
     Output:
         epoch: nelpy.EpochArray
             The epochs with overlap with interval
     """
     new_intervals = []
+    indices = []
     for epa in (epoch):
         if any((interval.starts < epa.stop) & (interval.stops > epa.start)):
             new_intervals.append([epa.start, epa.stop])
-
+            cand_ep_idx = np.where((interval.starts < epa.stop) & (interval.stops > epa.start))
+            indices.append(cand_ep_idx[0][0])
     out = type(epoch)(new_intervals)
     out._domain = epoch.domain
+    if return_indices:
+        return out, indices
     return out
