@@ -880,3 +880,45 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     channel_df['basepath'] = basepath
 
     return channel_df, ripple_average, ripple_time_axis
+
+def load_mua(basepath):
+    """
+    Loads the MUA data from the basepath.
+    input:
+        basepath: str
+            The path to the folder containing the MUA data.
+    output:
+        mua_data: pandas.DataFrame
+            The pandas.DataFrame containing the MUA data
+
+    """
+
+    # locate .mat file
+    try:
+        filename = glob.glob(basepath+os.sep+'*mua_ca1_pyr.events.mat')[0]
+    except:
+        # warnings.warn("file does not exist")
+        return pd.DataFrame()
+
+    # load matfile
+    data = sio.loadmat(filename)
+
+    # pull out and package data
+    df = pd.DataFrame()
+    df["start"] = data['HSE']["timestamps"][0][0][:, 0]
+    df["stop"] = data['HSE']["timestamps"][0][0][:, 1]
+    df["peaks"] = data['HSE']["peaks"][0][0]
+    df["center"] = data['HSE']["center"][0][0]
+    df["duration"] = data['HSE']["duration"][0][0]
+    df["amplitude"] = data['HSE']["amplitudes"][0][0]
+    df["amplitudeUnits"] = data['HSE']["amplitudeUnits"][0][0][0]
+    df["detectorName"] = data['HSE']["detectorinfo"][0][0]["detectorname"][0][0][0]
+
+    # get basename and animal
+    normalized_path = os.path.normpath(filename)
+    path_components = normalized_path.split(os.sep)
+    df["basepath"] = basepath
+    df["basename"] = path_components[-2]
+    df["animal"] = path_components[-3]
+
+    return df
