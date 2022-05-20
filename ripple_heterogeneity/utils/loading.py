@@ -881,7 +881,7 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
 
     return channel_df, ripple_average, ripple_time_axis
 
-def load_mua(basepath):
+def load_mua_events(basepath):
     """
     Loads the MUA data from the basepath.
     Meant to load .mat file created by find_HSE.m
@@ -892,7 +892,7 @@ def load_mua(basepath):
     output:
         mua_data: pandas.DataFrame
             The pandas.DataFrame containing the MUA data
-            
+
     TODO: if none exist in basepath, create one
     """
 
