@@ -193,7 +193,7 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
 
     # if there is no behavior data, return
     if (beh_df is None) | (len(beh_df) == 0):
-        return None,None,None
+        return None, None, None
 
     # find linear track
     idx = epoch_df.environment == "linear"
@@ -204,21 +204,21 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     # define the linear track epoch
     beh_epochs_linear = beh_epochs[idx]
 
-    if 'linearized' not in beh_df.columns:
-        beh_df['linearized'] = np.nan
+    if "linearized" not in beh_df.columns:
+        beh_df["linearized"] = np.nan
 
     # if there is no linearized data, make it
     if np.isnan(beh_df.linearized).all():
-        if 'x' not in beh_df.columns:
-            return None,None,None
+        if "x" not in beh_df.columns:
+            return None, None, None
         if np.isnan(beh_df.x).all():
-            return None,None,None
+            return None, None, None
         x, _ = functions.linearize_position(beh_df.x, beh_df.y)
         beh_df.linearized = x
 
     # if there is no linear track tracking data, return
     if np.isnan(beh_df.linearized).all():
-        return None,None,None
+        return None, None, None
 
     # interpolate behavior to minimize nan gaps using linear
     # will only interpolate out to 5 seconds
@@ -318,6 +318,49 @@ def restrict_to_place_cells(
     return sta_placecells, tc, bst_run, cell_metrics_, total_units
 
 
+def handle_canidate_events(basepath, ripples, expand_canidate_by_mua, min_rip_dur):
+    """
+    This function takes a list of ripple events and expands them by MUA events
+        if expand_canidate_by_mua is True. It also removes events that are too short.
+    Input: 
+        basepath: path to the folder containing the mua events
+        ripples: pd.DataFrame of ripple events
+        expand_canidate_by_mua: boolean, if True, will expand ripple events by MUA events
+        min_rip_dur: minimum duration of ripple events to keep
+    Output:
+        ripples: pd.DataFrame of ripple events
+        ripple_epochs: nel.Epochs object of ripple events
+    """
+    if expand_canidate_by_mua:
+        # put ripples into epoch array
+        ripple_epochs = nel.EpochArray(
+            np.array([ripples.start, ripples.stop]).T,
+            domain=nel.EpochArray([ripples.start.min(), ripples.stop.max()]),
+        )
+        # get mua
+        mua_df = loading.load_mua_events(basepath)
+        # add mua to epoch array
+        mua_epoch = nel.EpochArray(
+            np.array([mua_df.start, mua_df.stop]).T,
+            domain=nel.EpochArray([mua_df.start.min(), mua_df.stop.max()]),
+        )
+        # find overlap between ripple and mua epochs
+        # also expand ripples by 50ms to allow more overlap
+        ripple_epochs, idx = functions.overlap_intersect(
+            mua_epoch, ripple_epochs.expand(0.05)
+        )
+        ripples = ripples[idx]
+    else:
+        ripple_epochs = nel.EpochArray(
+            np.array([ripples.start, ripples.stop]).T,
+            domain=nel.EpochArray([ripples.start.min(), ripples.stop.max()]),
+        )
+        # restrict to events at least xx s long if not using mua
+        ripples = ripples[ripples.duration >= min_rip_dur]
+
+    return ripples, ripple_epochs
+
+
 def run_all(
     basepath,  # basepath to session
     traj_shuff=1500,  # number of shuffles to determine sig replay
@@ -331,6 +374,7 @@ def run_all(
     place_cell_peak_mean_ratio=1.5,  # peak firing rate / mean firing rate
     replay_binsize=0.02,  # bin size to decode replay
     tuning_curve_sigma=3,  # 3 cm sd of smoothing on tuning curve
+    expand_canidate_by_mua=True,  # whether to expand candidate units by mua (note: will only take rips with mua)
 ):
     """
     Main function that conducts the replay analysis
@@ -388,7 +432,7 @@ def run_all(
             support=session_bounds,
         )
 
-    # skip if less than 5 cells    
+    # skip if less than 5 cells
     if st_all.n_active < 5:
         return
 
@@ -399,11 +443,11 @@ def run_all(
     if pos is None:
         return
 
-    # restrict to events at least xx s long
-    ripples = ripples[ripples.duration >= min_rip_dur]
-
-    # make epoch object
-    ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
+    # here we will only take ripples with high mua,
+    #   plus the bounds of the candidate events will be defined by mua
+    ripples, ripple_epochs = handle_canidate_events(
+        basepath, ripples, expand_canidate_by_mua, min_rip_dur
+    )
 
     # iter through both running directions
     results = {}
@@ -559,7 +603,7 @@ def main(df, save_path, parallel=True):
             main_loop(basepath, save_path)
 
 
-def load_results(save_path,pre_task_post=False):
+def load_results(save_path, pre_task_post=False):
     """
     load_results: load results from a directory
 
@@ -582,7 +626,7 @@ def load_results(save_path,pre_task_post=False):
 
             pattern_idx, _ = functions.find_epoch_pattern(
                 epoch_df.environment, ["sleep", "linear", "sleep"]
-                )
+            )
             if pattern_idx is None:
                 continue
 
