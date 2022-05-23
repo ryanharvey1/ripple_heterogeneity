@@ -353,7 +353,7 @@ def handle_canidate_events(basepath, ripples, expand_canidate_by_mua, min_rip_du
     else:
         # restrict to events at least xx s long if not using mua
         ripples = ripples[ripples.duration >= min_rip_dur]
-        
+
         ripple_epochs = nel.EpochArray(
             np.array([ripples.start, ripples.stop]).T,
             domain=nel.EpochArray([ripples.start.min(), ripples.stop.max()]),
@@ -381,7 +381,7 @@ def run_all(
     place_cell_peak_mean_ratio=1.5,  # peak firing rate / mean firing rate
     replay_binsize=0.02,  # bin size to decode replay
     tuning_curve_sigma=3,  # 3 cm sd of smoothing on tuning curve
-    expand_canidate_by_mua=True,  # whether to expand candidate units by mua (note: will only take rips with mua)
+    expand_canidate_by_mua=False,  # whether to expand candidate units by mua (note: will only take rips with mua)
 ):
     """
     Main function that conducts the replay analysis
