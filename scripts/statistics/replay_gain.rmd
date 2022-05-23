@@ -51,7 +51,8 @@ plot(trans_y ~ deepSuperficial , data = data)
 ```
 
 ```{r}
-
+m1 = lm(trans_y ~ deepSuperficial, data = data)
+summary(m1)
 ```
 
 ```{r}
