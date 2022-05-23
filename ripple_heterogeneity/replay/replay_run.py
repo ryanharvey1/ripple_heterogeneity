@@ -318,7 +318,7 @@ def restrict_to_place_cells(
     return sta_placecells, tc, bst_run, cell_metrics_, total_units
 
 
-def handle_canidate_events(basepath, ripples, expand_canidate_by_mua, min_rip_dur):
+def handle_canidate_events(basepath, ripples, expand_canidate_by_mua, min_rip_dur, session_bounds):
     """
     This function takes a list of ripple events and expands them by MUA events
         if expand_canidate_by_mua is True. It also removes events that are too short.
@@ -335,28 +335,35 @@ def handle_canidate_events(basepath, ripples, expand_canidate_by_mua, min_rip_du
         # put ripples into epoch array
         ripple_epochs = nel.EpochArray(
             np.array([ripples.start, ripples.stop]).T,
-            domain=nel.EpochArray([ripples.start.min(), ripples.stop.max()]),
+            domain=session_bounds,
         )
         # get mua
         mua_df = loading.load_mua_events(basepath)
         # add mua to epoch array
         mua_epoch = nel.EpochArray(
             np.array([mua_df.start, mua_df.stop]).T,
-            domain=nel.EpochArray([mua_df.start.min(), mua_df.stop.max()]),
+            domain=session_bounds,
         )
         # find overlap between ripple and mua epochs
         # also expand ripples by 50ms to allow more overlap
         ripple_epochs, idx = functions.overlap_intersect(
             mua_epoch, ripple_epochs.expand(0.05)
         )
-        ripples = ripples[idx]
+        ripples = ripples.loc[idx]
     else:
+        # restrict to events at least xx s long if not using mua
+        ripples = ripples[ripples.duration >= min_rip_dur]
+        
         ripple_epochs = nel.EpochArray(
             np.array([ripples.start, ripples.stop]).T,
             domain=nel.EpochArray([ripples.start.min(), ripples.stop.max()]),
         )
-        # restrict to events at least xx s long if not using mua
-        ripples = ripples[ripples.duration >= min_rip_dur]
+
+
+    # reassign ripple epochs to ripples dataframe    
+    ripples.start = ripple_epochs.starts
+    ripples.stop = ripple_epochs.stops
+    ripples.duration = ripples.stop - ripples.start
 
     return ripples, ripple_epochs
 
@@ -446,7 +453,7 @@ def run_all(
     # here we will only take ripples with high mua,
     #   plus the bounds of the candidate events will be defined by mua
     ripples, ripple_epochs = handle_canidate_events(
-        basepath, ripples, expand_canidate_by_mua, min_rip_dur
+        basepath, ripples, expand_canidate_by_mua, min_rip_dur, session_bounds
     )
 
     # iter through both running directions
