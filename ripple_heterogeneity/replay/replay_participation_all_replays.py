@@ -20,8 +20,8 @@ def handle_epochs(basepath, environments, epochs_to_combine, min_env_criteria):
     """
     # get session epochs
     epoch_df = loading.load_epoch(basepath)
-    # compress back to back sleep epochs
-    epoch_df = compress_repeated_epochs.main(epoch_df)
+    # compress back to back epochs of the same environment
+    epoch_df = functions.compress_repeated_epochs(epoch_df)
     # just keep these epochs in var 'environments'
     idx, _ = functions.find_epoch_pattern(epoch_df.environment, environments)
     if idx is None:
