@@ -4,9 +4,10 @@ from nelpy.decoding import decode1D as decode
 from nelpy.decoding import get_mode_pth_from_array
 import multiprocessing
 from joblib import Parallel, delayed
+from replay_trajectory_classification.standard_decoder import detect_line_with_radon
 
 
-def shuffle_and_score(posterior_array, w, normalize, tc):
+def shuffle_and_score(posterior_array, w, normalize, tc, ds, dp):
 
     posterior_ts = replay.time_swap_array(posterior_array)
     posterior_cs = replay.column_cycle_array(posterior_array)
@@ -19,15 +20,30 @@ def shuffle_and_score(posterior_array, w, normalize, tc):
     )
     diff_mode_pth_cs = np.diff(get_mode_pth_from_array(posterior_cs, tuningcurve=tc))
 
+    _, _, _, radon_score_time_swap = detect_line_with_radon(
+        posterior_ts.T, ds, dp, filter_invalid_positions=False
+    )
+    _, _, _, radon_score_col_cycle = detect_line_with_radon(
+        posterior_cs.T, ds, dp, filter_invalid_positions=False
+    )
+
     return (
         scores_time_swap,
         scores_col_cycle,
         np.abs(np.nanmean(diff_mode_pth_cs)),
+        radon_score_time_swap,
+        radon_score_col_cycle,
     )
 
 
 def trajectory_score_bst(
-    bst, tuningcurve, w=None, n_shuffles=1000, weights=None, normalize=False
+    bst,
+    tuningcurve,
+    w=None,
+    n_shuffles=1000,
+    weights=None,
+    normalize=False,
+    parallel=True,
 ):
     """Compute the trajectory scores from Davidson et al. for each event
     in the BinnedSpikeTrainArray.
@@ -108,20 +124,30 @@ def trajectory_score_bst(
 
     scores = np.zeros(bst.n_epochs)
     avg_jump = np.zeros(bst.n_epochs)
+    radon_score = np.zeros(bst.n_epochs)
 
     if n_shuffles > 0:
         scores_time_swap = np.zeros((n_shuffles, bst.n_epochs))
         scores_col_cycle = np.zeros((n_shuffles, bst.n_epochs))
-        jump_time_swap = np.zeros((n_shuffles, bst.n_epochs))
         jump_col_cycle = np.zeros((n_shuffles, bst.n_epochs))
+        radon_score_time_swap = np.zeros((n_shuffles, bst.n_epochs))
+        radon_score_col_cycle = np.zeros((n_shuffles, bst.n_epochs))
 
-    num_cores = multiprocessing.cpu_count()
+    if parallel:
+        num_cores = multiprocessing.cpu_count()
+
+    ds, dp = bst.ds, np.diff(tuningcurve.bins)[0]
 
     for idx in range(bst.n_epochs):
         posterior_array = posterior[:, bdries[idx] : bdries[idx + 1]]
         scores[idx] = replay.trajectory_score_array(
             posterior=posterior_array, w=w, normalize=normalize
         )
+
+        _, _, _, radon_score[idx] = detect_line_with_radon(
+            posterior_array.T, ds, dp, filter_invalid_positions=False
+        )
+
         avg_jump[idx] = np.abs(
             np.nanmean(
                 np.diff(
@@ -129,24 +155,46 @@ def trajectory_score_bst(
                 )
             )
         )
-
-        (
-            scores_time_swap[:, idx],
-            scores_col_cycle[:, idx],
-            jump_col_cycle[:, idx],
-        ) = zip(
-            *Parallel(n_jobs=num_cores)(
-                delayed(shuffle_and_score)(posterior_array, w, normalize, tuningcurve)
-                for i in range(n_shuffles)
+        if parallel:
+            (
+                scores_time_swap[:, idx],
+                scores_col_cycle[:, idx],
+                jump_col_cycle[:, idx],
+                radon_score_time_swap[:, idx],
+                radon_score_col_cycle[:, idx],
+            ) = zip(
+                *Parallel(n_jobs=num_cores)(
+                    delayed(shuffle_and_score)(
+                        posterior_array, w, normalize, tuningcurve, ds, dp
+                    )
+                    for _ in range(n_shuffles)
+                )
             )
-        )
+        else:
+            (
+                scores_time_swap[:, idx],
+                scores_col_cycle[:, idx],
+                jump_col_cycle[:, idx],
+                radon_score_time_swap[:, idx],
+                radon_score_col_cycle[:, idx],
+            ) = zip(
+                *[
+                    shuffle_and_score(
+                        posterior_array, w, normalize, tuningcurve, ds, dp
+                    )
+                    for _ in range(n_shuffles)
+                ]
+            )
 
     if n_shuffles > 0:
         return (
             scores,
             avg_jump,
+            radon_score,
             scores_time_swap,
             scores_col_cycle,
             jump_col_cycle,
+            radon_score_time_swap,
+            radon_score_col_cycle,
         )
     return scores, avg_jump
