@@ -11,6 +11,7 @@ from joblib import Parallel, delayed
 import pickle
 import copy
 import warnings
+from ripple_heterogeneity.replay import score
 
 warnings.filterwarnings("ignore")
 
@@ -187,7 +188,9 @@ def flip_pos_within_epoch(pos, dir_epoch):
     return pos
 
 
-def handle_behavior(basepath, epoch_df, beh_epochs):
+def handle_behavior(
+    basepath, epoch_df, beh_epochs, manipulation_epochs=None, restrict_manipulation=True
+):
     # load behavior
     beh_df = loading.load_animal_behavior(basepath)
 
@@ -239,6 +242,9 @@ def handle_behavior(basepath, epoch_df, beh_epochs):
     )
     # only include linear track
     pos = pos[beh_epochs_linear]
+
+    if restrict_manipulation:
+        pos = pos[~manipulation_epochs]
 
     # make min pos 0
     pos.data = pos.data - np.nanmin(pos.data)
@@ -318,11 +324,13 @@ def restrict_to_place_cells(
     return sta_placecells, tc, bst_run, cell_metrics_, total_units
 
 
-def handle_canidate_events(basepath, ripples, expand_canidate_by_mua, min_rip_dur, session_bounds):
+def handle_canidate_events(
+    basepath, ripples, expand_canidate_by_mua, min_rip_dur, session_bounds
+):
     """
     This function takes a list of ripple events and expands them by MUA events
         if expand_canidate_by_mua is True. It also removes events that are too short.
-    Input: 
+    Input:
         basepath: path to the folder containing the mua events
         ripples: pd.DataFrame of ripple events
         expand_canidate_by_mua: boolean, if True, will expand ripple events by MUA events
@@ -359,8 +367,7 @@ def handle_canidate_events(basepath, ripples, expand_canidate_by_mua, min_rip_du
             domain=nel.EpochArray([ripples.start.min(), ripples.stop.max()]),
         )
 
-
-    # reassign ripple epochs to ripples dataframe    
+    # reassign ripple epochs to ripples dataframe
     ripples.start = ripple_epochs.starts
     ripples.stop = ripple_epochs.stops
     ripples.duration = ripples.stop - ripples.start
@@ -382,6 +389,8 @@ def run_all(
     replay_binsize=0.02,  # bin size to decode replay
     tuning_curve_sigma=3,  # 3 cm sd of smoothing on tuning curve
     expand_canidate_by_mua=False,  # whether to expand candidate units by mua (note: will only take rips with mua)
+    restrict_manipulation=True,  # whether to restrict manipulation epochs
+    shuffle_parallel=True,  # whether to shuffle in parallel
 ):
     """
     Main function that conducts the replay analysis
@@ -398,9 +407,19 @@ def run_all(
         place_cell_peak_mean_ratio: peak firing rate / mean firing rate
         replay_binsize: bin size to decode replay
         tuning_curve_sigma: 3 cm sd of smoothing on tuning curve
+        expand_canidate_by_mua: whether to expand candidate units by mua (note: will only take rips with mua)
+        restrict_manipulation: whether to restrict manipulation epochs
     Outputs:
         results: dictionary of results
     """
+
+    # load manipulation epochs to restrict analysis
+    manipulation_epochs = loading.load_manipulation(
+        basepath, struct_name="optoStim", merge_gap=1
+    )
+    if manipulation_epochs is None:
+        restrict_manipulation = False
+
     cell_metrics, data, ripples, fs_dat = loading.load_basic_data(basepath)
 
     restrict_idx = (
@@ -445,7 +464,7 @@ def run_all(
 
     # make position and sort out track data
     pos, outbound_epochs, inbound_epochs = handle_behavior(
-        basepath, epoch_df, beh_epochs
+        basepath, epoch_df, beh_epochs, manipulation_epochs, restrict_manipulation
     )
     if pos is None:
         return
@@ -523,13 +542,29 @@ def run_all(
         )
 
         # score each event using trajectory_score_bst (sums the posterior probability in a range (w) from the LS line)
-        scores, scores_time_swap, scores_col_cycle = replay.trajectory_score_bst(
-            bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True
+        # scores, scores_time_swap, scores_col_cycle = replay.trajectory_score_bst(
+        #     bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True
+        # )
+
+        (
+            scores,
+            avg_jump,
+            radon_score,
+            scores_time_swap,
+            scores_col_cycle,
+            jump_col_cycle,
+            radon_score_time_swap,
+            radon_score_col_cycle
+        ) = score.trajectory_score_bst(
+            bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True, parallel=shuffle_parallel
         )
 
         # find sig events using time and column shuffle distributions
         _, score_pval_time_swap = get_significant_events(scores, scores_time_swap)
         _, score_pval_col_cycle = get_significant_events(scores, scores_col_cycle)
+        _, jump_pval_col_cycle = get_significant_events(avg_jump, jump_col_cycle)
+        _, radon_score_pval_time_swap = get_significant_events(radon_score, radon_score_time_swap)
+        _, radon_score_pval_col_cycle = get_significant_events(radon_score, radon_score_col_cycle)
 
         (traj_dist, traj_speed, traj_step, replay_type, position) = get_features(
             bst_placecells, posteriors, bdries, mode_pth, pos[dir_epoch], dp=s_binsize
@@ -555,11 +590,16 @@ def run_all(
         temp_df["n_active"] = n_active
         temp_df["inactive_bin_prop"] = inactive_bin_prop
         temp_df["trajectory_score"] = scores
+        temp_df["avg_jump"] = avg_jump
+        temp_df["radon_score"] = radon_score
         temp_df["r_squared"] = r2values
         temp_df["slope"] = slope
         temp_df["intercept"] = intercept
         temp_df["score_pval_time_swap"] = score_pval_time_swap
         temp_df["score_pval_col_cycle"] = score_pval_col_cycle
+        temp_df["jump_pval_col_cycle"] = jump_pval_col_cycle
+        temp_df["radon_score_pval_time_swap"] = radon_score_pval_time_swap
+        temp_df["radon_score_pval_col_cycle"] = radon_score_pval_col_cycle
         temp_df["traj_dist"] = traj_dist
         temp_df["traj_speed"] = traj_speed
         temp_df["traj_step"] = traj_step
