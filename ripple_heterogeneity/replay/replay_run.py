@@ -542,29 +542,29 @@ def run_all(
         )
 
         # score each event using trajectory_score_bst (sums the posterior probability in a range (w) from the LS line)
-        # scores, scores_time_swap, scores_col_cycle = replay.trajectory_score_bst(
-        #     bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True
-        # )
-
-        (
-            scores,
-            avg_jump,
-            radon_score,
-            scores_time_swap,
-            scores_col_cycle,
-            jump_col_cycle,
-            radon_score_time_swap,
-            radon_score_col_cycle
-        ) = score.trajectory_score_bst(
-            bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True, parallel=shuffle_parallel
+        scores, scores_time_swap, scores_col_cycle = replay.trajectory_score_bst(
+            bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True
         )
+
+        # (
+        #     scores,
+        #     avg_jump,
+        #     radon_score,
+        #     scores_time_swap,
+        #     scores_col_cycle,
+        #     jump_col_cycle,
+        #     radon_score_time_swap,
+        #     radon_score_col_cycle
+        # ) = score.trajectory_score_bst(
+        #     bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True, parallel=shuffle_parallel
+        # )
 
         # find sig events using time and column shuffle distributions
         _, score_pval_time_swap = get_significant_events(scores, scores_time_swap)
         _, score_pval_col_cycle = get_significant_events(scores, scores_col_cycle)
-        _, jump_pval_col_cycle = get_significant_events(avg_jump, jump_col_cycle)
-        _, radon_score_pval_time_swap = get_significant_events(radon_score, radon_score_time_swap)
-        _, radon_score_pval_col_cycle = get_significant_events(radon_score, radon_score_col_cycle)
+        # _, jump_pval_col_cycle = get_significant_events(avg_jump, jump_col_cycle)
+        # _, radon_score_pval_time_swap = get_significant_events(radon_score, radon_score_time_swap)
+        # _, radon_score_pval_col_cycle = get_significant_events(radon_score, radon_score_col_cycle)
 
         (traj_dist, traj_speed, traj_step, replay_type, position) = get_features(
             bst_placecells, posteriors, bdries, mode_pth, pos[dir_epoch], dp=s_binsize
@@ -590,16 +590,16 @@ def run_all(
         temp_df["n_active"] = n_active
         temp_df["inactive_bin_prop"] = inactive_bin_prop
         temp_df["trajectory_score"] = scores
-        temp_df["avg_jump"] = avg_jump
-        temp_df["radon_score"] = radon_score
+        # temp_df["avg_jump"] = avg_jump
+        # temp_df["radon_score"] = radon_score
         temp_df["r_squared"] = r2values
         temp_df["slope"] = slope
         temp_df["intercept"] = intercept
         temp_df["score_pval_time_swap"] = score_pval_time_swap
         temp_df["score_pval_col_cycle"] = score_pval_col_cycle
-        temp_df["jump_pval_col_cycle"] = jump_pval_col_cycle
-        temp_df["radon_score_pval_time_swap"] = radon_score_pval_time_swap
-        temp_df["radon_score_pval_col_cycle"] = radon_score_pval_col_cycle
+        # temp_df["jump_pval_col_cycle"] = jump_pval_col_cycle
+        # temp_df["radon_score_pval_time_swap"] = radon_score_pval_time_swap
+        # temp_df["radon_score_pval_col_cycle"] = radon_score_pval_col_cycle
         temp_df["traj_dist"] = traj_dist
         temp_df["traj_speed"] = traj_speed
         temp_df["traj_step"] = traj_step
