@@ -20,13 +20,14 @@ addParameter(p,'darkmode',true,@islogical);
 addParameter(p,'restic_dir',1,@isnumeric);
 addParameter(p,'axis_equal',true,@islogical);
 addParameter(p,'alpha',.2,@isnumeric);
+addParameter(p,'add_scatter',true,@islogical);
 
 parse(p,varargin{:});
 darkmode = p.Results.darkmode;
 restic_dir = p.Results.restic_dir;
 axis_equal = p.Results.axis_equal;
 alpha = p.Results.alpha;
-
+add_scatter = p.Results.add_scatter;
 
 savets=[];
 for i=1:length(StartofRec)
@@ -35,7 +36,7 @@ for i=1:length(StartofRec)
     ytemp=y(ts>=StartofRec(i) & ts<=EndofRec(i));
     tstemp=ts(ts>=StartofRec(i) & ts<=EndofRec(i));
     % use the gui to cut out points
-    [~,~,in]=restrictMovement(xtemp,ytemp,restic_dir,darkmode,axis_equal,alpha);
+    [~,~,in]=restrictMovement(xtemp,ytemp,restic_dir,darkmode,axis_equal,alpha,add_scatter);
     % save the ts where the tracker error exists
     savets=[savets,tstemp(in)];
 end
@@ -47,7 +48,7 @@ basename = basenameFromBasepath(basepath);
 save(fullfile(basepath,[basename,'.restrictxy.mat']),'good_idx')
 end
 
-function [x,y,in]=restrictMovement(x,y,direction,darkmode,axis_equal,alpha)
+function [x,y,in]=restrictMovement(x,y,direction,darkmode,axis_equal,alpha,add_scatter)
 % restrictMovement allows you to draw a line around xy coordinates in order
 % to eliminate certain points you don't want...ie when the rat jumps out of
 % maze or tracker errors. 
@@ -75,18 +76,26 @@ end
 % set up figure
 if darkmode
     fig=figure;plot(x,y,'Color',[1,1,1,alpha]);hold on
+    if add_scatter
+        scatter(x,y,3,'w','filled');hold on
+    end
     title('Click around the points you want to keep')
     xlabel('X')
     ylabel('Y')
+    axis tight
     if axis_equal
         axis equal
     end
     darkBackground(gcf,[0.1 0.1 0.1],[0.7 0.7 0.7])
 else
     fig=figure;plot(x,y,'Color',[0,0,0,alpha]);hold on
+    if add_scatter
+        scatter(x,y,3,'k','filled');hold on
+    end
     title('Click around the points you want to keep')
     xlabel('X')
     ylabel('Y')
+    axis tight
     if axis_equal
         axis equal
     end
