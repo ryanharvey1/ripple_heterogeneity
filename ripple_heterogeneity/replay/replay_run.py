@@ -189,7 +189,12 @@ def flip_pos_within_epoch(pos, dir_epoch):
 
 
 def handle_behavior(
-    basepath, epoch_df, beh_epochs, manipulation_epochs=None, restrict_manipulation=True
+    basepath,
+    epoch_df,
+    beh_epochs,
+    manipulation_epochs=None,
+    restrict_manipulation=True,
+    session_bounds=None,
 ):
     # load behavior
     beh_df = loading.load_animal_behavior(basepath)
@@ -325,7 +330,13 @@ def restrict_to_place_cells(
 
 
 def handle_canidate_events(
-    basepath, ripples, expand_canidate_by_mua, min_rip_dur, session_bounds
+    basepath,
+    ripples,
+    expand_canidate_by_mua,
+    min_rip_dur,
+    session_bounds,
+    manipulation_epochs,
+    restrict_manipulation,
 ):
     """
     This function takes a list of ripple events and expands them by MUA events
@@ -341,17 +352,11 @@ def handle_canidate_events(
     """
     if expand_canidate_by_mua:
         # put ripples into epoch array
-        ripple_epochs = nel.EpochArray(
-            np.array([ripples.start, ripples.stop]).T,
-            domain=session_bounds,
-        )
+        ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
         # get mua
         mua_df = loading.load_mua_events(basepath)
         # add mua to epoch array
-        mua_epoch = nel.EpochArray(
-            np.array([mua_df.start, mua_df.stop]).T,
-            domain=session_bounds,
-        )
+        mua_epoch = nel.EpochArray(np.array([mua_df.start, mua_df.stop]).T)
         # find overlap between ripple and mua epochs
         # also expand ripples by 50ms to allow more overlap
         ripple_epochs, idx = functions.overlap_intersect(
@@ -362,15 +367,15 @@ def handle_canidate_events(
         # restrict to events at least xx s long if not using mua
         ripples = ripples[ripples.duration >= min_rip_dur]
 
-        ripple_epochs = nel.EpochArray(
-            np.array([ripples.start, ripples.stop]).T,
-            domain=nel.EpochArray([ripples.start.min(), ripples.stop.max()]),
-        )
+        ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+    if restrict_manipulation:
+        ripple_epochs = ripple_epochs[~manipulation_epochs]
 
     # reassign ripple epochs to ripples dataframe
-    ripples.start = ripple_epochs.starts
-    ripples.stop = ripple_epochs.stops
-    ripples.duration = ripples.stop - ripples.start
+    ripples = pd.DataFrame()
+    ripples["start"] = ripple_epochs.starts
+    ripples["stop"] = ripple_epochs.stops
+    ripples["duration"] = ripples.stop - ripples.start
 
     return ripples, ripple_epochs
 
@@ -447,24 +452,30 @@ def run_all(
 
     try:
         st_all = nel.SpikeTrainArray(
-            timestamps=np.array(data["spikes"], dtype=object)[restrict_idx],
-            fs=fs_dat,
-            support=session_bounds,
+            timestamps=np.array(data["spikes"], dtype=object)[restrict_idx], fs=fs_dat
         )
     except:
         st_all = nel.SpikeTrainArray(
             timestamps=np.array(data["spikes"], dtype=object)[restrict_idx][0],
             fs=fs_dat,
-            support=session_bounds,
         )
 
     # skip if less than 5 cells
     if st_all.n_active < 5:
         return
 
+    # restrict spikes to outside manipulation epochs
+    if restrict_manipulation:
+        st_all = st_all[~manipulation_epochs]
+
     # make position and sort out track data
     pos, outbound_epochs, inbound_epochs = handle_behavior(
-        basepath, epoch_df, beh_epochs, manipulation_epochs, restrict_manipulation
+        basepath,
+        epoch_df,
+        beh_epochs,
+        manipulation_epochs,
+        restrict_manipulation,
+        session_bounds,
     )
     if pos is None:
         return
@@ -472,7 +483,13 @@ def run_all(
     # here we will only take ripples with high mua,
     #   plus the bounds of the candidate events will be defined by mua
     ripples, ripple_epochs = handle_canidate_events(
-        basepath, ripples, expand_canidate_by_mua, min_rip_dur, session_bounds
+        basepath,
+        ripples,
+        expand_canidate_by_mua,
+        min_rip_dur,
+        session_bounds,
+        manipulation_epochs,
+        restrict_manipulation,
     )
 
     # iter through both running directions
