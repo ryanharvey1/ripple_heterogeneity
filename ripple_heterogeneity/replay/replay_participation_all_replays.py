@@ -168,14 +168,17 @@ def run(
         results = pickle.load(f)
 
     # get active units from cell metrics
-    uid = pd.unique(
-        np.hstack(
-            [
-                results["outbound_epochs"]["cell_metrics"].UID,
-                results["inbound_epochs"]["cell_metrics"].UID,
-            ]
-        )
-    )
+    uids_outbound_epochs = []
+    uids_inbound_epochs = []
+    try:
+        uids_outbound_epochs = results["outbound_epochs"]["cell_metrics"].UID
+    except:
+        pass
+    try:
+        uids_inbound_epochs = results["inbound_epochs"]["cell_metrics"].UID
+    except:
+        pass
+    uid = pd.unique(np.hstack([uids_outbound_epochs,uids_inbound_epochs]))
 
     # remove uids with bad waveforms as we can not estimate deep/sup
     if "tags_bad_waveform" in cell_metrics.columns:
