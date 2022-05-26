@@ -238,7 +238,7 @@ def handle_behavior(
     restrict_manipulation=True,
     session_bounds=None,
     resample_fs=30,
-    smooth=True,
+    smooth=False,
     good_laps=True,
     remove_track_ends=False
 ):
@@ -466,6 +466,7 @@ def run_all(
     expand_canidate_by_mua=False,  # whether to expand candidate units by mua (note: will only take rips with mua)
     restrict_manipulation=True,  # whether to restrict manipulation epochs
     shuffle_parallel=True,  # whether to shuffle in parallel
+    ds_beh_decode=0.2,  # bin width to bin st for decoding behavior
 ):
     """
     Main function that conducts the replay analysis
@@ -596,8 +597,9 @@ def run_all(
         if tc.isempty:
             continue
         # access decoding accuracy on behavioral time scale
+        bst_run_beh = sta_placecells[dir_epoch].bin(ds=ds_beh_decode)
         decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(
-            bst_run, tc, pos[dir_epoch], n_shuffles=behav_shuff
+            bst_run_beh, tc, pos[dir_epoch], n_shuffles=behav_shuff
         )
         # check decoding quality against chance distribution
         _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
@@ -667,6 +669,7 @@ def run_all(
         results[direction_str[dir_i]]["sta_placecells"] = sta_placecells
         results[direction_str[dir_i]]["bst_placecells"] = bst_placecells
         results[direction_str[dir_i]]["bst_run"] = bst_run
+        results[direction_str[dir_i]]["bst_run_beh"] = bst_run_beh
         results[direction_str[dir_i]]["pos"] = pos[dir_epoch]
         results[direction_str[dir_i]]["tc"] = tc
         results[direction_str[dir_i]]["posteriors"] = posteriors
