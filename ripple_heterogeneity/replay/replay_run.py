@@ -12,6 +12,7 @@ import pickle
 import copy
 import warnings
 from ripple_heterogeneity.replay import score
+from scipy import ndimage
 
 warnings.filterwarnings("ignore")
 
@@ -116,8 +117,11 @@ def get_features(bst_placecells, posteriors, bdries, mode_pth, pos, dp=3):
     for p in pos:
         good_idx = ~np.isnan(p.data[0])
         cur_x = p.data[0][good_idx]
-        b1, _, _, _, _ = stats.linregress(np.arange(len(cur_x)), cur_x)
-        x_slope.append(b1)
+        if len(cur_x) == 0:
+            x_slope.append(np.nan)
+        else:
+            b1, _, _, _, _ = stats.linregress(np.arange(len(cur_x)), cur_x)
+            x_slope.append(b1)
     # if the majority (>.5) of laps have x coords that increase (positive slopes)
     if np.mean(np.array(x_slope) > 0) > 0.5:
         outbound = True
@@ -188,6 +192,44 @@ def flip_pos_within_epoch(pos, dir_epoch):
     return pos
 
 
+def resample_behavior(beh_df, dt_new=30):
+    beh_df_new = pd.DataFrame()
+    beh_df_new["time"] = np.arange(beh_df.time.min(), beh_df.time.max(), 1 / dt_new)
+    beh_df_new["x"] = np.interp(beh_df_new.time, beh_df.time, beh_df.x)
+    beh_df_new["y"] = np.interp(beh_df_new.time, beh_df.time, beh_df.y)
+    return beh_df_new
+
+
+def find_good_laps(pos, dir_epoch, thres=0.5, binsize=6):
+    """
+    find_good_laps: finds good laps in behavior data
+        Made to find good laps in nelpy array for replay analysis
+    input:
+        pos: nelpy analog array with single dim
+        dir_epoch: epoch to flip
+        thres: occupancy threshold for good lap
+        binsize: size of bins to calculate occupancy
+    output:
+        good_laps: epoch array of good laps
+    """
+    # make bin edges to calc occupancy
+    x_edges = np.arange(np.nanmin(pos.data[0]), np.nanmax(pos.data[0]), binsize)
+    # initialize occupancy matrix (position x time)
+    occ = np.zeros([len(x_edges) - 1, dir_epoch.n_intervals])
+    # iterate through laps
+    for i, ep in enumerate(dir_epoch):
+        # bin position per lap
+        occ[:, i], _ = np.histogram(pos[ep].data[0], bins=x_edges)
+    # calc percent occupancy over position bins per lap and find good laps
+    good_laps = np.where(~((np.sum(occ == 0, axis=0) / occ.shape[0]) > thres))[0]
+    # if no good laps, return empty epoch
+    if len(good_laps) == 0:
+        dir_epoch = nel.EpochArray()
+    else:
+        dir_epoch = dir_epoch[good_laps]
+    return dir_epoch
+
+
 def handle_behavior(
     basepath,
     epoch_df,
@@ -195,6 +237,7 @@ def handle_behavior(
     manipulation_epochs=None,
     restrict_manipulation=True,
     session_bounds=None,
+    resample_fs=30,
 ):
     # load behavior
     beh_df = loading.load_animal_behavior(basepath)
@@ -228,12 +271,25 @@ def handle_behavior(
     if np.isnan(beh_df.linearized).all():
         return None, None, None
 
+    # resample if fs is greater than desired
+    fs = 1 / statistics.mode(np.diff(beh_df.time))
+    if (fs > resample_fs) & ((fs/resample_fs) > 2):
+        beh_df_new = pd.DataFrame()
+        time = np.arange(beh_df.time.min(), beh_df.time.max(), 1/resample_fs)
+        beh_df_new['linearized'] = np.interp(time, beh_df.time, beh_df.linearized)
+        beh_df_new['time'] = time
+        beh_df = beh_df_new
+        fs = 1 / statistics.mode(np.diff(beh_df.time))
+
     # interpolate behavior to minimize nan gaps using linear
     # will only interpolate out to 5 seconds
     beh_df.linearized = beh_df.linearized.interpolate(
         method="linear",
-        limit=int(1 / statistics.mode(np.diff(beh_df.time))) * 5,
+        limit=int(fs) * 5,
     )
+
+    # median smooth behavior over 2 seconds to clean up tracker jumps
+    beh_df.linearized = ndimage.median_filter(beh_df.linearized, size=int(fs * 2))
 
     # remove nan values
     bad_idx = np.isnan(beh_df.linearized)
@@ -243,7 +299,7 @@ def handle_behavior(
     pos = nel.AnalogSignalArray(
         data=np.array(beh_df.linearized),
         timestamps=beh_df.time,
-        fs=1 / statistics.mode(np.diff(beh_df.time)),
+        fs=fs,
     )
     # only include linear track
     pos = pos[beh_epochs_linear]
@@ -258,6 +314,9 @@ def handle_behavior(
     (outbound_epochs, inbound_epochs) = functions.get_linear_track_lap_epochs(
         pos.abscissa_vals, pos.data[0], newLapThreshold=20
     )
+    outbound_epochs = find_good_laps(pos, outbound_epochs)
+    inbound_epochs = find_good_laps(pos, inbound_epochs)
+
     # flip x coord of outbound
     pos = flip_pos_within_epoch(pos, inbound_epochs)
 
@@ -682,11 +741,14 @@ def load_results(save_path, pre_task_post=False):
         if results is None:
             continue
 
+        try:
+            basepath = results["outbound_epochs"]["session"]
+            epoch_df = loading.load_epoch(basepath)
+        except:
+            basepath = results["inbound_epochs"]["session"]
+            epoch_df = loading.load_epoch(basepath)
+
         if pre_task_post:
-            try:
-                epoch_df = loading.load_epoch(results["outbound_epochs"]["session"])
-            except:
-                epoch_df = loading.load_epoch(results["inbound_epochs"]["session"])
 
             pattern_idx, _ = functions.find_epoch_pattern(
                 epoch_df.environment, ["sleep", "linear", "sleep"]
@@ -746,5 +808,6 @@ def load_results(save_path, pre_task_post=False):
                         "epoch",
                     ] = "post_sleep"
 
+            results[key_]["df"]["basepath"] = basepath
             df = pd.concat([df, results[key_]["df"]], ignore_index=True)
     return df
