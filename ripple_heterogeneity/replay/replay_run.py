@@ -581,7 +581,8 @@ def run_all(
             place_cell_min_rate,
             place_cell_peak_mean_ratio,
         )
-
+        if tc.isempty:
+            continue
         # access decoding accuracy on behavioral time scale
         decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(
             bst_run, tc, pos[dir_epoch], n_shuffles=behav_shuff
