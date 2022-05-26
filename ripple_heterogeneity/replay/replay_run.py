@@ -200,7 +200,7 @@ def resample_behavior(beh_df, dt_new=30):
     return beh_df_new
 
 
-def find_good_laps(pos, dir_epoch, thres=0.5, binsize=6):
+def find_good_laps(pos, dir_epoch, thres=0.5, binsize=6, min_laps=10):
     """
     find_good_laps: finds good laps in behavior data
         Made to find good laps in nelpy array for replay analysis
@@ -223,7 +223,7 @@ def find_good_laps(pos, dir_epoch, thres=0.5, binsize=6):
     # calc percent occupancy over position bins per lap and find good laps
     good_laps = np.where(~((np.sum(occ == 0, axis=0) / occ.shape[0]) > thres))[0]
     # if no good laps, return empty epoch
-    if len(good_laps) == 0:
+    if (len(good_laps) == 0) | (len(good_laps) < min_laps):
         dir_epoch = nel.EpochArray()
     else:
         dir_epoch = dir_epoch[good_laps]
@@ -238,6 +238,9 @@ def handle_behavior(
     restrict_manipulation=True,
     session_bounds=None,
     resample_fs=30,
+    smooth=True,
+    good_laps=True,
+    remove_track_ends=False
 ):
     # load behavior
     beh_df = loading.load_animal_behavior(basepath)
@@ -271,15 +274,20 @@ def handle_behavior(
     if np.isnan(beh_df.linearized).all():
         return None, None, None
 
+    if remove_track_ends:
+        beh_df.loc[beh_df.linearized > beh_df.linearized.max()*.9,"linearized"] = np.nan
+        beh_df.loc[beh_df.linearized < beh_df.linearized.max()*.1,"linearized"] = np.nan
+
     # resample if fs is greater than desired
     fs = 1 / statistics.mode(np.diff(beh_df.time))
-    if (fs > resample_fs) & ((fs/resample_fs) > 2):
-        beh_df_new = pd.DataFrame()
-        time = np.arange(beh_df.time.min(), beh_df.time.max(), 1/resample_fs)
-        beh_df_new['linearized'] = np.interp(time, beh_df.time, beh_df.linearized)
-        beh_df_new['time'] = time
-        beh_df = beh_df_new
-        fs = 1 / statistics.mode(np.diff(beh_df.time))
+    if resample_fs is not None:
+        if (fs > resample_fs) & ((fs/resample_fs) > 2):
+            beh_df_new = pd.DataFrame()
+            time = np.arange(beh_df.time.min(), beh_df.time.max(), 1/resample_fs)
+            beh_df_new['linearized'] = np.interp(time, beh_df.time, beh_df.linearized)
+            beh_df_new['time'] = time
+            beh_df = beh_df_new
+            fs = 1 / statistics.mode(np.diff(beh_df.time))
 
     # interpolate behavior to minimize nan gaps using linear
     # will only interpolate out to 5 seconds
@@ -289,7 +297,8 @@ def handle_behavior(
     )
 
     # median smooth behavior over 2 seconds to clean up tracker jumps
-    beh_df.linearized = ndimage.median_filter(beh_df.linearized, size=int(fs * 2))
+    if smooth:
+        beh_df.linearized = ndimage.median_filter(beh_df.linearized, size=int(fs * 2))
 
     # remove nan values
     bad_idx = np.isnan(beh_df.linearized)
@@ -314,11 +323,13 @@ def handle_behavior(
     (outbound_epochs, inbound_epochs) = functions.get_linear_track_lap_epochs(
         pos.abscissa_vals, pos.data[0], newLapThreshold=20
     )
-    outbound_epochs = find_good_laps(pos, outbound_epochs)
-    inbound_epochs = find_good_laps(pos, inbound_epochs)
+    if good_laps:
+        outbound_epochs = find_good_laps(pos, outbound_epochs)
+        inbound_epochs = find_good_laps(pos, inbound_epochs)
 
     # flip x coord of outbound
-    pos = flip_pos_within_epoch(pos, inbound_epochs)
+    if not inbound_epochs.isempty:
+        pos = flip_pos_within_epoch(pos, inbound_epochs)
 
     return pos, outbound_epochs, inbound_epochs
 
@@ -558,7 +569,8 @@ def run_all(
 
     direction_str = ["outbound_epochs", "inbound_epochs"]
     for dir_i, dir_epoch in enumerate([outbound_epochs, inbound_epochs]):
-
+        if dir_epoch.isempty:
+            continue
         # construct tuning curves
         tc, st_run, bst_run = get_tuning_curves(
             pos, st_all, dir_epoch, speed_thres, ds_50ms, s_binsize, tuning_curve_sigma
@@ -758,7 +770,10 @@ def load_results(save_path, pre_task_post=False):
                 continue
 
         for key_ in results.keys():
-
+            try:
+                results[key_]["sta_placecells"]
+            except:
+                continue
             # calc and add ripple participation
             st = results[key_]["sta_placecells"]
             bst = results[key_]["bst_placecells"]
