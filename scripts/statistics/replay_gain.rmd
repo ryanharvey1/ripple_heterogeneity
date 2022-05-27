@@ -25,6 +25,9 @@ data <- data[data$deepSuperficial == "Deep" | data$deepSuperficial == "Superfici
 
 data <- data[!is.nan(data$replay_gain),]
 
+# data <- data[data$consider_remove=="False",]
+
+
 data$basepath = factor(data$basepath)
 data$animal_id = factor(data$animal_id)
 data$deepSuperficial = factor(data$deepSuperficial)

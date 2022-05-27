@@ -1,0 +1,272 @@
+---
+title: "replay_layer_bias"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+
+```
+
+```{r}
+# data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/replay_participation_for_v7_task_post.csv")
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/layer_bias_replays.csv")
+
+# data <- data[data$deepSuperficial != "middle",]
+# data <- data[data$n_replays > 30,]
+# data <- data[!is.nan(data$replay_df_gain_avg_to_replay),]
+# data <- data[!is.nan(data$replay_par),]
+
+data <- data[data$score_pval_time_swap < 0.05,]
+
+
+data$basepath = factor(data$basepath)
+data$animal = factor(data$animal)
+data$gmm_labels = factor(data$gmm_labels)
+
+ 
+# data$deepSuperficial = factor(data$deepSuperficial)
+# data$epoch  = factor(data$epoch)
+# data$epoch_i  = factor(data$epoch_i)
+# data$UID  = factor(data$UID)
+
+summary(data)
+
+```
+
+```{r}
+temp_data <- data[data$gmm_labels == "deep" | data$gmm_labels == "sup",]
+
+# temp_data$y_trans <- temp_data$replay_df_gain_avg_to_replay+1
+
+mdl_boxcox <- boxcox(trajectory_score ~ gmm_labels, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+max_lambda
+
+summary(temp_data)
+
+```
+
+```{r}
+temp_data <- data[data$gmm_labels == "deep" | data$gmm_labels == "sup",]
+
+temp_data$y_trans <- temp_data$trajectory_score^max_lambda
+  
+m1 = lmer(y_trans ~ gmm_labels + (1 |animal/basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+# plot(y_trans ~ gmm_labels , data = temp_data)
+
+```
+
+```{r}
+
+temp_data <- data[data$gmm_labels == "deep" | data$gmm_labels == "mixed",]
+
+# temp_data$y_trans <- temp_data$replay_df_gain_avg_to_replay+1
+# 
+# mdl_boxcox <- boxcox(trajectory_score ~ gmm_labels, data=temp_data, lambda = seq(-5, 10, length = 100))
+# max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+# 
+
+
+temp_data$y_trans <- temp_data$trajectory_score
+  
+m1 = lmer(y_trans ~ gmm_labels + (1 |animal/basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+```
+
+```{r}
+temp_data <- data[data$gmm_labels == "sup" | data$gmm_labels == "mixed",]
+
+# temp_data$y_trans <- temp_data$replay_df_gain_avg_to_replay+1
+# 
+# mdl_boxcox <- boxcox(trajectory_score ~ gmm_labels, data=temp_data, lambda = seq(-5, 10, length = 100))
+# max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+# 
+
+
+temp_data$y_trans <- temp_data$trajectory_score
+  
+m1 = lmer(y_trans ~ gmm_labels + (1 |animal/basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+```
+
+```{r}
+temp_data <- data[data$gmm_labels == "deep" | data$gmm_labels == "sup",]
+
+temp_data$y_trans <- temp_data$traj_speed + 1
+
+mdl_boxcox <- boxcox(y_trans ~ gmm_labels, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+max_lambda
+
+temp_data$y_trans <- temp_data$y_trans^max_lambda
+  
+m1 = lmer(y_trans ~ gmm_labels + (1 |animal/basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+```
+
+```{r}
+
+hist(temp_data$traj_speed)
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```

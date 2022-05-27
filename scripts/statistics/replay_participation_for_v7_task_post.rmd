@@ -51,7 +51,7 @@ unique(data$animal_id)
 ```
 
 ```{r}
-m1 = glmer(replay_par ~ deepSuperficial + (1|basepath), weights=n_replays, data=data,family="binomial")
+m1 = glmer(replay_par ~ deepSuperficial + (1|animal_id/basepath), weights=n_replays, data=data,family="binomial")
 
 
 summary(m1)
@@ -67,7 +67,7 @@ plot(replay_par ~ deepSuperficial, data = data)
 # a1 = anova(m1)
 # F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
-lme.dscore(m1,data=temp_data,type="lme4")
+lme.dscore(m1,data=data,type="lme4")
 ```
 
 ```{r}
@@ -87,7 +87,7 @@ plot(forward_replay_par ~ deepSuperficial, data = data)
 # a1 = anova(m1)
 # F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
-lme.dscore(m1,data=temp_data,type="lme4")
+lme.dscore(m1,data=data,type="lme4")
 ```
 
 ```{r}
@@ -107,7 +107,7 @@ plot(reverse_replay_par ~ deepSuperficial, data = data)
 # a1 = anova(m1)
 # F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
-lme.dscore(m1,data=temp_data,type="lme4")
+lme.dscore(m1,data=data,type="lme4")
 ```
 
 ```{r}
@@ -164,6 +164,8 @@ data[data$animal_id == "Rat08" | data$animal_id == "Gatsby" ,]
 ```{r}
 temp_data <- data[data$animal_id != "Rat08" & data$animal_id != "Gatsby" ,]
 
+temp_data <- temp_data[!is.nan(temp_data$replay_df_gain_avg_to_replay),]
+
 temp_data$y_trans <- temp_data$replay_df_gain_avg_to_replay+1
 
 mdl_boxcox <- boxcox(y_trans ~ deepSuperficial,data=temp_data, lambda = seq(-5, 10, length = 100))
@@ -174,27 +176,42 @@ summary(temp_data)
 ```
 
 ```{r}
-temp_data <- data[data$animal_id != "Rat08" & data$animal_id != "Gatsby" ,]
+# remove these rats
+temp_data <- data[data$animal_id != "Rat08" & data$animal_id != "Gatsby" & data$animal_id != "OML22",]
 
-temp_data$y_trans <- (temp_data$replay_df_gain_avg_to_replay+1)^max_lambda
+# set var to y trans
+temp_data$y_trans <- log(temp_data$replay_df_gain_avg_to_replay+1)
 
+# use boxcox to find transform
+# mdl_boxcox <- boxcox(y_trans ~ deepSuperficial,data=temp_data, lambda = seq(-5, 10, length = 100))
+# max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+# transform var
+# temp_data$y_trans <- (temp_data$replay_df_gain_avg_to_replay+1)^max_lambda
+
+# fit linear model
 m1 = lmer(y_trans ~ deepSuperficial + (1|animal_id/basepath), data = temp_data,REML=FALSE)
 summary(m1)
 
+# check residuals
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
 plot(simulationOutput)
 
+# get eta squared
 a1 = anova(m1)
 F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
+# plot relationship
 plot(y_trans ~ deepSuperficial , data = temp_data)
+
+# get cohen's D
 lme.dscore(m1,data=temp_data,type="lme4")
 ```
 
 
 
 ```{r}
-data$y_trans <- (data$replay_df_gain_avg_to_replay+2)^max_lambda
+data$y_trans <- log(data$replay_df_gain_avg_to_replay+2)
 
 m1 = lm(y_trans ~ deepSuperficial, data = data)
 summary(m1)
