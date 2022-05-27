@@ -100,41 +100,6 @@ def sample_weight_calculator(data, sample_weighting_method, beta=None):
     return weights_for_samples
 
 
-def shuffle_labels(labels):
-    """
-    Shuffle labels
-    Input:
-        labels: labels
-    Output:
-        shuffled_labels: shuffled labels
-    """
-    return np.random.permutation(labels).reshape(labels.shape)
-
-
-def get_shuffled_labels(cell_metrics, replay_par_mat, ep, n_shuffles=1000):
-    """
-    Shuffle labels and get the number of deep and superficial cells
-    Input:
-        cell_metrics: cell metrics dataframe
-        replay_par_mat: participation matrix
-        ep: epoch number, current replay event
-        n_shuffles: number of shuffles
-    Output:
-        n_deep: shuffled number of deep cells
-        n_sup: shuffled number of superficial cells
-        n_middle: shuffled number of middle cells
-    """
-    n_deep = []
-    n_sup = []
-    n_middle = []
-    for _ in range(n_shuffles):
-        labels = shuffle_labels(cell_metrics.deepSuperficial)
-        n_deep.append(sum(labels[replay_par_mat[:, ep] == 1] == "Deep"))
-        n_sup.append(sum(labels[replay_par_mat[:, ep] == 1] == "Superficial"))
-        n_middle.append(sum(labels[replay_par_mat[:, ep] == 1] == "middle"))
-    return n_deep, n_sup, n_middle
-
-
 def get_weighted_avg_pyr_dist(cell_metrics, replay_par_mat):
     """
     Calculate weighted average pyr distance
@@ -218,6 +183,41 @@ def get_weighted_avg_pyr_dist(cell_metrics, replay_par_mat):
     return df
 
 
+def shuffle_labels(labels):
+    """
+    Shuffle labels
+    Input:
+        labels: labels
+    Output:
+        shuffled_labels: shuffled labels
+    """
+    return np.random.permutation(labels).reshape(labels.shape)
+
+
+def get_shuffled_labels(cell_metrics, replay_par_mat, ep, n_shuffles=1000):
+    """
+    Shuffle labels and get the number of deep and superficial cells
+    Input:
+        cell_metrics: cell metrics dataframe
+        replay_par_mat: participation matrix
+        ep: epoch number, current replay event
+        n_shuffles: number of shuffles
+    Output:
+        n_deep: shuffled number of deep cells
+        n_sup: shuffled number of superficial cells
+        n_middle: shuffled number of middle cells
+    """
+    n_deep = []
+    n_sup = []
+    n_middle = []
+    for _ in range(n_shuffles):
+        labels = shuffle_labels(cell_metrics.deepSuperficial)
+        n_deep.append(sum(labels[replay_par_mat[:, ep] == 1] == "Deep"))
+        n_sup.append(sum(labels[replay_par_mat[:, ep] == 1] == "Superficial"))
+        n_middle.append(sum(labels[replay_par_mat[:, ep] == 1] == "middle"))
+    return n_deep, n_sup, n_middle
+
+
 def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc=90):
     """
     Get the number of significant events
@@ -256,13 +256,13 @@ def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc
         n_middle_obs.append(sum(middle_idx))
 
     # get the index of significant events
-    sig_idx_deep, _ = functions.get_significant_events(
+    sig_idx_deep, pval_deep = functions.get_significant_events(
         np.hstack(n_deep_obs), n_deep, q=q_perc
     )
-    sig_idx_sup, _ = functions.get_significant_events(
+    sig_idx_sup, pval_sup = functions.get_significant_events(
         np.hstack(n_sup_obs), n_sup, q=q_perc
     )
-    sig_idx_middle, _ = functions.get_significant_events(
+    sig_idx_middle, pval_middle = functions.get_significant_events(
         np.hstack(n_middle_obs), n_middle, q=q_perc
     )
 
@@ -273,6 +273,9 @@ def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc
         n_deep_obs,
         n_sup_obs,
         n_middle_obs,
+        pval_deep,
+        pval_sup,
+        pval_middle,
     )
 
 
@@ -338,6 +341,9 @@ def run(
         n_deep_obs,
         n_sup_obs,
         n_middle_obs,
+        pval_deep,
+        pval_sup,
+        pval_middle,
     ) = get_significant_events(
         cell_metrics, replay_par_mat, n_shuffles=n_shuffles, q_perc=q_perc
     )
@@ -354,6 +360,9 @@ def run(
     temp_df["n_deep_obs"] = n_deep_obs
     temp_df["n_sup_obs"] = n_sup_obs
     temp_df["n_middle_obs"] = n_middle_obs
+    temp_df["pval_deep"] = pval_deep
+    temp_df["pval_sup"] = pval_sup
+    temp_df["pval_middle"] = pval_middle
 
     temp_df = pd.concat([temp_df, weighted_df], axis=1)
 
