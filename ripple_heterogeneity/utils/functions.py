@@ -422,7 +422,7 @@ def get_participation(st, event_starts, event_stops, par_type="binary"):
     get participation prob.
     make matrix n rows (units) by n cols (ripple epochs)
     Input:
-        st: spike train nelpy object that is epoched by ripples
+        st: spike train list
         event_starts: event starts
         event_stops: event stops 
         par_type: participation type (counts, binary, firing_rate)
