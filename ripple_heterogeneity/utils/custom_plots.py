@@ -128,7 +128,7 @@ def restore_natural_scale(ax, min_, max_, n_steps=4, x_axis=True, y_axis=True):
         ax.set_yticklabels(np.round(10**ticks, 3))
 
 
-def plot_events(events, labels, cmap="tab20", gridlines=True, alpha=0.75):
+def plot_events(events, labels, cmap="tab20", gridlines=True, alpha=0.75, ax=None):
     """
     events: nested list of nelpy EpochArrays
     labels: labels related to each event
@@ -157,19 +157,24 @@ def plot_events(events, labels, cmap="tab20", gridlines=True, alpha=0.75):
     """
     # get colormap
     cmap = matplotlib.cm.get_cmap(cmap)
+    
     # set up y axis
     y = np.linspace(0, 1, len(events) + 1)
+
+    # set up ax if not provided
+    if ax is None:
+        ax = plt.gca()
 
     # iter over each event
     for i, evt in enumerate(events):
 
         # add horizontal line underneath
         if gridlines:
-            plt.axhline(y[i] + np.diff(y)[0] / 2, color="k", zorder=-100, alpha=0.1)
+            ax.axhline(y[i] + np.diff(y)[0] / 2, color="k", zorder=-100, alpha=0.1)
 
         # plot events
         for pair in range(evt.n_intervals):
-            plt.axvspan(
+            ax.axvspan(
                 evt.starts[pair],
                 evt.stops[pair],
                 y[i],
@@ -178,7 +183,6 @@ def plot_events(events, labels, cmap="tab20", gridlines=True, alpha=0.75):
                 color=cmap(i * 0.1),
             )
 
-    ax = plt.gca()
     ax.set_yticks(y[:-1] + np.diff(y)[0] / 2)
     ax.set_yticklabels(labels)
 
