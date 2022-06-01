@@ -24,7 +24,10 @@ def get_corrcoef(st, epoch, bin_size=0.50):
         corrcoef_r: correlation matrix
     """
     spiketrain = []
-    for spk in st[epoch].data:
+    spk_train_list = st[epoch]
+    if spk_train_list.isempty:
+        return None
+    for spk in spk_train_list.data:
         spiketrain.append(
             SpikeTrain(spk, t_start=epoch.start, t_stop=epoch.stop, units="s")
         )
@@ -75,7 +78,7 @@ def remov_within_reg_corr(U, brainRegion):
     return U
 
 
-def get_explained_var(st, beh_epochs, cell_metrics):
+def get_explained_var(st, beh_epochs, cell_metrics, state_epoch):
     """
     Calculate explained variance
     input:
@@ -88,9 +91,12 @@ def get_explained_var(st, beh_epochs, cell_metrics):
     """
 
     # get correlation matrix per epoch
-    corrcoef_r_pre = get_corrcoef(st, beh_epochs[0])
+    corrcoef_r_pre = get_corrcoef(st[state_epoch], beh_epochs[0])
     corrcoef_r_beh = get_corrcoef(st, beh_epochs[1])
-    corrcoef_r_post = get_corrcoef(st, beh_epochs[2])
+    corrcoef_r_post = get_corrcoef(st[state_epoch], beh_epochs[2])
+
+    if (corrcoef_r_pre is None or corrcoef_r_beh is None or corrcoef_r_post is None):
+        return np.nan, np.nan
 
     # remove correlations within region
     corrcoef_r_pre = remov_within_reg_corr(corrcoef_r_pre, cell_metrics.brainRegion)
@@ -133,9 +139,17 @@ def run(
     # locate epochs
     ep_df = loading.load_epoch(basepath)
     ep_df = compress_repeated_epochs.main(ep_df, epoch_name="sleep")
-    # idx = functions.find_epoch_pattern(ep_df.environment, ["sleep", "linear", "sleep"])
-    # ep_df = ep_df[idx[0]]
+
+    # locate pre task post structure
+    idx, _ = functions.find_pre_task_post(ep_df.environment)
+    if idx is None:
+        return None
+
+    ep_df = ep_df[idx]
     beh_epochs = nel.EpochArray(np.array([ep_df.startTime, ep_df.stopTime]).T)
+
+    state_dict = loading.load_SleepState_states(basepath)
+    state_epoch = nel.EpochArray(state_dict["NREMstate"])
 
     if ep_df.shape[0] != 3:
         return None
@@ -155,7 +169,7 @@ def run(
             n_target = cell_metrics.brainRegion.str.contains(region).sum()
             if st.isempty | (n_ca1 < 5) | (n_target < 5):
                 continue
-            ev, rev = get_explained_var(st, beh_epochs, cell_metrics)
+            ev, rev = get_explained_var(st, beh_epochs, cell_metrics, state_epoch)
             evs.append(ev)
             revs.append(rev)
             sublayers.append(sublayer)
