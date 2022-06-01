@@ -193,14 +193,14 @@ def compute_AutoCorrs(spks, binsize=0.001, nbins=100):
     autocorrs.loc[0] = 0.0
     return autocorrs
 
-def pairwise_corr(X):
+def pairwise_corr(X,method='pearson'):
     """
     Compute pairwise correlations between all rows of matrix
     Input: 
         X: numpy array of shape (n,p)
     Output:
-        corr: numpy array spearmanr rho
-        pval: numpy array spearmanr pval
+        corr: numpy array rho
+        pval: numpy array pval
         c: numpy array ref and target from which the correlation was computed
     """
     x = np.arange(0, X.shape[0])
@@ -208,7 +208,14 @@ def pairwise_corr(X):
     rho = []
     pval = []
     for i, s in enumerate(c):
-        rho_, pval_ = stats.spearmanr(X[s[0], :], X[s[1], :])
+        if method == 'pearson':
+            rho_, pval_ = stats.pearsonr(X[s[0], :], X[s[1], :])
+        elif method == 'spearman':
+            rho_, pval_ = stats.spearmanr(X[s[0], :], X[s[1], :])
+        elif method == 'kendall':
+            rho_, pval_ = stats.kendalltau(X[s[0], :], X[s[1], :])
+        else:
+            raise ValueError('method must be pearson, spearman or kendall')
         rho.append(rho_)
         pval.append(pval_)
     return rho, pval, c
