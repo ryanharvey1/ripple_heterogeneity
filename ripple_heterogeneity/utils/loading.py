@@ -737,7 +737,9 @@ def load_spikes(basepath,
                 putativeCellType=[], # restrict spikes to putativeCellType
                 brainRegion=[], # restrict spikes to brainRegion
                 bad_unit=False, # false for not loading bad cells
-                brain_state=[] # restrict spikes to brainstate
+                brain_state=[], # restrict spikes to brainstate
+                other_metric=None, # restrict spikes to other_metric
+                other_metric_value=None # restrict spikes to other_metric_value
                 ):
     """ 
     Load specific cells' spike times
@@ -766,6 +768,24 @@ def load_spikes(basepath,
         restrict_idx = []
         for brain_region in brainRegion:
             restrict_idx.append(cell_metrics.brainRegion.str.contains(brain_region).values) 
+        restrict_idx = np.any(restrict_idx,axis=0)
+        cell_metrics = cell_metrics[restrict_idx]
+        st = st[restrict_idx]
+
+    # restrict cell metrics by arbitrary metric
+    if other_metric is not None:
+        # make other_metric_value a list if not already
+        if not isinstance(other_metric, list):
+            other_metric = [other_metric]
+        if not isinstance(other_metric_value, list):
+            other_metric_value = [other_metric_value]
+        # check that other_metric_value is the same length as other_metric
+        if len(other_metric) != len(other_metric_value):
+            raise ValueError('other_metric and other_metric_value must be of same length')
+
+        restrict_idx = []
+        for metric,value in zip(other_metric,other_metric_value):
+            restrict_idx.append(cell_metrics[metric].str.contains(value).values) 
         restrict_idx = np.any(restrict_idx,axis=0)
         cell_metrics = cell_metrics[restrict_idx]
         st = st[restrict_idx]
