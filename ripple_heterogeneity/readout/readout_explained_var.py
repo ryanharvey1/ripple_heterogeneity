@@ -95,7 +95,7 @@ def get_explained_var(st, beh_epochs, cell_metrics, state_epoch):
     corrcoef_r_beh = get_corrcoef(st, beh_epochs[1])
     corrcoef_r_post = get_corrcoef(st[state_epoch], beh_epochs[2])
 
-    if (corrcoef_r_pre is None or corrcoef_r_beh is None or corrcoef_r_post is None):
+    if corrcoef_r_pre is None or corrcoef_r_beh is None or corrcoef_r_post is None:
         return np.nan, np.nan
 
     # remove correlations within region
@@ -134,7 +134,10 @@ def get_explained_var(st, beh_epochs, cell_metrics, state_epoch):
 
 
 def run(
-    basepath, reference_region="CA1", target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"]
+    basepath,
+    reference_region="CA1",
+    target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],
+    min_cells=5,
 ):
     # locate epochs
     ep_df = loading.load_epoch(basepath)
@@ -150,6 +153,10 @@ def run(
 
     state_dict = loading.load_SleepState_states(basepath)
     state_epoch = nel.EpochArray(state_dict["NREMstate"])
+
+    ripples = loading.load_ripples_events(basepath)
+    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+    ripple_epochs = ripple_epochs.expand(0.05)
 
     if ep_df.shape[0] != 3:
         return None
@@ -167,9 +174,9 @@ def run(
             )
             n_ca1 = cell_metrics.brainRegion.str.contains("CA1").sum()
             n_target = cell_metrics.brainRegion.str.contains(region).sum()
-            if st.isempty | (n_ca1 < 5) | (n_target < 5):
+            if st.isempty | (n_ca1 < min_cells) | (n_target < min_cells):
                 continue
-            ev, rev = get_explained_var(st, beh_epochs, cell_metrics, state_epoch)
+            ev, rev = get_explained_var(st, beh_epochs, cell_metrics, ripple_epochs)
             evs.append(ev)
             revs.append(rev)
             sublayers.append(sublayer)
