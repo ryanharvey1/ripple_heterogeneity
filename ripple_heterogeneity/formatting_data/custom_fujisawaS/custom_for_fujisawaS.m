@@ -95,3 +95,65 @@ for i = 1:length(basepaths)
     SleepScoreMaster(basepath,'noPrompts',true); % takes lfp in base 0
     thetaEpochs(basepath);
 end
+%% get spikes
+for i = 1:length(basepaths)
+    basepath = basepaths{i};
+
+    spikes = loadSpikes('basepath',basepath,'getWaveformsFromSource',true,'getWaveformsFromDat',false);
+end
+%% get cell metrics
+
+for i = 1:length(basepaths)
+    
+    basepath = basepaths{i};
+    basename = basenameFromBasepath(basepath);
+    
+    load(fullfile(basepath,[basename,'.session.mat']))
+    load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
+
+    cell_metrics = ProcessCellMetrics('session',session,'spikes',spikes,...
+        'manualAdjustMonoSyn',false,'showGUI',false,'getWaveformsFromDat',false);
+end
+
+%% map channels to brain
+for i = 1:length(basepaths)
+    basepath = basepaths{i};
+    channel_mapping('basepath',basepath)
+end
+
+%% detect ripples !!! Manual process !!!
+pause;
+basepath = pwd
+basename = basenameFromBasepath(basepath);
+
+load(fullfile(basepath,[basename,'.session.mat']))
+
+ripples = DetectSWR([session.channelTags.Ripple.channels, session.channelTags.SharpWave.channels],...
+    'basepath',basepath,...
+    'saveMat',true,'thresSDswD', [0.25, 1],'thresSDrip', [0.25, 1],...
+    'forceDetect',true,'check',true);
+
+ripples = FindRipples('basepath',basepath,...
+    'channel',session.channelTags.Ripple.channels,'saveMat',true);
+
+
+% refine ripple detection using spiking level
+spikes = importSpikes('basepath',basepath,'cellType', "Pyramidal Cell", 'brainRegion', "CA1");
+ripplesTemp = eventSpikingTreshold(ripples,'spikes',spikes,'spikingThreshold',0.5);
+ripples = ripplesTemp;
+
+save(fullfile(basepath,[basename,'.ripples.events.mat']),'ripples')
+
+%% add ripple metrics to cell_metrics
+
+for i = 1:length(basepaths)
+    
+    basepath = basepaths{i};
+    basename = basenameFromBasepath(basepath);
+    
+    load(fullfile(basepath,[basename,'.session.mat']))
+    load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
+
+    cell_metrics = ProcessCellMetrics('session',session,'spikes',spikes,...
+        'manualAdjustMonoSyn',false,'showGUI',false,'getWaveformsFromDat',false);
+end
