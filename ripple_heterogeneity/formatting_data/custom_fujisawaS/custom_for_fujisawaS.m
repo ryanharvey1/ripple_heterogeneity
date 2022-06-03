@@ -157,3 +157,17 @@ for i = 1:length(basepaths)
     cell_metrics = ProcessCellMetrics('session',session,'spikes',spikes,...
         'manualAdjustMonoSyn',false,'showGUI',false,'getWaveformsFromDat',false);
 end
+
+%% load and inspect all in cell explorer
+data_path = 'Z:\Data\FujisawaS\EE';
+
+% look for all the cell_metrics.cellinfo.mat files
+files = dir([data_path,'\**\*.cell_metrics.cellinfo.mat']);
+
+% pull out basepaths and basenames
+for i = 1:length(files)
+    basepath{i} = files(i).folder;
+    basename{i} = basenameFromBasepath(files(i).folder);
+end
+cell_metrics = loadCellMetricsBatch('basepaths',basepath,'basenames',basename);
+cell_metrics = CellExplorer('metrics',cell_metrics);
