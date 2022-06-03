@@ -130,7 +130,13 @@ def get_explained_var(st, beh_epochs, cell_metrics, state_epoch):
         (beh_pre - beh_pos * pre_pos) / np.sqrt((1 - beh_pos**2) * (1 - pre_pos**2))
     ) ** 2
 
-    return EV, rEV, corrcoef_r_pre.flatten(), corrcoef_r_beh.flatten(), corrcoef_r_post.flatten()
+    return (
+        EV,
+        rEV,
+        corrcoef_r_pre.flatten(),
+        corrcoef_r_beh.flatten(),
+        corrcoef_r_post.flatten(),
+    )
 
 
 def run(
@@ -180,7 +186,9 @@ def run(
             n_target = cell_metrics.brainRegion.str.contains(region).sum()
             if st.isempty | (n_ca1 < min_cells) | (n_target < min_cells):
                 continue
-            ev, rev, cor_pre, cor_beh, cor_post = get_explained_var(st, beh_epochs, cell_metrics, ripple_epochs)
+            ev, rev, cor_pre, cor_beh, cor_post = get_explained_var(
+                st, beh_epochs, cell_metrics, ripple_epochs
+            )
             evs.append(ev)
             revs.append(rev)
             sublayers.append(sublayer)
@@ -190,10 +198,33 @@ def run(
 
             # store pairwise correlations
             pairwise_corr.append(np.hstack([cor_pre, cor_beh, cor_post]))
-            pairwise_corr_epoch.append(np.hstack([["pre"]*len(cor_pre), ["task"]*len(cor_beh), ["post"]*len(cor_post)]))
-            pairwise_corr_region.append(np.hstack([[region]*len(cor_pre), [region]*len(cor_beh), [region]*len(cor_post)]))
-            pairwise_corr_sublayer.append(np.hstack([[sublayer]*len(cor_pre), [sublayer]*len(cor_beh), [sublayer]*len(cor_post)]))
-
+            pairwise_corr_epoch.append(
+                np.hstack(
+                    [
+                        ["pre"] * len(cor_pre),
+                        ["task"] * len(cor_beh),
+                        ["post"] * len(cor_post),
+                    ]
+                )
+            )
+            pairwise_corr_region.append(
+                np.hstack(
+                    [
+                        [region] * len(cor_pre),
+                        [region] * len(cor_beh),
+                        [region] * len(cor_post),
+                    ]
+                )
+            )
+            pairwise_corr_sublayer.append(
+                np.hstack(
+                    [
+                        [sublayer] * len(cor_pre),
+                        [sublayer] * len(cor_beh),
+                        [sublayer] * len(cor_post),
+                    ]
+                )
+            )
 
     ev_df = pd.DataFrame()
     ev_df["region"] = regions
@@ -218,23 +249,26 @@ def run(
         pairwise_corr_df["sublayer"] = np.hstack(pairwise_corr_sublayer)
         pairwise_corr_df["basepath"] = basepath
 
-
-
-    results = {'ev_df':ev_df,'pairwise_corr_df':pairwise_corr_df}
+    results = {"ev_df": ev_df, "pairwise_corr_df": pairwise_corr_df}
     return results
 
 
-def load_results(save_path):
+def load_results(save_path, verbose=False):
     """
     load_results: load results from a directory
     """
     sessions = glob.glob(save_path + os.sep + "*.pkl")
-    df = pd.DataFrame()
+    ev_df = pd.DataFrame()
+    pairwise_corr_df = pd.DataFrame()
     for session in sessions:
+        if verbose:
+            print(session)
         with open(session, "rb") as f:
             results = pickle.load(f)
         if results is None:
             continue
-        ev_df = pd.concat([df, results["ev_df"]], ignore_index=True)
-        pairwise_corr_df = pd.concat([df, results["pairwise_corr_df"]], ignore_index=True)
+        ev_df = pd.concat([ev_df, results["ev_df"]], ignore_index=True)
+        pairwise_corr_df = pd.concat(
+            [pairwise_corr_df, results["pairwise_corr_df"]], ignore_index=True
+        )
     return ev_df, pairwise_corr_df
