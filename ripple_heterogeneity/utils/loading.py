@@ -267,7 +267,10 @@ def load_cell_metrics(basepath,only_metrics=False):
     df['sex'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['sex'][0][0][0]
     df['species'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['species'][0][0][0]
     df['strain'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['strain'][0][0][0]
-    df['geneticLine'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['geneticLine'][0][0][0]
+    try:
+        df['geneticLine'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['geneticLine'][0][0][0]
+    except:
+        pass
     df['cellCount'] = data['cell_metrics']['general'][0][0]['cellCount'][0][0][0][0]
 
     # fix nesting issue for strings
