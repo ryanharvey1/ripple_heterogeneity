@@ -1,0 +1,115 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+```
+
+```{r}
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/pairwise_corr_readout.csv")
+
+data <- data[data$sublayer == "Deep" | data$sublayer == "Superficial" ,]
+
+# data <- data[!is.nan(data$replay_gain),]
+
+# data <- data[data$consider_remove=="False",]
+
+
+data$basepath = factor(data$basepath)
+data$animal_id = factor(data$animal_id)
+data$region = factor(data$region)
+data$sublayer = factor(data$sublayer)
+data$region_sublayer = factor(data$region_sublayer)
+
+# data$UID  = factor(data$UID)
+
+summary(data)
+```
+
+```{r}
+m1 = lmer(corrcoef_pre_post_abs ~ sublayer + (1 | animal_id/basepath), data = data[data$region=="MEC",],REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(corrcoef_pre_post_abs ~ sublayer , data = data[data$region=="MEC",])
+```
+
+
+```{r}
+
+# mdl_boxcox <- boxcox(corrcoef_pre_post_abs ~ sublayer, data=data[data$region=="PFC",], lambda = seq(-5, 10, length = 100))
+# max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- log(data$corrcoef_pre_post_abs)
+
+m1 = lmer(corrcoef_pre_post_abs ~ sublayer + (1 | animal_id/basepath), data = data[data$region=="PFC",],REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(corrcoef_pre_post_abs ~ sublayer , data = data[data$region=="PFC",])
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
