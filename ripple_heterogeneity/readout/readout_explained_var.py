@@ -11,6 +11,7 @@ from neo.core import SpikeTrain
 from elephant.conversion import BinnedSpikeTrain
 from elephant.spike_train_correlation import correlation_coefficient
 from ripple_heterogeneity.utils import compress_repeated_epochs
+import itertools
 
 
 def get_corrcoef(st, epoch, bin_size=0.50):
@@ -78,7 +79,7 @@ def remov_within_reg_corr(U, brainRegion):
     return U
 
 
-def get_explained_var(st, beh_epochs, cell_metrics, state_epoch):
+def get_explained_var(st, beh_epochs, cell_metrics, state_epoch, restrict_task=False):
     """
     Calculate explained variance
     input:
@@ -91,9 +92,18 @@ def get_explained_var(st, beh_epochs, cell_metrics, state_epoch):
     """
 
     # get correlation matrix per epoch
-    corrcoef_r_pre = get_corrcoef(st[state_epoch], beh_epochs[0])
-    corrcoef_r_beh = get_corrcoef(st, beh_epochs[1])
-    corrcoef_r_post = get_corrcoef(st[state_epoch], beh_epochs[2])
+    st_restrict = st[state_epoch]
+    corrcoef_r_pre = get_corrcoef(st_restrict, beh_epochs[0])
+    if restrict_task:
+        corrcoef_r_beh = get_corrcoef(st_restrict, beh_epochs[1])
+    else:
+        corrcoef_r_beh = get_corrcoef(st, beh_epochs[1])
+    corrcoef_r_post = get_corrcoef(st_restrict, beh_epochs[2])
+
+    # get uids for ref and target cells
+    c = np.array(list(itertools.product(cell_metrics.UID.values, repeat=2)))
+    ref_uid = c[:,0]
+    target_uid = c[:,1]
 
     if corrcoef_r_pre is None or corrcoef_r_beh is None or corrcoef_r_post is None:
         return np.nan, np.nan
@@ -136,14 +146,19 @@ def get_explained_var(st, beh_epochs, cell_metrics, state_epoch):
         corrcoef_r_pre.flatten(),
         corrcoef_r_beh.flatten(),
         corrcoef_r_post.flatten(),
+        ref_uid,
+        target_uid,
     )
 
 
 def run(
-    basepath,
-    reference_region="CA1",
-    target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],
-    min_cells=5,
+    basepath,  # path to data folder
+    reference_region="CA1",  # reference region
+    target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
+    min_cells=5,  # minimum number of cells per region
+    restrict_task=False,  # restrict restriction_type to task epochs
+    restriction_type="ripples",  # "ripples" or "NREMstate"
+    ripple_expand=0.05,  # in seconds, how much to expand ripples
 ):
     # locate epochs
     ep_df = loading.load_epoch(basepath)
@@ -157,12 +172,15 @@ def run(
     ep_df = ep_df[idx]
     beh_epochs = nel.EpochArray(np.array([ep_df.startTime, ep_df.stopTime]).T)
 
-    state_dict = loading.load_SleepState_states(basepath)
-    state_epoch = nel.EpochArray(state_dict["NREMstate"])
-
-    ripples = loading.load_ripples_events(basepath)
-    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
-    ripple_epochs = ripple_epochs.expand(0.05)
+    if restriction_type == "ripples":
+        ripples = loading.load_ripples_events(basepath)
+        ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+        restrict_epochs = ripple_epochs.expand(ripple_expand)
+    elif restriction_type == "NREMstate":
+        state_dict = loading.load_SleepState_states(basepath)
+        restrict_epochs = nel.EpochArray(state_dict["NREMstate"])
+    else:
+        raise ValueError("restriction_type must be 'ripples' or 'NREMstate'")
 
     if ep_df.shape[0] != 3:
         return None
@@ -177,6 +195,8 @@ def run(
     pairwise_corr_epoch = []
     pairwise_corr_region = []
     pairwise_corr_sublayer = []
+    pairwise_corr_ref_uid = []
+    pairwise_corr_target_uid = []
     for region in target_regions:
         for sublayer in ["Deep", "Superficial"]:
             st, cell_metrics = get_cells(
@@ -186,8 +206,8 @@ def run(
             n_target = cell_metrics.brainRegion.str.contains(region).sum()
             if st.isempty | (n_ca1 < min_cells) | (n_target < min_cells):
                 continue
-            ev, rev, cor_pre, cor_beh, cor_post = get_explained_var(
-                st, beh_epochs, cell_metrics, ripple_epochs
+            ev, rev, cor_pre, cor_beh, cor_post, ref_uid, target_uid = get_explained_var(
+                st, beh_epochs, cell_metrics, restrict_epochs, restrict_task
             )
             evs.append(ev)
             revs.append(rev)
@@ -198,6 +218,8 @@ def run(
 
             # store pairwise correlations
             pairwise_corr.append(np.hstack([cor_pre, cor_beh, cor_post]))
+            pairwise_corr_ref_uid.append(np.hstack([ref_uid, ref_uid, ref_uid]))
+            pairwise_corr_target_uid.append(np.hstack([target_uid, target_uid, target_uid]))
             pairwise_corr_epoch.append(
                 np.hstack(
                     [
@@ -241,12 +263,16 @@ def run(
         pairwise_corr_df["epoch"] = pairwise_corr_epoch
         pairwise_corr_df["region"] = pairwise_corr_region
         pairwise_corr_df["sublayer"] = pairwise_corr_sublayer
+        pairwise_corr_df["ref_uid"] = pairwise_corr_ref_uid
+        pairwise_corr_df["target_uid"] = pairwise_corr_target_uid
         pairwise_corr_df["basepath"] = basepath
     else:
         pairwise_corr_df["corr"] = np.hstack(pairwise_corr)
         pairwise_corr_df["epoch"] = np.hstack(pairwise_corr_epoch)
         pairwise_corr_df["region"] = np.hstack(pairwise_corr_region)
         pairwise_corr_df["sublayer"] = np.hstack(pairwise_corr_sublayer)
+        pairwise_corr_df["ref_uid"] = np.hstack(pairwise_corr_ref_uid)
+        pairwise_corr_df["target_uid"] = np.hstack(pairwise_corr_target_uid)
         pairwise_corr_df["basepath"] = basepath
 
     results = {"ev_df": ev_df, "pairwise_corr_df": pairwise_corr_df}
