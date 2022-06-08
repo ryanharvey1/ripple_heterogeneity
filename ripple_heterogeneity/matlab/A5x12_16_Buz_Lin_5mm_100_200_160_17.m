@@ -12,7 +12,7 @@ chanCoords.shankSpacing = 160; % in um
 chanCoords.verticalSpacing = 20; % in um
 chanCoords.horizontalSpacing = 17.32; % in um
 
-coords = readtable("C:\Users\Cornell\Downloads\electrodes_coordinates_A5x12-16-Buz-lin-5mm-100-200-160-177 (1).csv");
+coords = readtable("D:\github\ripple_heterogeneity\data\electrodes_coordinates_A5x12-16-Buz-lin-5mm-100-200-160-177 (1).csv");
 
 % % % % % % % % % % % % % % % % % % % % % % 
 % Generating map
