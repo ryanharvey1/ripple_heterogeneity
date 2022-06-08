@@ -11,7 +11,7 @@ df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 % unique(df.animal)
 %%
 
-basepaths = df.basepath(contains(df.basepath,'Can'));
+basepaths = df.basepath(contains(df.basepath,'Rat11'));
 % load manually fixed session
 % this_session = load('day03.session.mat')
 basepath = basepaths{1};
@@ -31,7 +31,18 @@ for i = 1:length(basepaths)
     save(fullfile(basepath,[basename,'.session.mat']),'session')
 end
 
+%%
 
+% load('Z:\Data\Can\OML22\day6\day6.chanCoords.channelInfo.mat')
+coords = readtable("D:\github\ripple_heterogeneity\data\electrodes_coordinates_A5x12-16-Buz-lin-5mm-100-200-160-177 (1).csv");
+
+chanCoords.x(1:64) = coords.x_um_;
+chanCoords.y(1:64) = coords.y_um_;
+
+chanCoords.x(65:end) = chanCoords.x(65:end) + 900;
+chanCoords.y(65:end) = (0:63)*-20
+
+chanCoords.x(65:end) = repmat(1200,1,64)
 %%
 
 session.extracellular.chanCoords.y .* deepSuperficial_ChDistance3'
