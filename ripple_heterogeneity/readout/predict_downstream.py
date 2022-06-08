@@ -46,6 +46,12 @@ def run(
     )
 
     ep_df = loading.load_epoch(basepath)
+    ep_df = compress_repeated_epochs.main(ep_df, epoch_name="sleep")
+    # locate pre task post structure
+    idx, _ = functions.find_pre_task_post(ep_df.environment)
+    if idx is None:
+        return None
+    ep_df = ep_df[idx]
     ep_epochs = nel.EpochArray([np.array([ep_df.startTime, ep_df.stopTime]).T])
 
     ca1_deep_idx = (
