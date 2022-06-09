@@ -881,9 +881,11 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     ripple_average = np.ones([channel_df.shape[0],len(ripple_time_axis)])*np.nan
 
     rip_map = []
-    for values in data[name]["ripple_average"][0][0][0]:
+    for ch,values in zip(channels_,data[name]["ripple_average"][0][0][0]):
         if values.shape[1]>0:
             rip_map.append(values)
+        else:
+            rip_map.append(np.zeros([len(ripple_time_axis),len(ch)])*np.nan)
     
     ripple_average[channel_sort_idx] = np.hstack(rip_map).T
 
