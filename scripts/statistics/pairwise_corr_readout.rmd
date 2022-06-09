@@ -28,6 +28,14 @@ data <- data[!is.nan(data$corrcoef_pre_post_abs),]
 
 # data <- data[data$consider_remove=="False",]
 
+data$corrcoef.1 <- as.numeric(data$corrcoef.1)
+data$corrcoef.2 <- as.numeric(data$corrcoef.2)
+data$corrcoef <- as.numeric(data$corrcoef)
+
+data$cor_post <- abs(data$corrcoef)
+data$cor_pre <- abs(data$corrcoef.1)
+data$cor_task <- abs(data$corrcoef.2)
+
 data$basepath = factor(data$basepath)
 data$animal_id = factor(data$animal_id)
 data$region = factor(data$region)
@@ -36,6 +44,8 @@ data$region_sublayer = factor(data$region_sublayer)
 data$ref_uid = factor(data$ref_uid)
 data$target_uid = factor(data$target_uid)
 data$unique_uid_pair = factor(data$unique_uid_pair)
+data$unique_uid_basepath = factor(data$unique_uid_basepath)
+
 
 # data$UID  = factor(data$UID)
 
@@ -50,7 +60,7 @@ max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
 # data$y_trans <- log(data$corrcoef_pre_post_abs)
 data$y_trans <- data$corrcoef_pre_post_abs^max_lambda
 
-m1 = lmer(y_trans ~ sublayer * region + (1 | animal_id/basepath/ref_uid), data = data,REML=FALSE)
+m1 = lmer(y_trans ~ sublayer * region + (1 | animal_id/basepath/unique_uid_basepath), data = data,REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
@@ -60,7 +70,7 @@ a1 = anova(m1)
 F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
 lme.dscore(m1,data=data,type="lme4")
-plot(y_trans ~ sublayer + region, data = data)
+plot(y_trans ~ sublayer * region, data = data)
 ```
 
 
@@ -72,7 +82,7 @@ max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
 # data$y_trans <- log(data$corrcoef_pre_post_abs)
 data$y_trans <- data$corrcoef_pre_post_abs^max_lambda
 
-m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath/ref_uid), data = data[data$region=="MEC",],REML=FALSE)
+m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath/unique_uid_basepath), data = data[data$region=="MEC",],REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
@@ -94,7 +104,7 @@ max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
 # data$y_trans <- log(data$corrcoef_pre_post_abs)
 data$y_trans <- data$corrcoef_pre_post_abs^max_lambda
 
-m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath/ref_uid), data = data[data$region=="PFC",],REML=FALSE)
+m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath/unique_uid_basepath), data = data[data$region=="PFC",],REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
@@ -109,22 +119,78 @@ plot(y_trans ~ sublayer , data = data[data$region=="PFC",])
 
 
 ```{r}
+data$r2_pre <- data$cor_pre^2
 
+mdl_boxcox <- boxcox(r2_pre ~ sublayer, data=data[data$region=="MEC",], lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+# data$y_trans <- log(abs(data$corrcoef.1))
+data$y_trans <- data$r2_pre^max_lambda
+
+m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath/unique_uid_basepath), data = data[data$region=="MEC",],REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ sublayer , data = data[data$region=="MEC",])
 ```
 
 
 ```{r}
+data$r2_pre <- data$cor_pre^2
 
+# mdl_boxcox <- boxcox(r2_pre ~ sublayer, data=data[data$region=="PFC",], lambda = seq(-5, 10, length = 100))
+# max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+# data$y_trans <- log(abs(data$corrcoef.1))
+data$y_trans <- log(data$r2_pre+1)
+
+m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath/unique_uid_basepath), data = data[data$region=="PFC",],REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ sublayer , data = data[data$region=="PFC",])
 ```
 
 
 ```{r}
+temp_data <- data[!is.nan(data$cor_pre),]
+temp_data <- temp_data[!is.na(temp_data$cor_pre),]
 
+temp_data$cor_pre_abs <- abs(temp_data$cor_pre)+1
+
+mdl_boxcox <- boxcox(cor_pre_abs ~ region, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$cor_pre_abs^max_lambda
+
+m1 = lmer(y_trans ~ region + (1 | animal_id/basepath/unique_uid_basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+plot(y_trans ~ region , data = temp_data)
 ```
 
 
 ```{r}
-
+temp_data$cor_pre_abs
 ```
 
 
