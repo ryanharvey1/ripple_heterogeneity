@@ -2,7 +2,7 @@
 df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 
 % iter over basepaths
-parfor i = 1:length(df.basepath)
+for i = 1:length(df.basepath)
     disp(df.basepath{i})
     run(df.basepath{i})
 end
@@ -26,4 +26,5 @@ if exist(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat
 end
 % finally, classify 
 classification_DeepSuperficial(session);
+close all
 end
