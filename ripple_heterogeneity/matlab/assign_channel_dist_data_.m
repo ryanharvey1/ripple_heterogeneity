@@ -1,6 +1,7 @@
 % assign_channel_dist_data_
 
-df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation.csv');
+% df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation.csv');
+df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation_v2_6_10_22.csv');
 
 basepaths = unique(df.basepath);
 parfor i = 1:length(unique(df.basepath))
@@ -8,6 +9,7 @@ parfor i = 1:length(unique(df.basepath))
     % detect if some shanks don't have a polarity reversal
     if any(~contains(df(contains(df.basepath,basepath),:).polarity_reversal,'True'))
         % reassign pyr distance
+        disp(basepath)
         add_new_distance(df,basepath)
     end
 end
@@ -15,9 +17,23 @@ end
 function add_new_distance(df,basepath)
 basename = basenameFromBasepath(basepath);
 
-load(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']))
-load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
-load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']))
+load(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']),'deepSuperficialfromRipple')
+
+% check if already corrected
+if isfield(deepSuperficialfromRipple.processinginfo.params,'adjusted_by_predictive_model')
+    if deepSuperficialfromRipple.processinginfo.params.adjusted_by_predictive_model
+        return 
+    end
+end
+
+% need chan coords to run
+load(fullfile(basepath,[basename,'.session.mat']),'session')
+if ~isfield(session.extracellular,'chanCoords')
+    return
+end
+
+load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'spikes')
+load(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'cell_metrics')
 
 cell_metrics.general.SWR = deepSuperficialfromRipple;
 deepSuperficial_ChClass = deepSuperficialfromRipple.channelClass;
@@ -25,8 +41,8 @@ cell_metrics.general.deepSuperficial_file =...
     fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']);
 
 % save backup
-if ~exist(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo_old.mat']),'file')
-    save(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo_old.mat']),...
+if ~exist(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo_old_61022.mat']),'file')
+    save(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo_old_61022.mat']),...
         'deepSuperficialfromRipple')
 end
 
@@ -38,19 +54,25 @@ for i = unique(temp_df.shank)'
     new_df = [new_df;cur_df(b,:)];
 end
 
-vert_space = deepSuperficialfromRipple.processinginfo.params.verticalSpacing;
+% vert_space = deepSuperficialfromRipple.processinginfo.params.verticalSpacing;
 for i = unique(new_df.shank)'
     
     channelClass = unique(new_df(new_df.shank == i,:).channelClass);
     if length(channelClass) == 1
         if contains(channelClass,"Superficial")
-            new_dist = new_df(new_df.shank == i,:).channelDistance_pred;
-            new_dist = linspace(0,length(new_dist)*vert_space,length(new_dist)) + new_dist(1);
-            new_df(new_df.shank == i,:).channelDistance = new_dist';
+            new_dist = new_df(new_df.shank == i,:).channelDistance_pred;   
+            % offset by first estimated channel distance
+            y = session.extracellular.chanCoords.y(new_df(new_df.shank == i,:).channel);
+            y = abs(y - max(y));
+            new_df(new_df.shank == i,:).channelDistance = y + new_dist(1);
+            
         elseif contains(channelClass,"Deep")
             new_dist = new_df(new_df.shank == i,:).channelDistance_pred;
-            new_dist = linspace(-length(new_dist)*vert_space,0,length(new_dist)) + new_dist(1);
-            new_df(new_df.shank == i,:).channelDistance = new_dist';
+            % offset by first estimated channel distance
+            y = session.extracellular.chanCoords.y(new_df(new_df.shank == i,:).channel);
+            y = abs(y - max(y));
+            new_dist = y - max(y) + new_dist(1);
+            new_df(new_df.shank == i,:).channelDistance = new_dist;
         end
     end
 end
@@ -69,6 +91,8 @@ for j = 1:cell_metrics.general.cellCount
             deepSuperficialfromRipple.channelDistance(spikes.maxWaveformCh1(j));
     end
 end
+
+deepSuperficialfromRipple.processinginfo.params.adjusted_by_predictive_model = true;
 
 save(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']),...
     'deepSuperficialfromRipple')
