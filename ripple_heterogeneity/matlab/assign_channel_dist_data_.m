@@ -4,7 +4,7 @@
 df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation_v2_6_10_22.csv');
 
 basepaths = unique(df.basepath);
-parfor i = 1:length(unique(df.basepath))
+for i = 1:length(unique(df.basepath))
     basepath = basepaths{i};
     % detect if some shanks don't have a polarity reversal
     if any(~contains(df(contains(df.basepath,basepath),:).polarity_reversal,'True'))
@@ -17,6 +17,15 @@ end
 function add_new_distance(df,basepath)
 basename = basenameFromBasepath(basepath);
 
+% need chan coords to run
+load(fullfile(basepath,[basename,'.session.mat']),'session')
+if ~isfield(session.extracellular,'chanCoords')
+    return
+end
+if isempty(session.extracellular.chanCoords.x)
+   return 
+end
+
 load(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']),'deepSuperficialfromRipple')
 
 % check if already corrected
@@ -24,12 +33,6 @@ if isfield(deepSuperficialfromRipple.processinginfo.params,'adjusted_by_predicti
     if deepSuperficialfromRipple.processinginfo.params.adjusted_by_predictive_model
         return 
     end
-end
-
-% need chan coords to run
-load(fullfile(basepath,[basename,'.session.mat']),'session')
-if ~isfield(session.extracellular,'chanCoords')
-    return
 end
 
 load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']),'spikes')
