@@ -51,6 +51,7 @@ def get_cells(basepath, ref="CA1", target="PFC", ref_sublayer="Deep"):
         cell_metrics: pandas dataframe with cell metrics
     """
     st, cell_metrics = loading.load_spikes(basepath, brainRegion=[ref, target])
+    cell_metrics = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cell_metrics)
     # re-label any ca1 to ca1
     cell_metrics.loc[cell_metrics.brainRegion.str.contains(ref), "brainRegion"] = ref
     # restrict to deep superficial
