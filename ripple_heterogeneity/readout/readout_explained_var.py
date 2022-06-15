@@ -157,7 +157,7 @@ def run(
     reference_region="CA1",  # reference region
     target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
     min_cells=5,  # minimum number of cells per region
-    restrict_task=False,  # restrict restriction_type to task epochs
+    restrict_task=False,  # restrict restriction_type to task epochs (ex. ripples in task (True) vs. all task (False))
     restriction_type="ripples",  # "ripples" or "NREMstate"
     ripple_expand=0.05,  # in seconds, how much to expand ripples
 ):
