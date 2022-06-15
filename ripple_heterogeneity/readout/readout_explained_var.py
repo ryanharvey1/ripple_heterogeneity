@@ -50,7 +50,9 @@ def get_cells(basepath, ref="CA1", target="PFC", ref_sublayer="Deep"):
         st: neo.SpikeTrain object
         cell_metrics: pandas dataframe with cell metrics
     """
+    # get cells from these regions
     st, cell_metrics = loading.load_spikes(basepath, brainRegion=[ref, target])
+    # classify deep and superficial cells by distance to pyr layer
     cell_metrics = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cell_metrics)
     # re-label any ca1 to ca1
     cell_metrics.loc[cell_metrics.brainRegion.str.contains(ref), "brainRegion"] = ref
@@ -173,6 +175,7 @@ def run(
     ep_df = ep_df[idx]
     beh_epochs = nel.EpochArray(np.array([ep_df.startTime, ep_df.stopTime]).T)
 
+    # choose which times to restrict to
     if restriction_type == "ripples":
         ripples = loading.load_ripples_events(basepath)
         ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
@@ -183,6 +186,7 @@ def run(
     else:
         raise ValueError("restriction_type must be 'ripples' or 'NREMstate'")
 
+    # needs exactly 3 epochs for analysis
     if ep_df.shape[0] != 3:
         return None
 
