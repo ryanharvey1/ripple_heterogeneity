@@ -5,18 +5,15 @@ import numpy as np
 import pandas as pd
 from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
 import nelpy as nel
-from quantities import s
-import quantities as pq
-from neo.core import SpikeTrain
-from elephant.conversion import BinnedSpikeTrain
-from elephant.spike_train_correlation import correlation_coefficient
 from ripple_heterogeneity.utils import compress_repeated_epochs
-import itertools
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split,cross_val_score
+from sklearn.linear_model import LinearRegression,RidgeCV
+from sklearn.metrics import mean_squared_error,mean_squared_log_error
+from sklearn.decomposition import PCA
+from sklearn import preprocessing
 
-def get_downstream_data(st,cell_metrics,target_regions,ripple_epochs):
+
+def get_downstream_data(st, cell_metrics, target_regions, ripple_epochs):
     target_idx = cell_metrics.brainRegion.str.contains(target_regions).values
     target_par = functions.get_participation(
         st.iloc[:, target_idx].data,
@@ -27,17 +24,35 @@ def get_downstream_data(st,cell_metrics,target_regions,ripple_epochs):
     return target_par
 
 
+def get_x_components(X, ev_thres=0.8):
+    """
+    get_x_components: get the components of X that are above a certain threshold
+    input: X, numpy array of shape (n_cells, n_epochs)
+    output: X_components, numpy array of shape (n_cells, n_components)
+    """
+    pca = PCA().fit(X.T)
+    # get the index that is greater than the explained variance threshold
+    n_components = np.where(1 - pca.explained_variance_ >= ev_thres)[0][0]
+    if len(n_components) == 0:
+        n_components = X.shape[1]
+    # apply the dimensionality reduction on X with n components
+    return PCA(n_components=n_components).fit_transform(X.T)
+
+
 def run(
     basepath,  # path to data folder
-    reference_region="CA1",  # reference region
+    reference_region=["CA1"],  # reference region
     target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
     min_cells=5,  # minimum number of cells per region
     restrict_task=False,  # restrict restriction_type to task epochs
     restriction_type="ripples",  # "ripples" or "NREMstate"
     ripple_expand=0.05,  # in seconds, how much to expand ripples
+    ev_thres=0.8,  # explained variance threshold for PCA
 ):
 
-    st, cell_metrics = loading.load_spikes(basepath, brainRegion=["CA1", "PFC", "MEC"])
+    st, cell_metrics = loading.load_spikes(
+        basepath, brainRegion=[*target_regions, *reference_region]
+    )
     cell_metrics = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cell_metrics)
 
     ripples = loading.load_ripples_events(basepath)
@@ -51,6 +66,7 @@ def run(
     idx, _ = functions.find_pre_task_post(ep_df.environment)
     if idx is None:
         return None
+
     ep_df = ep_df[idx]
     ep_epochs = nel.EpochArray([np.array([ep_df.startTime, ep_df.stopTime]).T])
 
@@ -64,32 +80,117 @@ def run(
         & (cell_metrics.deepSuperficial == "Superficial")
         & (cell_metrics.putativeCellType.str.contains("Pyr"))
     )
+    if sum(ca1_deep_idx) < min_cells | sum(ca1_sup_idx) < min_cells:
+        return None
 
-    ca1_deep_par = functions.get_participation(
-        st.iloc[:, ca1_deep_idx].data,
-        ripple_epochs.starts,
-        ripple_epochs.stops,
-        par_type="binary",
-    )
-    ca1_sup_par = functions.get_participation(
-        st.iloc[:, ca1_sup_idx].data,
-        ripple_epochs.starts,
-        ripple_epochs.stops,
-        par_type="binary",
-    )
-    deep_sup_ratio = ca1_deep_par.sum(axis=0) / ca1_sup_par.sum(axis=0)
+    epoch = []
+    epoch_i = []
+    targ_reg = []
+    n_x_components = []
+    mse = []
+    mean_score = []
+    std_score = []
+    n_deep = []
+    n_sup = []
+    n_target_cells = []
+    test_score = []
+    train_score = []
+    rmsle = []
+    for ep_i, ep in enumerate(ep_epochs):
+        # get participation for every cell
+        st_par = functions.get_participation(
+            st[ep].data,
+            ripple_epochs[ep].starts,
+            ripple_epochs[ep].stops,
+            par_type="binary",
+        )
+        # calculate ratio of n deep and n superficial cells
+        deep_sup_ratio = st_par[ca1_deep_idx, :].sum(axis=0) / st_par[
+            ca1_sup_idx, :
+        ].sum(axis=0)
 
-    y = np.log(deep_sup_ratio+1).reshape(-1,1)
+        for region in target_regions:
+            if sum(cell_metrics.brainRegion.str.contains(region).values) < min_cells:
+                continue
+            # log transform to get better predictions
+            y = np.log(deep_sup_ratio + 1).reshape(-1, 1)
+            # get target participation data
+            X = st_par[cell_metrics.brainRegion.str.contains(region).values, :]
+            # # get pca dims that explain 0.8 of the variance
+            X = get_x_components(X, ev_thres=ev_thres)
+            # remove nan and inf
+            bad_idx = np.hstack(np.isinf(y) | np.isnan(y))
+            y = y[~bad_idx]
+            X = X[~bad_idx, :]
 
-    bad_idx = np.isinf(deep_sup_ratio) | np.isnan(deep_sup_ratio)
-    y = y[~bad_idx]
-    X = X[~bad_idx]
+            scaler = preprocessing.StandardScaler()
+            X = scaler.fit_transform(X)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=0)
+            # split into train and test
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.4, random_state=0
+            )
+            # train a linear regression model
+            reg = RidgeCV().fit(X_train, y_train)
+            # get the predicted values
+            pred = reg.predict(X_test)
 
-    reg = LinearRegression().fit(X_train, y_train)
-    pred = reg.predict(X_test)
+            # get model performance
+            # get the MSE
+            mse.append(mean_squared_error(y_test, pred))
+            # Root Mean Squared Log Error (RMSLE)
+            # rmsle.append(np.sqrt( mean_squared_log_error(y_test, pred)))
+            # get the R2
+            scores = cross_val_score(reg, X, y, cv=5)
+            mean_score.append(scores.mean())
+            std_score.append(scores.std())
+            test_score.append(reg.score(X_test, y_test))
+            train_score.append(reg.score(X_train, y_train))
+            n_x_components.append(X.shape[1])
+            epoch.append(ep_df.environment.iloc[ep_i])
+            epoch_i.append(ep_i)
+            targ_reg.append(region)
+            n_deep.append(sum(ca1_deep_idx))
+            n_sup.append(sum(ca1_sup_idx))
+            n_target_cells.append(
+                sum(cell_metrics.brainRegion.str.contains(region).values)
+            )
 
-    mse = mean_squared_error(y_test, pred)
+    if len(epoch) == 0:
+        return pd.DataFrame()
 
-    # for region in target_regions:
+    # create a dataframe
+    df = pd.DataFrame()
+    df["epoch"] = np.hstack(epoch)
+    df["epoch_i"] = np.hstack(epoch_i)
+    df["targ_reg"] = np.hstack(targ_reg)
+    df["n_x_components"] = np.hstack(n_x_components)
+    df["mse"] = np.hstack(mse)
+    # df["rmsle"] = np.hstack(rmsle)
+    df["mean_score"] = np.hstack(mean_score)
+    df["std_score"] = np.hstack(std_score)
+    df["test_score"] = np.hstack(test_score)
+    df["train_score"] = np.hstack(train_score)
+    df["n_deep"] = np.hstack(n_deep)
+    df["n_sup"] = np.hstack(n_sup)
+    df["n_target_cells"] = np.hstack(n_target_cells)
+    df["basepath"] = basepath
+
+    return df
+
+def load_results(save_path, verbose=False):
+    """
+    load_results: load results from a directory
+    """
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+    df = pd.DataFrame()
+    for session in sessions:
+        if verbose:
+            print(session)
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+        if results is None:
+            continue
+        df = pd.concat([df, results], ignore_index=True)
+
+    return df
