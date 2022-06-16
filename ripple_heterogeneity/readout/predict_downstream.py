@@ -29,10 +29,9 @@ def run(
     reference_region=["CA1"],  # reference region
     target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
     min_cells=5,  # minimum number of cells per region
-    restrict_task=False,  # restrict restriction_type to task epochs
-    restriction_type="ripples",  # "ripples" or "NREMstate"
-    ripple_expand=0.05,  # in seconds, how much to expand ripples
+    ripple_expand=0.1,  # in seconds, how much to expand ripples
     ev_thres=0.8,  # explained variance threshold for PCA
+    min_ripples=10,  # minimum number of ripples per epoch
 ):
 
     st, cell_metrics = loading.load_spikes(
@@ -42,7 +41,7 @@ def run(
 
     ripples = loading.load_ripples_events(basepath)
     ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T]).expand(
-        0.1
+        ripple_expand
     )
 
     ep_df = loading.load_epoch(basepath)
@@ -89,6 +88,8 @@ def run(
             ripple_epochs[ep].stops,
             par_type="binary",
         )
+        if st_par.shape[1] < min_ripples:
+            continue
         # calculate ratio of n deep and n superficial cells
         deep_sup_ratio = st_par[ca1_deep_idx, :].sum(axis=0) / st_par[
             ca1_sup_idx, :
