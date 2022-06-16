@@ -6,9 +6,9 @@ import pandas as pd
 from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
 import nelpy as nel
 from ripple_heterogeneity.utils import compress_repeated_epochs
-from sklearn.model_selection import train_test_split,cross_val_score
-from sklearn.linear_model import LinearRegression,RidgeCV
-from sklearn.metrics import mean_squared_error,mean_squared_log_error
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.linear_model import LinearRegression, RidgeCV
+from sklearn.metrics import mean_squared_error, mean_squared_log_error
 from sklearn.decomposition import PCA
 from sklearn import preprocessing
 
@@ -103,7 +103,7 @@ def run(
             # get target participation data
             X = st_par[cell_metrics.brainRegion.str.contains(region).values, :]
             # # get pca dims that explain XX of the variance
-            X = PCA(n_components=ev_thres,svd_solver='full').fit_transform(X.T)
+            X = PCA(n_components=ev_thres, svd_solver="full").fit_transform(X.T)
             # remove nan and inf
             bad_idx = np.hstack(np.isinf(y) | np.isnan(y))
             y = y[~bad_idx]
@@ -163,6 +163,7 @@ def run(
     df["basepath"] = basepath
 
     return df
+
 
 def load_results(save_path, verbose=False):
     """
