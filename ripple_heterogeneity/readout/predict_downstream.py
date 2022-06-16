@@ -24,21 +24,6 @@ def get_downstream_data(st, cell_metrics, target_regions, ripple_epochs):
     return target_par
 
 
-def get_x_components(X, ev_thres=0.8):
-    """
-    get_x_components: get the components of X that are above a certain threshold
-    input: X, numpy array of shape (n_cells, n_epochs)
-    output: X_components, numpy array of shape (n_cells, n_components)
-    """
-    pca = PCA().fit(X.T)
-    # get the index that is greater than the explained variance threshold
-    n_components = np.where(1 - pca.explained_variance_ >= ev_thres)[0][0]
-    if len(n_components) == 0:
-        n_components = X.shape[1]
-    # apply the dimensionality reduction on X with n components
-    return PCA(n_components=n_components).fit_transform(X.T)
-
-
 def run(
     basepath,  # path to data folder
     reference_region=["CA1"],  # reference region
@@ -80,7 +65,7 @@ def run(
         & (cell_metrics.deepSuperficial == "Superficial")
         & (cell_metrics.putativeCellType.str.contains("Pyr"))
     )
-    if sum(ca1_deep_idx) < min_cells | sum(ca1_sup_idx) < min_cells:
+    if (sum(ca1_deep_idx) < min_cells) | (sum(ca1_sup_idx) < min_cells):
         return None
 
     epoch = []
@@ -116,8 +101,8 @@ def run(
             y = np.log(deep_sup_ratio + 1).reshape(-1, 1)
             # get target participation data
             X = st_par[cell_metrics.brainRegion.str.contains(region).values, :]
-            # # get pca dims that explain 0.8 of the variance
-            X = get_x_components(X, ev_thres=ev_thres)
+            # # get pca dims that explain XX of the variance
+            X = PCA(n_components=ev_thres,svd_solver='full').fit_transform(X.T)
             # remove nan and inf
             bad_idx = np.hstack(np.isinf(y) | np.isnan(y))
             y = y[~bad_idx]
