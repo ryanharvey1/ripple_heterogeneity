@@ -8,7 +8,7 @@ import nelpy as nel
 from ripple_heterogeneity.utils import compress_repeated_epochs
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LinearRegression, RidgeCV
-from sklearn.metrics import mean_squared_error, mean_squared_log_error
+from sklearn.metrics import mean_squared_error, mean_squared_log_error, median_absolute_error
 from sklearn.decomposition import PCA
 from sklearn import preprocessing
 
@@ -23,6 +23,35 @@ def get_downstream_data(st, cell_metrics, target_regions, ripple_epochs):
     )
     return target_par
 
+def predict(X,y):
+    """
+    predict: predict the downstream activity of the target regions
+    """
+    # remove nan and inf
+    bad_idx = np.hstack(np.isinf(y) | np.isnan(y))
+    y = y[~bad_idx]
+    X = X[~bad_idx, :]
+
+    scaler = preprocessing.StandardScaler()
+    X = scaler.fit_transform(X)
+
+    # split into train and test
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.4, random_state=0
+    )
+    # train a linear regression model
+    return RidgeCV().fit(X_train, y_train), X_train, X_test, y_train, y_test
+
+def shuffle_data(X, y, n_shuff=1000):
+    mse = []
+    medse = []
+    for i in range(n_shuff):
+        idx = np.random.permutation(len(X))
+        reg, X_train, X_test, y_train, y_test = predict(X[idx],y)
+        # get model performance
+        mse.append(mean_squared_error(y_test, reg.predict(X_test)))
+        medse.append(median_absolute_error(y_test, reg.predict(X_test)))
+    return mse, medse
 
 def run(
     basepath,  # path to data folder
@@ -32,6 +61,7 @@ def run(
     ripple_expand=0.1,  # in seconds, how much to expand ripples
     ev_thres=0.8,  # explained variance threshold for PCA
     min_ripples=10,  # minimum number of ripples per epoch
+    n_shuff=1000,  # number of shuffles to do
 ):
 
     st, cell_metrics = loading.load_spikes(
@@ -79,7 +109,9 @@ def run(
     n_target_cells = []
     test_score = []
     train_score = []
-    rmsle = []
+    medse = []
+    median_medse_shuff = []
+    median_mse_shuff = []
     for ep_i, ep in enumerate(ep_epochs):
         # get participation for every cell
         st_par = functions.get_participation(
@@ -104,34 +136,21 @@ def run(
             X = st_par[cell_metrics.brainRegion.str.contains(region).values, :]
             # # get pca dims that explain XX of the variance
             X = PCA(n_components=ev_thres, svd_solver="full").fit_transform(X.T)
-            # remove nan and inf
-            bad_idx = np.hstack(np.isinf(y) | np.isnan(y))
-            y = y[~bad_idx]
-            X = X[~bad_idx, :]
 
-            scaler = preprocessing.StandardScaler()
-            X = scaler.fit_transform(X)
+            reg, X_train, X_test, y_train, y_test = predict(X,y)
 
-            # split into train and test
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.4, random_state=0
-            )
-            # train a linear regression model
-            reg = RidgeCV().fit(X_train, y_train)
-            # get the predicted values
+            # # get the predicted values
             pred = reg.predict(X_test)
 
             # get model performance
-            # get the MSE
             mse.append(mean_squared_error(y_test, pred))
-            # Root Mean Squared Log Error (RMSLE)
-            # rmsle.append(np.sqrt( mean_squared_log_error(y_test, pred)))
-            # get the R2
+            medse.append(median_absolute_error(y_test, pred))
             scores = cross_val_score(reg, X, y, cv=5)
             mean_score.append(scores.mean())
             std_score.append(scores.std())
             test_score.append(reg.score(X_test, y_test))
             train_score.append(reg.score(X_train, y_train))
+            # get metadata
             n_x_components.append(X.shape[1])
             epoch.append(ep_df.environment.iloc[ep_i])
             epoch_i.append(ep_i)
@@ -141,6 +160,11 @@ def run(
             n_target_cells.append(
                 sum(cell_metrics.brainRegion.str.contains(region).values)
             )
+            # get vars for prediction gain
+            mse_shuff,medse_shuff = shuffle_data(X, y, n_shuff=n_shuff)
+            median_medse_shuff.append(np.median(medse_shuff))
+            median_mse_shuff.append(np.median(mse_shuff))
+
 
     if len(epoch) == 0:
         return pd.DataFrame()
@@ -152,6 +176,9 @@ def run(
     df["targ_reg"] = np.hstack(targ_reg)
     df["n_x_components"] = np.hstack(n_x_components)
     df["mse"] = np.hstack(mse)
+    df["medse"] = np.hstack(medse)
+    df["median_mse_shuff"] = np.hstack(median_mse_shuff)
+    df["median_medse_shuff"] = np.hstack(median_medse_shuff)
     # df["rmsle"] = np.hstack(rmsle)
     df["mean_score"] = np.hstack(mean_score)
     df["std_score"] = np.hstack(std_score)
