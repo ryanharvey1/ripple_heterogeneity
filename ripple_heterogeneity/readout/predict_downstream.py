@@ -8,7 +8,11 @@ import nelpy as nel
 from ripple_heterogeneity.utils import compress_repeated_epochs
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LinearRegression, RidgeCV
-from sklearn.metrics import mean_squared_error, mean_squared_log_error, median_absolute_error
+from sklearn.metrics import (
+    mean_squared_error,
+    mean_squared_log_error,
+    median_absolute_error,
+)
 from sklearn.decomposition import PCA
 from sklearn import preprocessing
 
@@ -23,7 +27,8 @@ def get_downstream_data(st, cell_metrics, target_regions, ripple_epochs):
     )
     return target_par
 
-def predict(X,y):
+
+def predict(X, y):
     """
     predict: predict the downstream activity of the target regions
     """
@@ -42,16 +47,18 @@ def predict(X,y):
     # train a linear regression model
     return RidgeCV().fit(X_train, y_train), X_train, X_test, y_train, y_test
 
+
 def shuffle_data(X, y, n_shuff=1000):
     mse = []
     medse = []
     for i in range(n_shuff):
         idx = np.random.permutation(len(X))
-        reg, X_train, X_test, y_train, y_test = predict(X[idx],y)
+        reg, X_train, X_test, y_train, y_test = predict(X[idx], y)
         # get model performance
         mse.append(mean_squared_error(y_test, reg.predict(X_test)))
         medse.append(median_absolute_error(y_test, reg.predict(X_test)))
     return mse, medse
+
 
 def run(
     basepath,  # path to data folder
@@ -137,7 +144,7 @@ def run(
             # # get pca dims that explain XX of the variance
             X = PCA(n_components=ev_thres, svd_solver="full").fit_transform(X.T)
 
-            reg, X_train, X_test, y_train, y_test = predict(X,y)
+            reg, X_train, X_test, y_train, y_test = predict(X, y)
 
             # # get the predicted values
             pred = reg.predict(X_test)
@@ -161,10 +168,9 @@ def run(
                 sum(cell_metrics.brainRegion.str.contains(region).values)
             )
             # get vars for prediction gain
-            mse_shuff,medse_shuff = shuffle_data(X, y, n_shuff=n_shuff)
+            mse_shuff, medse_shuff = shuffle_data(X, y, n_shuff=n_shuff)
             median_medse_shuff.append(np.median(medse_shuff))
             median_mse_shuff.append(np.median(mse_shuff))
-
 
     if len(epoch) == 0:
         return pd.DataFrame()
