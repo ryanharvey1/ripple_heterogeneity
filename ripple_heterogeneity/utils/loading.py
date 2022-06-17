@@ -635,9 +635,14 @@ def load_animal_behavior(basepath):
         df['linearized'] = data['behavior']['position'][0][0]['linearized'][0][0][0]
     except:
         df['linearized'] = np.nan
-
-    df['speed'] = data['behavior']['speed'][0][0][0]
-    df['acceleration'] = data['behavior']['acceleration'][0][0][0]
+    try:
+        df['speed'] = data['behavior']['speed'][0][0][0]
+    except:
+        df['speed'] = np.nan
+    try:
+        df['acceleration'] = data['behavior']['acceleration'][0][0][0]
+    except:
+        df['acceleration'] = np.nan
 
     for t in range(trials.shape[0]):
         idx = (df.time >= trials[t,0]) & (df.time <= trials[t,1])
