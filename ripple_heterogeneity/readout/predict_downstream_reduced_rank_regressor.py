@@ -96,7 +96,7 @@ def run(
                 ripple_epochs[ep].stops,
                 par_type="firing_rate",
             )
-        except: 
+        except:
             continue
 
         # rescale using standard scaler
@@ -106,7 +106,9 @@ def run(
         for ca1_sub in ["Deep", "Superficial"]:
             # iterate over target regions
             for region in target_regions:
-                if (sum(cm.brainRegion.str.contains(region).values) < min_cells) | (sum(cm.deepSuperficial == ca1_sub) < min_cells):
+                if (sum(cm.brainRegion.str.contains(region).values) < min_cells) | (
+                    sum(cm.deepSuperficial == ca1_sub) < min_cells
+                ):
                     continue
 
                 ca1_idx = (
