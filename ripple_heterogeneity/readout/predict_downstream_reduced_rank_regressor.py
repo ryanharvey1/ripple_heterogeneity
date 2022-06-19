@@ -7,7 +7,6 @@ from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
 import nelpy as nel
 from ripple_heterogeneity.utils import compress_repeated_epochs
 from sklearn.model_selection import train_test_split
-from sklearn.decomposition import PCA
 from sklearn import preprocessing
 from ripple_heterogeneity.utils import reduced_rank_regressor
 from scipy import around
@@ -42,7 +41,6 @@ def run(
     target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
     min_cells=5,  # minimum number of cells per region
     ripple_expand=0.1,  # in seconds, how much to expand ripples
-    ev_thres=0.8,  # explained variance threshold for PCA
     min_ripples=10,  # minimum number of ripples per epoch
     n_shuff=1000,  # number of shuffles to do
     rank=10,  # rank of the reduced rank regressor
@@ -69,19 +67,6 @@ def run(
     ep_df = ep_df[idx]
     ep_epochs = nel.EpochArray([np.array([ep_df.startTime, ep_df.stopTime]).T])
 
-    ca1_deep_idx = (
-        cm.brainRegion.str.contains("CA1").values
-        & (cm.deepSuperficial == "Deep")
-        & (cm.putativeCellType.str.contains("Pyr"))
-    )
-    ca1_sup_idx = (
-        cm.brainRegion.str.contains("CA1").values
-        & (cm.deepSuperficial == "Superficial")
-        & (cm.putativeCellType.str.contains("Pyr"))
-    )
-    if (sum(ca1_deep_idx) < min_cells) | (sum(ca1_sup_idx) < min_cells):
-        return None
-
     epoch = []
     epoch_i = []
     targ_reg = []
@@ -94,25 +79,33 @@ def run(
     n_ca1 = []
 
     scaler = preprocessing.StandardScaler()
-
+    
+    # iterate over all epochs
     for ep_i, ep in enumerate(ep_epochs):
-        # get participation for every cell
-        st_par = functions.get_participation(
-            st[ep].data,
-            ripple_epochs[ep].starts,
-            ripple_epochs[ep].stops,
-            par_type="firing_rate",
-        )
-        if st_par.shape[1] < min_ripples:
+        # continue if there are too few ripples
+        if len(ripple_epochs[ep].starts) < min_ripples:
             continue
 
+        # get participation for every cell
+        # this will continue if there is insufficient data
+        try:
+            st_par = functions.get_participation(
+                st[ep].data,
+                ripple_epochs[ep].starts,
+                ripple_epochs[ep].stops,
+                par_type="firing_rate",
+            )
+        except: 
+            continue
+
+        # rescale using standard scaler
         X = scaler.fit_transform(st_par)
 
+        # iterate over ca1 sublayers regions
         for ca1_sub in ["Deep", "Superficial"]:
+            # iterate over target regions
             for region in target_regions:
-                if sum(cm.brainRegion.str.contains(region).values) < min_cells:
-                    continue
-                if sum(cm.brainRegion.str.contains(ca1_sub).values) < min_cells:
+                if (sum(cm.brainRegion.str.contains(region).values) < min_cells) | (sum(cm.deepSuperficial == ca1_sub) < min_cells):
                     continue
 
                 ca1_idx = (
