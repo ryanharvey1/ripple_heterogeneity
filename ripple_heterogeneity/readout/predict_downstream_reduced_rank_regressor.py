@@ -77,9 +77,10 @@ def run(
     median_error_shuff = []
     mean_error_shuff = []
     n_ca1 = []
+    ca1_sub_layer = []
 
     scaler = preprocessing.StandardScaler()
-    
+
     # iterate over all epochs
     for ep_i, ep in enumerate(ep_epochs):
         # continue if there are too few ripples
@@ -133,6 +134,7 @@ def run(
                 epoch.append(ep_df.environment.iloc[ep_i])
                 epoch_i.append(ep_i)
                 targ_reg.append(region)
+                ca1_sub_layer.append(ca1_sub)
                 n_ca1.append(sum(ca1_idx))
                 n_target_cells.append(sum(cm.brainRegion.str.contains(region).values))
                 # get vars for prediction gain
@@ -150,6 +152,7 @@ def run(
     df["epoch"] = np.hstack(epoch)
     df["epoch_i"] = np.hstack(epoch_i)
     df["targ_reg"] = np.hstack(targ_reg)
+    df["ca1_sub_layer"] = np.hstack(ca1_sub_layer)
     df["n_x_components"] = np.hstack(n_x_components)
     df["training_error"] = np.hstack(training_error)
     df["testing_error"] = np.hstack(testing_error)
