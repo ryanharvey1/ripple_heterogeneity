@@ -17,17 +17,6 @@ from sklearn.decomposition import PCA
 from sklearn import preprocessing
 
 
-def get_downstream_data(st, cell_metrics, target_regions, ripple_epochs):
-    target_idx = cell_metrics.brainRegion.str.contains(target_regions).values
-    target_par = functions.get_participation(
-        st.iloc[:, target_idx].data,
-        ripple_epochs.starts,
-        ripple_epochs.stops,
-        par_type="counts",
-    )
-    return target_par
-
-
 def predict(X, y):
     """
     predict: predict the downstream activity of the target regions
