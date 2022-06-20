@@ -24,7 +24,7 @@ def shuffle_data(X, y, rank, reg, n_shuff=1000):
     for i in range(n_shuff):
         idx = np.random.permutation(X.shape[0])
         X_train, X_test, y_train, y_test = train_test_split(
-            X[idx,:], y, test_size=0.4, random_state=42
+            X[idx, :], y, test_size=0.4, random_state=42
         )
         regressor = reduced_rank_regressor.ReducedRankRegressor(
             X_train, y_train, rank, reg
@@ -106,9 +106,7 @@ def run(
         for ca1_sub in ["Deep", "Superficial"]:
             # iterate over target regions
             for region in target_regions:
-                if (sum(cm.brainRegion.str.contains(region).values) < min_cells) | (
-                    sum(cm.deepSuperficial == ca1_sub) < min_cells
-                ):
+                if sum(cm.brainRegion.str.contains(region).values) < min_cells:
                     continue
 
                 ca1_idx = (
@@ -116,6 +114,8 @@ def run(
                     & (cm.deepSuperficial == ca1_sub)
                     & (cm.putativeCellType.str.contains("Pyr"))
                 )
+                if sum(ca1_idx) < min_cells:
+                    continue
                 target_idx = cm.brainRegion.str.contains(region).values
 
                 X_train, X_test, y_train, y_test = train_test_split(
