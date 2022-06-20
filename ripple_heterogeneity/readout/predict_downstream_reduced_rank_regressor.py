@@ -22,9 +22,9 @@ def sqerr(matrix1, matrix2):
 def shuffle_data(X, y, rank, reg, n_shuff=1000):
     testing_error = []
     for i in range(n_shuff):
-        idx = np.random.permutation(len(X))
+        idx = np.random.permutation(X.shape[0])
         X_train, X_test, y_train, y_test = train_test_split(
-            X[idx], y, test_size=0.4, random_state=42
+            X[idx,:], y, test_size=0.4, random_state=42
         )
         regressor = reduced_rank_regressor.ReducedRankRegressor(
             X_train, y_train, rank, reg
