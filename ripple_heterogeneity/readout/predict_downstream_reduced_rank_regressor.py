@@ -12,6 +12,7 @@ from ripple_heterogeneity.utils import reduced_rank_regressor
 from scipy import around
 from scipy import size
 from scipy.linalg import norm
+from sklearn.cross_decomposition import CCA,PLSCanonical,PLSRegression
 
 
 def sqerr(matrix1, matrix2):
@@ -21,6 +22,7 @@ def sqerr(matrix1, matrix2):
 
 def shuffle_data(X, y, rank, reg, n_shuff=1000):
     testing_error = []
+    r2_test = []
     for i in range(n_shuff):
         idx = np.random.permutation(X.shape[0])
         X_train, X_test, y_train, y_test = train_test_split(
@@ -31,8 +33,9 @@ def shuffle_data(X, y, rank, reg, n_shuff=1000):
         )
         # get model performance
         testing_error.append(sqerr(regressor.predict(X_test), y_test))
+        r2_test.append(regressor.score(X_test, y_test))
 
-    return testing_error
+    return testing_error,r2_test
 
 
 def get_data(basepath, target_regions, reference_region, ripple_expand):
@@ -86,6 +89,14 @@ def run(
     mean_error_shuff = []
     n_ca1 = []
     ca1_sub_layer = []
+    r2_rrr_train = []
+    r2_rrr_test = []
+    mean_r2_shuff = []
+    median_r2_shuff = []
+    r2_shuffles = []
+    r2_cca = []
+    r2_plsr = []
+    r2_plsc = []
 
     scaler = preprocessing.StandardScaler()
 
@@ -142,9 +153,20 @@ def run(
                 regressor = reduced_rank_regressor.ReducedRankRegressor(
                     X_train, y_train, rank, reg
                 )
+                mdl = CCA().fit(X_train, y_train)
+                r2_cca.append(mdl.score(X_test, y_test))
+
+                mdl = PLSCanonical().fit(X_train, y_train)
+                r2_plsc.append(mdl.score(X_test, y_test))
+
+                mdl = PLSRegression().fit(X_train, y_train)
+                r2_plsr.append(mdl.score(X_test, y_test))
+
                 # get model performance
                 training_error.append(sqerr(regressor.predict(X_train), y_train))
                 testing_error.append(sqerr(regressor.predict(X_test), y_test))
+                r2_rrr_train.append(regressor.score(X_train, y_train))
+                r2_rrr_test.append(regressor.score(X_test, y_test))
 
                 # get metadata
                 n_x_components.append(X.shape[1])
@@ -154,12 +176,17 @@ def run(
                 ca1_sub_layer.append(ca1_sub)
                 n_ca1.append(sum(ca1_idx))
                 n_target_cells.append(sum(cm.brainRegion.str.contains(region).values))
-                # get vars for prediction gain
-                error_shuff = shuffle_data(
+                
+                # get vars for shuffles
+                error_shuff,r2_shuff = shuffle_data(
                     X[ca1_idx, :].T, X[target_idx, :].T, rank, reg, n_shuff=n_shuff
                 )
                 median_error_shuff.append(np.median(error_shuff))
                 mean_error_shuff.append(np.mean(error_shuff))
+                mean_r2_shuff.append(np.mean(r2_shuff))
+                median_r2_shuff.append(np.median(r2_shuff))
+                r2_shuffles.append(r2_shuff)
+
 
     if len(epoch) == 0:
         return pd.DataFrame()
@@ -173,8 +200,17 @@ def run(
     df["n_x_components"] = np.hstack(n_x_components)
     df["training_error"] = np.hstack(training_error)
     df["testing_error"] = np.hstack(testing_error)
+    df["r2_rrr_train"] = np.hstack(r2_rrr_train)
+    df["r2_rrr_test"] = np.hstack(r2_rrr_test)
+    df["r2_cca"] = np.hstack(r2_cca)
+    df["r2_plsc"] = np.hstack(r2_plsc)
+    df["r2_plsr"] = np.hstack(r2_plsr)
     df["mean_error_shuff"] = np.hstack(mean_error_shuff)
     df["median_error_shuff"] = np.hstack(median_error_shuff)
+    df["mean_r2_shuff"] = np.hstack(mean_r2_shuff)
+    df["median_r2_shuff"] = np.hstack(median_r2_shuff)
+    _,pval = functions.get_significant_events(np.hstack(r2_rrr_train), np.vstack(r2_shuffles))
+    df["pvalues"] = pval
     df["n_ca1"] = np.hstack(n_ca1)
     df["n_target_cells"] = np.hstack(n_target_cells)
     df["basepath"] = basepath
