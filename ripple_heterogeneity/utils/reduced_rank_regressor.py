@@ -9,6 +9,7 @@ Optimal linear 'bottlenecking' or 'multitask learning'.
 """
 import numpy as np
 from scipy import sparse
+from sklearn.metrics import r2_score
 
 
 def ideal_data(num, dimX, dimY, rrank, noise=1):
@@ -51,3 +52,13 @@ class ReducedRankRegressor(object):
         if np.size(np.shape(X)) == 1:
             X = np.reshape(X, (-1, 1))
         return np.dot(X, np.dot(self.A.T, self.W.T))
+
+    def score(self, X, Y):
+        """Score the model."""
+        if np.size(np.shape(X)) == 1:
+            X = np.reshape(X, (-1, 1))
+        if np.size(np.shape(Y)) == 1:
+            Y = np.reshape(Y, (-1, 1))
+
+        y_pred = self.predict(X)  
+        return r2_score(Y, y_pred)  
