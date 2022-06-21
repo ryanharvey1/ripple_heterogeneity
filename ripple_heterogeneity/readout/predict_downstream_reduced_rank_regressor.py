@@ -45,6 +45,7 @@ def run(
     n_shuff=1000,  # number of shuffles to do
     rank=10,  # rank of the reduced rank regressor
     reg=1e-6,  # regularization parameter
+    target_cell_type=None,  # cell type to use for target cells
 ):
 
     st, cm = loading.load_spikes(
@@ -116,7 +117,14 @@ def run(
                 )
                 if sum(ca1_idx) < min_cells:
                     continue
-                target_idx = cm.brainRegion.str.contains(region).values
+
+                if target_cell_type is not None:
+                    target_idx = (
+                        cm.brainRegion.str.contains(region).values
+                        & cm.putativeCellType.str.contains(target_cell_type).values
+                    )
+                else:
+                    target_idx = cm.brainRegion.str.contains(region).values
 
                 X_train, X_test, y_train, y_test = train_test_split(
                     X[ca1_idx, :].T,
