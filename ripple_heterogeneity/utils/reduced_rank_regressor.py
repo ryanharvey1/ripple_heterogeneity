@@ -15,8 +15,8 @@ from sklearn.metrics import r2_score
 def ideal_data(num, dimX, dimY, rrank, noise=1):
     """Low rank data"""
     X = np.random.randn(num, dimX)
-    W = np.dot(np.random.randn(dimX, rrank), np.random.randn(rrank, dimY))
-    Y = np.dot(X, W) + np.random.randn(num, dimY) * noise
+    W = np.random.randn(dimX, rrank) @ np.random.randn(rrank, dimY)
+    Y = X @ W + np.random.randn(num, dimY) * noise
     return X, Y
 
 
@@ -38,11 +38,11 @@ class ReducedRankRegressor(object):
             reg = 0
         self.rank = rank
 
-        CXX = np.dot(X.T, X) + reg * sparse.eye(np.size(X, 1))
-        CXY = np.dot(X.T, Y)
-        _U, _S, V = np.linalg.svd(np.dot(CXY.T, np.dot(np.linalg.pinv(CXX), CXY)))
+        CXX = X.T @ X + reg * sparse.eye(np.size(X, 1))
+        CXY = X.T @ Y
+        _U, _S, V = np.linalg.svd(CXY.T @ (np.linalg.pinv(CXX) @ CXY))
         self.W = V[0:rank, :].T
-        self.A = np.dot(np.linalg.pinv(CXX), np.dot(CXY, self.W)).T
+        self.A = (np.linalg.pinv(CXX) @ (CXY @ self.W)).T
 
     def __str__(self):
         return "Reduced Rank Regressor (rank = {})".format(self.rank)
@@ -51,7 +51,7 @@ class ReducedRankRegressor(object):
         """Predict Y from X."""
         if np.size(np.shape(X)) == 1:
             X = np.reshape(X, (-1, 1))
-        return np.dot(X, np.dot(self.A.T, self.W.T))
+        return X @ (self.A.T @ self.W.T)
 
     def score(self, X, Y):
         """Score the model."""
@@ -60,5 +60,5 @@ class ReducedRankRegressor(object):
         if np.size(np.shape(Y)) == 1:
             Y = np.reshape(Y, (-1, 1))
 
-        y_pred = self.predict(X)  
-        return r2_score(Y, y_pred)  
+        y_pred = self.predict(X)
+        return r2_score(Y, y_pred)
