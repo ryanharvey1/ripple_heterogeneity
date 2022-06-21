@@ -476,7 +476,7 @@ def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
 
     n, _ = shuffled_scores.shape
     if tail == "both":
-        r = np.sum(abs(shuffled_scores) >= abs(scores), axis=0)
+        r = np.sum(np.abs(shuffled_scores) >= np.abs(scores), axis=0)
     elif tail == "right":
         r = np.sum(shuffled_scores >= scores, axis=0)
     elif tail == "left":
