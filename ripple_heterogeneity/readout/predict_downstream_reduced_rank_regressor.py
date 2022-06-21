@@ -12,7 +12,7 @@ from ripple_heterogeneity.utils import reduced_rank_regressor
 from scipy import around
 from scipy import size
 from scipy.linalg import norm
-from sklearn.cross_decomposition import CCA,PLSCanonical,PLSRegression
+from sklearn.cross_decomposition import CCA, PLSCanonical, PLSRegression
 
 
 def sqerr(matrix1, matrix2):
@@ -35,7 +35,7 @@ def shuffle_data(X, y, rank, reg, n_shuff=1000):
         testing_error.append(sqerr(regressor.predict(X_test), y_test))
         r2_test.append(regressor.score(X_test, y_test))
 
-    return testing_error,r2_test
+    return testing_error, r2_test
 
 
 def get_data(basepath, target_regions, reference_region, ripple_expand):
@@ -54,7 +54,7 @@ def get_data(basepath, target_regions, reference_region, ripple_expand):
     # locate pre task post structure
     idx, _ = functions.find_pre_task_post(ep_df.environment)
     if idx is None:
-        return None
+        return None,None,None,None,None
 
     ep_df = ep_df[idx]
     ep_epochs = nel.EpochArray([np.array([ep_df.startTime, ep_df.stopTime]).T])
@@ -77,7 +77,9 @@ def run(
     st, cm, ripple_epochs, ep_epochs, ep_df = get_data(
         basepath, target_regions, reference_region, ripple_expand
     )
-
+    if st is None:
+        return None
+        
     epoch = []
     epoch_i = []
     targ_reg = []
@@ -176,9 +178,9 @@ def run(
                 ca1_sub_layer.append(ca1_sub)
                 n_ca1.append(sum(ca1_idx))
                 n_target_cells.append(sum(cm.brainRegion.str.contains(region).values))
-                
+
                 # get vars for shuffles
-                error_shuff,r2_shuff = shuffle_data(
+                error_shuff, r2_shuff = shuffle_data(
                     X[ca1_idx, :].T, X[target_idx, :].T, rank, reg, n_shuff=n_shuff
                 )
                 median_error_shuff.append(np.median(error_shuff))
@@ -186,7 +188,6 @@ def run(
                 mean_r2_shuff.append(np.mean(r2_shuff))
                 median_r2_shuff.append(np.median(r2_shuff))
                 r2_shuffles.append(r2_shuff)
-
 
     if len(epoch) == 0:
         return pd.DataFrame()
@@ -209,7 +210,9 @@ def run(
     df["median_error_shuff"] = np.hstack(median_error_shuff)
     df["mean_r2_shuff"] = np.hstack(mean_r2_shuff)
     df["median_r2_shuff"] = np.hstack(median_r2_shuff)
-    _,pval = functions.get_significant_events(np.hstack(r2_rrr_train), np.vstack(r2_shuffles))
+    _, pval = functions.get_significant_events(
+        np.hstack(r2_rrr_train), np.vstack(r2_shuffles)
+    )
     df["pvalues"] = pval
     df["n_ca1"] = np.hstack(n_ca1)
     df["n_target_cells"] = np.hstack(n_target_cells)
