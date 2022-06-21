@@ -35,19 +35,7 @@ def shuffle_data(X, y, rank, reg, n_shuff=1000):
     return testing_error
 
 
-def run(
-    basepath,  # path to data folder
-    reference_region=["CA1"],  # reference region
-    target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
-    min_cells=5,  # minimum number of cells per region
-    ripple_expand=0.1,  # in seconds, how much to expand ripples
-    min_ripples=10,  # minimum number of ripples per epoch
-    n_shuff=1000,  # number of shuffles to do
-    rank=10,  # rank of the reduced rank regressor
-    reg=1e-6,  # regularization parameter
-    target_cell_type=None,  # cell type to use for target cells
-):
-
+def get_data(basepath, target_regions, reference_region, ripple_expand):
     st, cm = loading.load_spikes(
         basepath, brainRegion=[*target_regions, *reference_region]
     )
@@ -67,6 +55,25 @@ def run(
 
     ep_df = ep_df[idx]
     ep_epochs = nel.EpochArray([np.array([ep_df.startTime, ep_df.stopTime]).T])
+    return st, cm, ripple_epochs, ep_epochs, ep_df
+
+
+def run(
+    basepath,  # path to data folder
+    reference_region=["CA1"],  # reference region
+    target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
+    min_cells=5,  # minimum number of cells per region
+    ripple_expand=0.1,  # in seconds, how much to expand ripples
+    min_ripples=10,  # minimum number of ripples per epoch
+    n_shuff=1000,  # number of shuffles to do
+    rank=10,  # rank of the reduced rank regressor
+    reg=1e-6,  # regularization parameter
+    target_cell_type=None,  # cell type to use for target cells
+):
+
+    st, cm, ripple_epochs, ep_epochs, ep_df = get_data(
+        basepath, target_regions, reference_region, ripple_expand
+    )
 
     epoch = []
     epoch_i = []
