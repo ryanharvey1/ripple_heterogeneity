@@ -251,16 +251,19 @@ def load_cell_metrics(basepath,only_metrics=False):
         df['bad_unit'] = [False]*df.shape[0]  
 
     # load in tag
-    dt = data['cell_metrics']['tags'][0][0].dtype
-    if len(dt) > 0:
-        # iter through each tag
-        for dn in dt.names:
-            # set up column for tag
-            df['tags_'+dn] = [False]*df.shape[0]
-            # iter through uid 
-            for uid in data['cell_metrics']['tags'][0][0][dn][0][0][0]:
-                df.loc[df.UID == uid,'tags_'+dn] = True 
-
+    try:
+        dt = data['cell_metrics']['tags'][0][0].dtype
+        if len(dt) > 0:
+            # iter through each tag
+            for dn in dt.names:
+                # set up column for tag
+                df['tags_'+dn] = [False]*df.shape[0]
+                # iter through uid 
+                for uid in data['cell_metrics']['tags'][0][0][dn][0][0][0]:
+                    df.loc[df.UID == uid,'tags_'+dn] = True 
+    except:
+        pass
+    
     # add data from general metrics        
     df['basename'] = data['cell_metrics']['general'][0][0]['basename'][0][0][0]
     df['basepath'] = basepath
