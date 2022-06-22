@@ -3,16 +3,22 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
-from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
+from ripple_heterogeneity.utils import (
+    functions,
+    compress_repeated_epochs,
+    loading,
+    add_new_deep_sup,
+    reduced_rank_regressor,
+    kernel_reduced_rank_ridge_regression,
+)
 import nelpy as nel
-from ripple_heterogeneity.utils import compress_repeated_epochs
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
-from ripple_heterogeneity.utils import reduced_rank_regressor
 from scipy import around
 from scipy import size
 from scipy.linalg import norm
 from sklearn.cross_decomposition import CCA, PLSCanonical, PLSRegression
+from sklearn.model_selection import GridSearchCV
 
 
 def sqerr(matrix1, matrix2):
@@ -54,11 +60,35 @@ def get_data(basepath, target_regions, reference_region, ripple_expand):
     # locate pre task post structure
     idx, _ = functions.find_pre_task_post(ep_df.environment)
     if idx is None:
-        return None,None,None,None,None
+        return None, None, None, None, None
 
     ep_df = ep_df[idx]
     ep_epochs = nel.EpochArray([np.array([ep_df.startTime, ep_df.stopTime]).T])
     return st, cm, ripple_epochs, ep_epochs, ep_df
+
+
+def run_grid_search(X_train, y_train, n_grid=20, cv=5):
+    """
+    grid_search: grid search for the reduced rank regressor
+    """
+    rank_grid = np.linspace(
+        1, min(min(X_train.shape), min(y_train.shape)), num=n_grid
+    ).astype(int)
+
+    reg_grid = np.power(10, np.linspace(-20, 20, num=n_grid + 1))
+
+    parameters_grid_search = {"reg": reg_grid, "rank": rank_grid}
+
+    rrr = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
+
+    grid_search = GridSearchCV(
+        rrr,
+        parameters_grid_search,
+        cv=cv,
+        scoring="neg_mean_squared_error",
+        n_jobs=-1,
+    )
+    return grid_search.fit(X_train, y_train)
 
 
 def run(
@@ -72,6 +102,8 @@ def run(
     rank=10,  # rank of the reduced rank regressor
     reg=1e-6,  # regularization parameter
     target_cell_type=None,  # cell type to use for target cells
+    n_grid=20,  # number of grid search parameters to use
+    cv=5,  # number of cross validation folds
 ):
 
     st, cm, ripple_epochs, ep_epochs, ep_df = get_data(
@@ -79,7 +111,7 @@ def run(
     )
     if st is None:
         return None
-        
+
     epoch = []
     epoch_i = []
     targ_reg = []
@@ -99,7 +131,8 @@ def run(
     r2_cca = []
     r2_plsr = []
     r2_plsc = []
-
+    rrr_rank = []
+    rrr_reg = []
     scaler = preprocessing.StandardScaler()
 
     # iterate over all epochs
@@ -152,9 +185,13 @@ def run(
                     test_size=0.4,
                     random_state=42,
                 )
-                regressor = reduced_rank_regressor.ReducedRankRegressor(
-                    X_train, y_train, rank, reg
-                )
+                grid_search = run_grid_search(X_train, y_train, n_grid=n_grid, cv=cv)
+
+                regressor = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
+                regressor.rank = int(grid_search.best_params_["rank"])
+                regressor.reg = grid_search.best_params_["reg"]
+                regressor.fit(X_train, y_train)
+
                 mdl = CCA().fit(X_train, y_train)
                 r2_cca.append(mdl.score(X_test, y_test))
 
@@ -171,6 +208,8 @@ def run(
                 r2_rrr_test.append(regressor.score(X_test, y_test))
 
                 # get metadata
+                rrr_rank.append(regressor.rank)
+                rrr_reg.append(regressor.reg)
                 n_x_components.append(X.shape[1])
                 epoch.append(ep_df.environment.iloc[ep_i])
                 epoch_i.append(ep_i)
@@ -180,14 +219,15 @@ def run(
                 n_target_cells.append(sum(cm.brainRegion.str.contains(region).values))
 
                 # get vars for shuffles
-                error_shuff, r2_shuff = shuffle_data(
-                    X[ca1_idx, :].T, X[target_idx, :].T, rank, reg, n_shuff=n_shuff
-                )
-                median_error_shuff.append(np.median(error_shuff))
-                mean_error_shuff.append(np.mean(error_shuff))
-                mean_r2_shuff.append(np.mean(r2_shuff))
-                median_r2_shuff.append(np.median(r2_shuff))
-                r2_shuffles.append(r2_shuff)
+                if n_shuff > 0:
+                    error_shuff, r2_shuff = shuffle_data(
+                        X[ca1_idx, :].T, X[target_idx, :].T, rank, reg, n_shuff=n_shuff
+                    )
+                    median_error_shuff.append(np.median(error_shuff))
+                    mean_error_shuff.append(np.mean(error_shuff))
+                    mean_r2_shuff.append(np.mean(r2_shuff))
+                    median_r2_shuff.append(np.median(r2_shuff))
+                    r2_shuffles.append(r2_shuff)
 
     if len(epoch) == 0:
         return pd.DataFrame()
@@ -203,17 +243,20 @@ def run(
     df["testing_error"] = np.hstack(testing_error)
     df["r2_rrr_train"] = np.hstack(r2_rrr_train)
     df["r2_rrr_test"] = np.hstack(r2_rrr_test)
+    df["rrr_rank"] = np.hstack(rrr_rank)
+    df["rrr_reg"] = np.hstack(rrr_reg)
     df["r2_cca"] = np.hstack(r2_cca)
     df["r2_plsc"] = np.hstack(r2_plsc)
     df["r2_plsr"] = np.hstack(r2_plsr)
-    df["mean_error_shuff"] = np.hstack(mean_error_shuff)
-    df["median_error_shuff"] = np.hstack(median_error_shuff)
-    df["mean_r2_shuff"] = np.hstack(mean_r2_shuff)
-    df["median_r2_shuff"] = np.hstack(median_r2_shuff)
-    _, pval = functions.get_significant_events(
-        np.hstack(r2_rrr_train), np.vstack(r2_shuffles)
-    )
-    df["pvalues"] = pval
+    if n_shuff > 0:
+        df["mean_error_shuff"] = np.hstack(mean_error_shuff)
+        df["median_error_shuff"] = np.hstack(median_error_shuff)
+        df["mean_r2_shuff"] = np.hstack(mean_r2_shuff)
+        df["median_r2_shuff"] = np.hstack(median_r2_shuff)
+        _, pval = functions.get_significant_events(
+            np.hstack(r2_rrr_train), np.vstack(r2_shuffles)
+        )
+        df["pvalues"] = pval
     df["n_ca1"] = np.hstack(n_ca1)
     df["n_target_cells"] = np.hstack(n_target_cells)
     df["basepath"] = basepath
