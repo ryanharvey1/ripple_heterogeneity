@@ -69,8 +69,8 @@ class ReducedRankRegressor(BaseEstimator):
 
 
 ## Optional
-#    def get_params(self, deep=True):
-#        return {"rank": self.rank, "reg": self.reg}
+    def get_params(self, deep=True):
+        return {"rank": self.rank, "reg": self.reg}
 #
 #    def set_params(self, **parameters):
 #        for parameter, value in parameters.items():
