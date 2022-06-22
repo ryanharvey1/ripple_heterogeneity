@@ -21,6 +21,7 @@ from sklearn.cross_decomposition import CCA, PLSCanonical, PLSRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 
+
 def sqerr(matrix1, matrix2):
     """Squared error (frobenius norm of diff) between two matrices."""
     return around(pow(norm(matrix1 - matrix2, "fro"), 2) / size(matrix2, 0), 5)
@@ -210,8 +211,12 @@ def run(
                 mse_plsr.append(mean_squared_error(y_test, mdl.predict(X_test)))
 
                 # get model performance
-                training_error.append(mean_squared_error(y_train, regressor.predict(X_train)))
-                testing_error.append(mean_squared_error(y_test, regressor.predict(X_test)))
+                training_error.append(
+                    mean_squared_error(y_train, regressor.predict(X_train))
+                )
+                testing_error.append(
+                    mean_squared_error(y_test, regressor.predict(X_test))
+                )
                 r2_rrr_train.append(regressor.score(X_train, y_train))
                 r2_rrr_test.append(regressor.score(X_test, y_test))
 
