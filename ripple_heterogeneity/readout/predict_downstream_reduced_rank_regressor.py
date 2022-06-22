@@ -19,7 +19,7 @@ from scipy import size
 from scipy.linalg import norm
 from sklearn.cross_decomposition import CCA, PLSCanonical, PLSRegression
 from sklearn.model_selection import GridSearchCV
-
+from sklearn.metrics import mean_squared_error
 
 def sqerr(matrix1, matrix2):
     """Squared error (frobenius norm of diff) between two matrices."""
@@ -69,7 +69,7 @@ def get_data(basepath, target_regions, reference_region, ripple_expand):
     return st, cm, ripple_epochs, ep_epochs, ep_df
 
 
-def run_grid_search(X_train, y_train, n_grid=20, cv=5):
+def run_grid_search(X_train, y_train, n_grid=10, cv=5):
     """
     grid_search: grid search for the reduced rank regressor
     """
@@ -77,7 +77,7 @@ def run_grid_search(X_train, y_train, n_grid=20, cv=5):
         1, min(min(X_train.shape), min(y_train.shape)), num=n_grid
     ).astype(int)
 
-    reg_grid = np.power(10, np.linspace(-10, 10, num=n_grid + 1))
+    reg_grid = np.power(10, np.linspace(-20, 20, num=n_grid + 1))
 
     parameters_grid_search = {"reg": reg_grid, "rank": rank_grid}
 
@@ -104,7 +104,7 @@ def run(
     rank=10,  # rank of the reduced rank regressor (not used)
     reg=1e-6,  # regularization parameter (not used)
     target_cell_type=None,  # cell type to use for target cells
-    n_grid=20,  # number of grid search parameters to use
+    n_grid=10,  # number of grid search parameters to use
     cv=5,  # number of cross validation folds
 ):
 
@@ -135,6 +135,9 @@ def run(
     r2_plsc = []
     rrr_rank = []
     rrr_reg = []
+    mse_cca = []
+    mse_plsc = []
+    mse_plsr = []
     scaler = preprocessing.StandardScaler()
 
     # iterate over all epochs
@@ -196,12 +199,15 @@ def run(
 
                 mdl = CCA().fit(X_train, y_train)
                 r2_cca.append(mdl.score(X_test, y_test))
+                mse_cca.append(mean_squared_error(y_test, mdl.predict(X_test)))
 
                 mdl = PLSCanonical().fit(X_train, y_train)
                 r2_plsc.append(mdl.score(X_test, y_test))
+                mse_plsc.append(mean_squared_error(y_test, mdl.predict(X_test)))
 
                 mdl = PLSRegression().fit(X_train, y_train)
                 r2_plsr.append(mdl.score(X_test, y_test))
+                mse_plsr.append(mean_squared_error(y_test, mdl.predict(X_test)))
 
                 # get model performance
                 training_error.append(regressor.mse(X_train, y_train))
@@ -247,6 +253,9 @@ def run(
     df["n_x_components"] = np.hstack(n_x_components)
     df["training_error"] = np.hstack(training_error)
     df["testing_error"] = np.hstack(testing_error)
+    df["mse_cca"] = np.hstack(mse_cca)
+    df["mse_plsc"] = np.hstack(mse_plsc)
+    df["mse_plsr"] = np.hstack(mse_plsr)
     df["r2_rrr_train"] = np.hstack(r2_rrr_train)
     df["r2_rrr_test"] = np.hstack(r2_rrr_test)
     df["rrr_rank"] = np.hstack(rrr_rank)
