@@ -77,7 +77,7 @@ def run_grid_search(X_train, y_train, n_grid=20, cv=5):
         1, min(min(X_train.shape), min(y_train.shape)), num=n_grid
     ).astype(int)
 
-    reg_grid = np.power(10, np.linspace(-20, 20, num=n_grid + 1))
+    reg_grid = np.power(10, np.linspace(-10, 10, num=n_grid + 1))
 
     parameters_grid_search = {"reg": reg_grid, "rank": rank_grid}
 
@@ -101,8 +101,8 @@ def run(
     ripple_expand=0.1,  # in seconds, how much to expand ripples
     min_ripples=10,  # minimum number of ripples per epoch
     n_shuff=1000,  # number of shuffles to do
-    rank=10,  # rank of the reduced rank regressor
-    reg=1e-6,  # regularization parameter
+    rank=10,  # rank of the reduced rank regressor (not used)
+    reg=1e-6,  # regularization parameter (not used)
     target_cell_type=None,  # cell type to use for target cells
     n_grid=20,  # number of grid search parameters to use
     cv=5,  # number of cross validation folds
@@ -204,8 +204,8 @@ def run(
                 r2_plsr.append(mdl.score(X_test, y_test))
 
                 # get model performance
-                training_error.append(sqerr(regressor.predict(X_train), y_train))
-                testing_error.append(sqerr(regressor.predict(X_test), y_test))
+                training_error.append(regressor.mse(X_train, y_train))
+                testing_error.append(regressor.mse(X_test, y_test))
                 r2_rrr_train.append(regressor.score(X_train, y_train))
                 r2_rrr_test.append(regressor.score(X_test, y_test))
 
