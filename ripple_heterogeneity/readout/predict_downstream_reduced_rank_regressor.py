@@ -74,7 +74,7 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5):
     grid_search: grid search for the reduced rank regressor
     """
     rank_grid = np.linspace(
-        1, min(min(X_train.shape), min(y_train.shape)), num=n_grid
+        1, min(X_train.shape[1], y_train.shape[1]), num=n_grid
     ).astype(int)
 
     reg_grid = np.power(10, np.linspace(-20, 20, num=n_grid + 1))
@@ -210,8 +210,8 @@ def run(
                 mse_plsr.append(mean_squared_error(y_test, mdl.predict(X_test)))
 
                 # get model performance
-                training_error.append(regressor.mse(X_train, y_train))
-                testing_error.append(regressor.mse(X_test, y_test))
+                training_error.append(mean_squared_error(y_train, regressor.predict(X_train)))
+                testing_error.append(mean_squared_error(y_test, regressor.predict(X_test)))
                 r2_rrr_train.append(regressor.score(X_train, y_train))
                 r2_rrr_test.append(regressor.score(X_test, y_test))
 
