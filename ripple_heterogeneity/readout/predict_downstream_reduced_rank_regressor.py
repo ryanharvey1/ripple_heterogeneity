@@ -34,9 +34,11 @@ def shuffle_data(X, y, rank, reg, n_shuff=1000):
         X_train, X_test, y_train, y_test = train_test_split(
             X[idx, :], y, test_size=0.4, random_state=42
         )
-        regressor = reduced_rank_regressor.ReducedRankRegressor(
-            X_train, y_train, rank, reg
-        )
+        regressor = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
+        regressor.rank = int(rank)
+        regressor.reg = reg
+        regressor.fit(X_train, y_train)
+
         # get model performance
         testing_error.append(sqerr(regressor.predict(X_test), y_test))
         r2_test.append(regressor.score(X_test, y_test))
@@ -221,7 +223,11 @@ def run(
                 # get vars for shuffles
                 if n_shuff > 0:
                     error_shuff, r2_shuff = shuffle_data(
-                        X[ca1_idx, :].T, X[target_idx, :].T, rank, reg, n_shuff=n_shuff
+                        X[ca1_idx, :].T,
+                        X[target_idx, :].T,
+                        regressor.rank,
+                        regressor.reg,
+                        n_shuff=n_shuff,
                     )
                     median_error_shuff.append(np.median(error_shuff))
                     mean_error_shuff.append(np.mean(error_shuff))
