@@ -74,12 +74,12 @@ def get_data(basepath, target_regions, reference_region, ripple_expand):
     return st, cm, ripple_epochs, ep_epochs, ep_df, session_epoch
 
 
-def run_grid_search(X_train, y_train, n_grid=10, cv=5):
+def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
     """
     grid_search: grid search for the reduced rank regressor
     """
     rank_grid = np.linspace(
-        1, min(X_train.shape[1], y_train.shape[1]), num=n_grid
+        1, min(X_train.shape[1], y_train.shape[1], max_rank), num=n_grid
     ).astype(int)
 
     reg_grid = np.power(10, np.linspace(-20, 20, num=n_grid + 1))
@@ -93,7 +93,6 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5):
         parameters_grid_search,
         cv=cv,
         scoring="neg_mean_squared_error",
-        n_jobs=-1,
     )
     return grid_search.fit(X_train, y_train)
 
@@ -112,6 +111,7 @@ def run(
     target_cell_type=None,  # cell type to use for target cells
     n_grid=10,  # number of grid search parameters to use
     cv=5,  # number of cross validation folds
+    max_rank=64,  # maximum rank to use in the reduced rank regressor
     use_entire_session=False,  # use entire session or just pre task post
 ):
 
@@ -200,7 +200,9 @@ def run(
                     test_size=0.4,
                     random_state=42,
                 )
-                grid_search = run_grid_search(X_train, y_train, n_grid=n_grid, cv=cv)
+                grid_search = run_grid_search(
+                    X_train, y_train, n_grid=n_grid, cv=cv, max_rank=max_rank
+                )
 
                 regressor = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
                 regressor.rank = int(grid_search.best_params_["rank"])
@@ -290,7 +292,6 @@ def run(
     df["n_target_cells"] = np.hstack(n_target_cells)
     df["basepath"] = basepath
     df["use_entire_session"] = use_entire_session
-
 
     return df
 
