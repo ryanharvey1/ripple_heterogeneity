@@ -67,7 +67,7 @@ def get_data(basepath, target_regions, reference_region, ripple_expand):
     # locate pre task post structure
     idx, _ = functions.find_pre_task_post(ep_df.environment)
     if idx is None:
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
     ep_df = ep_df[idx]
     ep_epochs = nel.EpochArray([np.array([ep_df.startTime, ep_df.stopTime]).T])
