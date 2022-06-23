@@ -60,6 +60,10 @@ def get_data(basepath, target_regions, reference_region, ripple_expand):
 
     ep_df = loading.load_epoch(basepath)
     ep_df = compress_repeated_epochs.main(ep_df, epoch_name="sleep")
+    session_epoch = nel.EpochArray(
+        [np.array([ep_df.startTime.iloc[0], ep_df.stopTime.iloc[-1]]).T]
+    )
+
     # locate pre task post structure
     idx, _ = functions.find_pre_task_post(ep_df.environment)
     if idx is None:
@@ -67,7 +71,7 @@ def get_data(basepath, target_regions, reference_region, ripple_expand):
 
     ep_df = ep_df[idx]
     ep_epochs = nel.EpochArray([np.array([ep_df.startTime, ep_df.stopTime]).T])
-    return st, cm, ripple_epochs, ep_epochs, ep_df
+    return st, cm, ripple_epochs, ep_epochs, ep_df, session_epoch
 
 
 def run_grid_search(X_train, y_train, n_grid=10, cv=5):
@@ -99,17 +103,19 @@ def run(
     reference_region=["CA1"],  # reference region
     target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
     min_cells=5,  # minimum number of cells per region
-    ripple_expand=0.1,  # in seconds, how much to expand ripples
+    ripple_expand=0.2,  # in seconds, how much to expand ripples
     min_ripples=10,  # minimum number of ripples per epoch
     n_shuff=1000,  # number of shuffles to do
     rank=10,  # rank of the reduced rank regressor (not used)
     reg=1e-6,  # regularization parameter (not used)
+    source_cell_type="Pyr",  # source cell type
     target_cell_type=None,  # cell type to use for target cells
     n_grid=10,  # number of grid search parameters to use
     cv=5,  # number of cross validation folds
+    use_entire_session=False,  # use entire session or just pre task post
 ):
 
-    st, cm, ripple_epochs, ep_epochs, ep_df = get_data(
+    st, cm, ripple_epochs, ep_epochs, ep_df, session_epoch = get_data(
         basepath, target_regions, reference_region, ripple_expand
     )
     if st is None:
@@ -140,6 +146,9 @@ def run(
     mse_plsc = []
     mse_plsr = []
     scaler = preprocessing.StandardScaler()
+
+    if use_entire_session:
+        ep_epochs = session_epoch
 
     # iterate over all epochs
     for ep_i, ep in enumerate(ep_epochs):
@@ -172,7 +181,7 @@ def run(
                 ca1_idx = (
                     cm.brainRegion.str.contains("CA1").values
                     & (cm.deepSuperficial == ca1_sub)
-                    & (cm.putativeCellType.str.contains("Pyr"))
+                    & (cm.putativeCellType.str.contains(source_cell_type))
                 )
                 if sum(ca1_idx) < min_cells:
                     continue
@@ -280,6 +289,8 @@ def run(
     df["n_ca1"] = np.hstack(n_ca1)
     df["n_target_cells"] = np.hstack(n_target_cells)
     df["basepath"] = basepath
+    df["use_entire_session"] = use_entire_session
+
 
     return df
 
