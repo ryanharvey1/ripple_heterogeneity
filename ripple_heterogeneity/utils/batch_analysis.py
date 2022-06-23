@@ -50,6 +50,7 @@ def run(
     verbose=False,
     overwrite=False,
     skip_if_error=False,
+    num_cores=None,
     **kwargs,
 ):
     """
@@ -71,7 +72,8 @@ def run(
     # run in parallel if parallel is True
     if parallel:
         # get number of cores
-        num_cores = multiprocessing.cpu_count()
+        if num_cores is None:
+            num_cores = multiprocessing.cpu_count()
         # run in parallel
         processed_list = Parallel(n_jobs=num_cores)(
             delayed(main_loop)(
