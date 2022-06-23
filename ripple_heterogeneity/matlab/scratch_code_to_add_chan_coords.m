@@ -11,7 +11,7 @@ df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 % unique(df.animal)
 %%
 
-basepaths = df.basepath(contains(df.basepath,'Rat11'));
+basepaths = df.basepath(contains(df.basepath,'OML22'));
 % load manually fixed session
 % this_session = load('day03.session.mat')
 basepath = basepaths{1};
