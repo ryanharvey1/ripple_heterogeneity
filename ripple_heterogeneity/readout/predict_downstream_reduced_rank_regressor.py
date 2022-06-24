@@ -67,11 +67,25 @@ def get_data(basepath, target_regions, reference_region, ripple_expand):
     # locate pre task post structure
     idx, _ = functions.find_pre_task_post(ep_df.environment)
     if idx is None:
-        return None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None
 
     ep_df = ep_df[idx]
     ep_epochs = nel.EpochArray([np.array([ep_df.startTime, ep_df.stopTime]).T])
-    return st, cm, ripple_epochs, ep_epochs, ep_df, session_epoch
+
+    state_dict = loading.load_SleepState_states(basepath)
+    nrem_epochs = nel.EpochArray(state_dict["NREMstate"])
+    wake_epochs = nel.EpochArray(state_dict["WAKEstate"])
+
+    return (
+        st,
+        cm,
+        ripple_epochs,
+        ep_epochs,
+        ep_df,
+        session_epoch,
+        nrem_epochs,
+        wake_epochs,
+    )
 
 
 def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
@@ -93,6 +107,7 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
         parameters_grid_search,
         cv=cv,
         scoring="neg_mean_squared_error",
+        n_jobs=-2,
     )
     return grid_search.fit(X_train, y_train)
 
@@ -115,9 +130,16 @@ def run(
     use_entire_session=False,  # use entire session or just pre task post
 ):
 
-    st, cm, ripple_epochs, ep_epochs, ep_df, session_epoch = get_data(
-        basepath, target_regions, reference_region, ripple_expand
-    )
+    (
+        st,
+        cm,
+        ripple_epochs,
+        ep_epochs,
+        ep_df,
+        session_epoch,
+        nrem_epochs,
+        wake_epochs,
+    ) = get_data(basepath, target_regions, reference_region, ripple_expand)
     if st is None:
         return None
 
@@ -145,117 +167,126 @@ def run(
     mse_cca = []
     mse_plsc = []
     mse_plsr = []
+    states = []
     scaler = preprocessing.StandardScaler()
 
     if use_entire_session:
         ep_epochs = session_epoch
 
+    states_ = ["NREM", "WAKE"]
+
     # iterate over all epochs
     for ep_i, ep in enumerate(ep_epochs):
-        # continue if there are too few ripples
-        if len(ripple_epochs[ep].starts) < min_ripples:
-            continue
 
-        # get participation for every cell
-        # this will continue if there is insufficient data
-        try:
-            st_par = functions.get_participation(
-                st[ep].data,
-                ripple_epochs[ep].starts,
-                ripple_epochs[ep].stops,
-                par_type="firing_rate",
-            )
-        except:
-            continue
+        for state_i, state in enumerate([nrem_epochs,wake_epochs]):
 
-        # rescale using standard scaler
-        X = scaler.fit_transform(st_par)
+            curr_ripples = ripple_epochs[ep][state]
 
-        # iterate over ca1 sublayers regions
-        for ca1_sub in ["Deep", "Superficial"]:
-            # iterate over target regions
-            for region in target_regions:
-                if sum(cm.brainRegion.str.contains(region).values) < min_cells:
-                    continue
+            # continue if there are too few ripples
+            if len(curr_ripples.starts) < min_ripples:
+                continue
 
-                ca1_idx = (
-                    cm.brainRegion.str.contains("CA1").values
-                    & (cm.deepSuperficial == ca1_sub)
-                    & (cm.putativeCellType.str.contains(source_cell_type))
+            # get participation for every cell
+            # this will continue if there is insufficient data
+            try:
+                st_par = functions.get_participation(
+                    st[ep][state].data,
+                    curr_ripples.starts,
+                    curr_ripples.stops,
+                    par_type="firing_rate",
                 )
-                if sum(ca1_idx) < min_cells:
-                    continue
+            except:
+                continue
 
-                if target_cell_type is not None:
-                    target_idx = (
-                        cm.brainRegion.str.contains(region).values
-                        & cm.putativeCellType.str.contains(target_cell_type).values
+            # rescale using standard scaler
+            X = scaler.fit_transform(st_par)
+
+            # iterate over ca1 sublayers regions
+            for ca1_sub in ["Deep", "Superficial"]:
+                # iterate over target regions
+                for region in target_regions:
+                    if sum(cm.brainRegion.str.contains(region).values) < min_cells:
+                        continue
+
+                    ca1_idx = (
+                        cm.brainRegion.str.contains("CA1").values
+                        & (cm.deepSuperficial == ca1_sub)
+                        & (cm.putativeCellType.str.contains(source_cell_type))
                     )
-                else:
-                    target_idx = cm.brainRegion.str.contains(region).values
+                    if sum(ca1_idx) < min_cells:
+                        continue
 
-                X_train, X_test, y_train, y_test = train_test_split(
-                    X[ca1_idx, :].T,
-                    X[target_idx, :].T,
-                    test_size=0.4,
-                    random_state=42,
-                )
-                grid_search = run_grid_search(
-                    X_train, y_train, n_grid=n_grid, cv=cv, max_rank=max_rank
-                )
+                    if target_cell_type is not None:
+                        target_idx = (
+                            cm.brainRegion.str.contains(region).values
+                            & cm.putativeCellType.str.contains(target_cell_type).values
+                        )
+                    else:
+                        target_idx = cm.brainRegion.str.contains(region).values
 
-                regressor = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
-                regressor.rank = int(grid_search.best_params_["rank"])
-                regressor.reg = grid_search.best_params_["reg"]
-                regressor.fit(X_train, y_train)
-
-                mdl = CCA().fit(X_train, y_train)
-                r2_cca.append(mdl.score(X_test, y_test))
-                mse_cca.append(mean_squared_error(y_test, mdl.predict(X_test)))
-
-                mdl = PLSCanonical().fit(X_train, y_train)
-                r2_plsc.append(mdl.score(X_test, y_test))
-                mse_plsc.append(mean_squared_error(y_test, mdl.predict(X_test)))
-
-                mdl = PLSRegression().fit(X_train, y_train)
-                r2_plsr.append(mdl.score(X_test, y_test))
-                mse_plsr.append(mean_squared_error(y_test, mdl.predict(X_test)))
-
-                # get model performance
-                training_error.append(
-                    mean_squared_error(y_train, regressor.predict(X_train))
-                )
-                testing_error.append(
-                    mean_squared_error(y_test, regressor.predict(X_test))
-                )
-                r2_rrr_train.append(regressor.score(X_train, y_train))
-                r2_rrr_test.append(regressor.score(X_test, y_test))
-
-                # get metadata
-                rrr_rank.append(regressor.rank)
-                rrr_reg.append(regressor.reg)
-                n_x_components.append(X.shape[1])
-                epoch.append(ep_df.environment.iloc[ep_i])
-                epoch_i.append(ep_i)
-                targ_reg.append(region)
-                ca1_sub_layer.append(ca1_sub)
-                n_ca1.append(sum(ca1_idx))
-                n_target_cells.append(sum(cm.brainRegion.str.contains(region).values))
-
-                # get vars for shuffles
-                if n_shuff > 0:
-                    error_shuff, r2_shuff = shuffle_data(
+                    X_train, X_test, y_train, y_test = train_test_split(
                         X[ca1_idx, :].T,
                         X[target_idx, :].T,
-                        regressor.rank,
-                        regressor.reg,
-                        n_shuff=n_shuff,
+                        test_size=0.4,
+                        random_state=42,
                     )
-                    median_error_shuff.append(np.median(error_shuff))
-                    mean_error_shuff.append(np.mean(error_shuff))
-                    mean_r2_shuff.append(np.mean(r2_shuff))
-                    median_r2_shuff.append(np.median(r2_shuff))
-                    r2_shuffles.append(r2_shuff)
+                    grid_search = run_grid_search(
+                        X_train, y_train, n_grid=n_grid, cv=cv, max_rank=max_rank
+                    )
+
+                    regressor = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
+                    regressor.rank = int(grid_search.best_params_["rank"])
+                    regressor.reg = grid_search.best_params_["reg"]
+                    regressor.fit(X_train, y_train)
+
+                    mdl = CCA().fit(X_train, y_train)
+                    r2_cca.append(mdl.score(X_test, y_test))
+                    mse_cca.append(mean_squared_error(y_test, mdl.predict(X_test)))
+
+                    mdl = PLSCanonical().fit(X_train, y_train)
+                    r2_plsc.append(mdl.score(X_test, y_test))
+                    mse_plsc.append(mean_squared_error(y_test, mdl.predict(X_test)))
+
+                    mdl = PLSRegression().fit(X_train, y_train)
+                    r2_plsr.append(mdl.score(X_test, y_test))
+                    mse_plsr.append(mean_squared_error(y_test, mdl.predict(X_test)))
+
+                    # get model performance
+                    training_error.append(
+                        mean_squared_error(y_train, regressor.predict(X_train))
+                    )
+                    testing_error.append(
+                        mean_squared_error(y_test, regressor.predict(X_test))
+                    )
+                    r2_rrr_train.append(regressor.score(X_train, y_train))
+                    r2_rrr_test.append(regressor.score(X_test, y_test))
+
+                    # get metadata
+                    rrr_rank.append(regressor.rank)
+                    rrr_reg.append(regressor.reg)
+                    n_x_components.append(X.shape[1])
+                    epoch.append(ep_df.environment.iloc[ep_i])
+                    epoch_i.append(ep_i)
+                    states.append(states_[state_i])
+                    targ_reg.append(region)
+                    ca1_sub_layer.append(ca1_sub)
+                    n_ca1.append(sum(ca1_idx))
+                    n_target_cells.append(sum(cm.brainRegion.str.contains(region).values))
+
+                    # get vars for shuffles
+                    if n_shuff > 0:
+                        error_shuff, r2_shuff = shuffle_data(
+                            X[ca1_idx, :].T,
+                            X[target_idx, :].T,
+                            regressor.rank,
+                            regressor.reg,
+                            n_shuff=n_shuff,
+                        )
+                        median_error_shuff.append(np.median(error_shuff))
+                        mean_error_shuff.append(np.mean(error_shuff))
+                        mean_r2_shuff.append(np.mean(r2_shuff))
+                        median_r2_shuff.append(np.median(r2_shuff))
+                        r2_shuffles.append(r2_shuff)
 
     if len(epoch) == 0:
         return pd.DataFrame()
@@ -264,6 +295,7 @@ def run(
     df = pd.DataFrame()
     df["epoch"] = np.hstack(epoch)
     df["epoch_i"] = np.hstack(epoch_i)
+    df["state"] = np.hstack(states)
     df["targ_reg"] = np.hstack(targ_reg)
     df["ca1_sub_layer"] = np.hstack(ca1_sub_layer)
     df["n_x_components"] = np.hstack(n_x_components)
