@@ -20,7 +20,8 @@ from scipy.linalg import norm
 from sklearn.cross_decomposition import CCA, PLSCanonical, PLSRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
-
+from sklearn.model_selection import cross_validate
+from sklearn.model_selection import TimeSeriesSplit
 
 def sqerr(matrix1, matrix2):
     """Squared error (frobenius norm of diff) between two matrices."""
@@ -101,6 +102,8 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
 
     rrr = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
 
+    # folds = TimeSeriesSplit(n_splits=cv)
+
     grid_search = GridSearchCV(
         rrr,
         parameters_grid_search,
@@ -110,6 +113,25 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
     )
     return grid_search.fit(X_train, y_train)
 
+# def evaluate(model, X, y, cv, verbose=False):
+#     cv_results = cross_validate(
+#         model,
+#         X,
+#         y,
+#         cv=cv,
+#         scoring=["neg_mean_absolute_error", "neg_root_mean_squared_error", "r2"],
+#     )
+#     mae = -cv_results["test_neg_mean_absolute_error"]
+#     rmse = -cv_results["test_neg_root_mean_squared_error"]
+#     r2 = cv_results["test_r2"]
+#     if verbose:
+
+#         print(
+#             f"Mean Absolute Error:     {mae.mean():.3f} +/- {mae.std():.3f}\n"
+#             f"Root Mean Squared Error: {rmse.mean():.3f} +/- {rmse.std():.3f}\n"
+#             f"R2:                      {r2.mean():.3f} +/- {r2.std():.3f}"
+#         )
+#     return mae, rmse, r2
 
 def run(
     basepath,  # path to data folder
@@ -170,6 +192,7 @@ def run(
     states = []
 
     scaler = preprocessing.StandardScaler()
+    ts_cv = TimeSeriesSplit(n_splits=cv)
 
     # if use_entire_session, use the entire session, otherwise use pre task post
     if use_entire_session:
@@ -237,6 +260,7 @@ def run(
                         X[target_idx, :].T,
                         test_size=0.4,
                         random_state=42,
+                        shuffle=False
                     )
                     grid_search = run_grid_search(
                         X_train, y_train, n_grid=n_grid, cv=cv, max_rank=max_rank
@@ -247,6 +271,8 @@ def run(
                     )
                     regressor.rank = int(grid_search.best_params_["rank"])
                     regressor.reg = reg
+
+                    # evaluate(regressor, X, y, cv, verbose=False)
 
                     regressor.fit(X_train, y_train)
 
