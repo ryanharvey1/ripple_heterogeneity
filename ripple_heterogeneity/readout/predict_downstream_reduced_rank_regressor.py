@@ -92,13 +92,16 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
     """
     grid_search: grid search for the reduced rank regressor
     """
-    rank_grid = np.linspace(
-        1, min(X_train.shape[1], y_train.shape[1], max_rank), num=n_grid
-    ).astype(int)
+    # rank_grid = np.linspace(
+    #     1, min(X_train.shape[1], y_train.shape[1], max_rank), num=n_grid
+    # ).astype(int)
 
-    reg_grid = np.power(10, np.linspace(-20, 20, num=n_grid + 1))
-
-    parameters_grid_search = {"reg": reg_grid, "rank": rank_grid}
+    # reg_grid = np.power(10, np.linspace(-20, 20, num=n_grid + 1))
+    rank_grid = np.arange(1, min(X_train.shape[1], y_train.shape[1], max_rank)).astype(
+        int
+    )
+    # parameters_grid_search = {"reg": reg_grid, "rank": rank_grid}
+    parameters_grid_search = {"rank": rank_grid}
 
     rrr = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
 
@@ -124,7 +127,7 @@ def run(
     reg=1e-6,  # regularization parameter (not used)
     source_cell_type="Pyr",  # source cell type
     target_cell_type=None,  # cell type to use for target cells
-    n_grid=10,  # number of grid search parameters to use
+    n_grid=20,  # number of grid search parameters to use
     cv=5,  # number of cross validation folds
     max_rank=64,  # maximum rank to use in the reduced rank regressor
     use_entire_session=False,  # use entire session or just pre task post
@@ -178,7 +181,7 @@ def run(
     # iterate over all epochs
     for ep_i, ep in enumerate(ep_epochs):
 
-        for state_i, state in enumerate([nrem_epochs,wake_epochs]):
+        for state_i, state in enumerate([nrem_epochs, wake_epochs]):
 
             curr_ripples = ripple_epochs[ep][state]
 
@@ -234,9 +237,13 @@ def run(
                         X_train, y_train, n_grid=n_grid, cv=cv, max_rank=max_rank
                     )
 
-                    regressor = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
+                    regressor = (
+                        kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
+                    )
                     regressor.rank = int(grid_search.best_params_["rank"])
-                    regressor.reg = grid_search.best_params_["reg"]
+                    # regressor.reg = grid_search.best_params_["reg"]
+                    regressor.reg = 1
+
                     regressor.fit(X_train, y_train)
 
                     mdl = CCA().fit(X_train, y_train)
@@ -271,7 +278,9 @@ def run(
                     targ_reg.append(region)
                     ca1_sub_layer.append(ca1_sub)
                     n_ca1.append(sum(ca1_idx))
-                    n_target_cells.append(sum(cm.brainRegion.str.contains(region).values))
+                    n_target_cells.append(
+                        sum(cm.brainRegion.str.contains(region).values)
+                    )
 
                     # get vars for shuffles
                     if n_shuff > 0:
