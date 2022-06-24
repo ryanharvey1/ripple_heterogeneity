@@ -92,15 +92,11 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
     """
     grid_search: grid search for the reduced rank regressor
     """
-    # rank_grid = np.linspace(
-    #     1, min(X_train.shape[1], y_train.shape[1], max_rank), num=n_grid
-    # ).astype(int)
 
-    # reg_grid = np.power(10, np.linspace(-20, 20, num=n_grid + 1))
     rank_grid = np.arange(1, min(X_train.shape[1], y_train.shape[1], max_rank)).astype(
         int
     )
-    # parameters_grid_search = {"reg": reg_grid, "rank": rank_grid}
+
     parameters_grid_search = {"rank": rank_grid}
 
     rrr = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
@@ -124,7 +120,7 @@ def run(
     min_ripples=10,  # minimum number of ripples per epoch
     n_shuff=1000,  # number of shuffles to do
     rank=10,  # rank of the reduced rank regressor (not used)
-    reg=1e-6,  # regularization parameter (not used)
+    reg=1,  # regularization parameter
     source_cell_type="Pyr",  # source cell type
     target_cell_type=None,  # cell type to use for target cells
     n_grid=20,  # number of grid search parameters to use
@@ -146,6 +142,7 @@ def run(
     if st is None:
         return None
 
+    # initialize output vars
     epoch = []
     epoch_i = []
     targ_reg = []
@@ -171,8 +168,10 @@ def run(
     mse_plsc = []
     mse_plsr = []
     states = []
+
     scaler = preprocessing.StandardScaler()
 
+    # if use_entire_session, use the entire session, otherwise use pre task post
     if use_entire_session:
         ep_epochs = session_epoch
 
@@ -182,7 +181,7 @@ def run(
     for ep_i, ep in enumerate(ep_epochs):
 
         for state_i, state in enumerate([nrem_epochs, wake_epochs]):
-
+            # get the ripple epochs for this state
             curr_ripples = ripple_epochs[ep][state]
 
             # continue if there are too few ripples
@@ -198,6 +197,9 @@ def run(
                     curr_ripples.stops,
                     par_type="firing_rate",
                 )
+                # start and end times can be the same for some reason, which
+                # causes nan as the denominator above is 0
+                st_par[np.isnan(st_par)] = 0
             except:
                 continue
 
@@ -211,14 +213,14 @@ def run(
                     if sum(cm.brainRegion.str.contains(region).values) < min_cells:
                         continue
 
+                    # get index of ca1 cells
                     ca1_idx = (
                         cm.brainRegion.str.contains("CA1").values
                         & (cm.deepSuperficial == ca1_sub)
                         & (cm.putativeCellType.str.contains(source_cell_type))
                     )
-                    if sum(ca1_idx) < min_cells:
-                        continue
 
+                    # get index of target cells
                     if target_cell_type is not None:
                         target_idx = (
                             cm.brainRegion.str.contains(region).values
@@ -226,6 +228,9 @@ def run(
                         )
                     else:
                         target_idx = cm.brainRegion.str.contains(region).values
+
+                    if (sum(ca1_idx) < min_cells) | (sum(target_idx) < min_cells):
+                        continue
 
                     X_train, X_test, y_train, y_test = train_test_split(
                         X[ca1_idx, :].T,
@@ -241,8 +246,7 @@ def run(
                         kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
                     )
                     regressor.rank = int(grid_search.best_params_["rank"])
-                    # regressor.reg = grid_search.best_params_["reg"]
-                    regressor.reg = 1
+                    regressor.reg = reg
 
                     regressor.fit(X_train, y_train)
 
