@@ -29,7 +29,7 @@ class ReducedRankRegressor(BaseEstimator):
     - reg is a regularization parameter.
     """
 
-    def __init__(self, rank=None, reg=None, P_rr=None, Q_fr=None, trainX=None):
+    def __init__(self, rank=10, reg=1, P_rr=None, Q_fr=None, trainX=None):
         self.rank = rank
         self.reg = reg
         self.P_rr = P_rr
