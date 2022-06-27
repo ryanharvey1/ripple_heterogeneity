@@ -42,9 +42,10 @@ def shuffle_data(X, y, rank, reg, n_shuff=1000):
         regressor.fit(X_train, y_train)
 
         # get model performance
-        testing_error.append(sqerr(regressor.predict(X_test), y_test))
         r2_test.append(regressor.score(X_test, y_test))
-
+        testing_error.append(
+            mean_squared_error(y_test, regressor.predict(X_test))
+        )
     return testing_error, r2_test
 
 
@@ -192,7 +193,7 @@ def run(
     states = []
 
     scaler = preprocessing.StandardScaler()
-    ts_cv = TimeSeriesSplit(n_splits=cv)
+    # ts_cv = TimeSeriesSplit(n_splits=cv)
 
     # if use_entire_session, use the entire session, otherwise use pre task post
     if use_entire_session:
