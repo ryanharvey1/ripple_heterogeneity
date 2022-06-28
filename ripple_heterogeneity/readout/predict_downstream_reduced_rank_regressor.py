@@ -473,6 +473,6 @@ def load_results(save_path, verbose=False):
             continue
         if isinstance(results, dict):
             df = pd.concat([df, results['df']], ignore_index=True)
-            df_unit = pd.concat([df, results['df_unit']], ignore_index=True)
+            df_unit = pd.concat([df_unit, results['df_unit']], ignore_index=True)
 
     return df,df_unit
