@@ -32,6 +32,7 @@ def sqerr(matrix1, matrix2):
 def shuffle_data(X, y, rank, reg, n_shuff=1000):
     testing_error = []
     r2_test = []
+    testing_error_units = []
     for i in range(n_shuff):
         idx = np.random.permutation(X.shape[0])
         X_train, X_test, y_train, y_test = train_test_split(
@@ -45,7 +46,10 @@ def shuffle_data(X, y, rank, reg, n_shuff=1000):
         # get model performance
         r2_test.append(regressor.score(X_test, y_test))
         testing_error.append(mean_squared_error(y_test, regressor.predict(X_test)))
-    return testing_error, r2_test
+        # mse for every downstream unit
+        testing_error_units.append(mean_squared_error(y_test, regressor.predict(X_test),multioutput="raw_values"))
+
+    return testing_error, r2_test, testing_error_units
 
 
 def get_data(basepath, target_regions, reference_region, ripple_expand):
@@ -142,7 +146,7 @@ def run(
     min_cells=5,  # minimum number of cells per region
     ripple_expand=0.2,  # in seconds, how much to expand ripples
     min_ripples=10,  # minimum number of ripples per epoch
-    n_shuff=1000,  # number of shuffles to do
+    n_shuff=500,  # number of shuffles to do
     rank=10,  # rank of the reduced rank regressor (not used)
     reg=1,  # regularization parameter
     source_cell_type="Pyr",  # source cell type
@@ -208,6 +212,8 @@ def run(
     mse_plsc_units = []
     mse_plsr_units = []
     target_uid = []
+    median_error_shuff_unit = []
+    mean_error_shuff_unit = []
 
     scaler = preprocessing.StandardScaler()
     # ts_cv = TimeSeriesSplit(n_splits=cv)
@@ -332,7 +338,7 @@ def run(
 
                     # get vars for shuffles
                     if n_shuff > 0:
-                        error_shuff, r2_shuff = shuffle_data(
+                        error_shuff, r2_shuff, error_shuff_unit = shuffle_data(
                             X[ca1_idx, :].T,
                             X[target_idx, :].T,
                             regressor.rank,
@@ -344,6 +350,8 @@ def run(
                         mean_r2_shuff.append(np.mean(r2_shuff))
                         median_r2_shuff.append(np.median(r2_shuff))
                         r2_shuffles.append(r2_shuff)
+                        median_error_shuff_unit.append(np.median(error_shuff_unit, axis=0))
+                        mean_error_shuff_unit.append(np.mean(error_shuff_unit, axis=0))
 
                     # multi-cell_performance
                     train_error_units.append(
@@ -440,6 +448,10 @@ def run(
     df_unit["mse_cca"] = np.hstack(mse_cca_units)
     df_unit["mse_plsc"] = np.hstack(mse_plsc_units)
     df_unit["mse_plsr"] = np.hstack(mse_plsr_units)
+
+    if n_shuff > 0:
+        df_unit["median_error_shuff_unit"] = np.hstack(median_error_shuff_unit)
+        df_unit["mean_error_shuff_unit"] = np.hstack(mean_error_shuff_unit)
     # df_unit["r2_rrr_train"] = np.hstack(r2_rrr_train_units)
     # df_unit["r2_rrr_test"] = np.hstack(r2_rrr_test_units)
     df_unit["rrr_rank"] = np.hstack(rrr_rank_units)
