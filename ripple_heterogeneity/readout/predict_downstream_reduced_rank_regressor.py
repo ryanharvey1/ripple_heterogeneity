@@ -23,6 +23,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import cross_validate
 from sklearn.model_selection import TimeSeriesSplit
 
+
 def sqerr(matrix1, matrix2):
     """Squared error (frobenius norm of diff) between two matrices."""
     return around(pow(norm(matrix1 - matrix2, "fro"), 2) / size(matrix2, 0), 5)
@@ -43,9 +44,7 @@ def shuffle_data(X, y, rank, reg, n_shuff=1000):
 
         # get model performance
         r2_test.append(regressor.score(X_test, y_test))
-        testing_error.append(
-            mean_squared_error(y_test, regressor.predict(X_test))
-        )
+        testing_error.append(mean_squared_error(y_test, regressor.predict(X_test)))
     return testing_error, r2_test
 
 
@@ -114,6 +113,7 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
     )
     return grid_search.fit(X_train, y_train)
 
+
 # def evaluate(model, X, y, cv, verbose=False):
 #     cv_results = cross_validate(
 #         model,
@@ -133,6 +133,7 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
 #             f"R2:                      {r2.mean():.3f} +/- {r2.std():.3f}"
 #         )
 #     return mae, rmse, r2
+
 
 def run(
     basepath,  # path to data folder
@@ -191,6 +192,22 @@ def run(
     mse_plsc = []
     mse_plsr = []
     states = []
+    train_error_units = []
+    test_error_units = []
+    rrr_rank_units = []
+    rrr_reg_units = []
+    n_x_components_units = []
+    epoch_units = []
+    epoch_i_units = []
+    states_units = []
+    targ_reg_units = []
+    ca1_sub_layer_units = []
+    n_ca1_units = []
+    n_target_cells_units = []
+    mse_cca_units = []
+    mse_plsc_units = []
+    mse_plsr_units = []
+    target_uid = []
 
     scaler = preprocessing.StandardScaler()
     # ts_cv = TimeSeriesSplit(n_splits=cv)
@@ -261,7 +278,7 @@ def run(
                         X[target_idx, :].T,
                         test_size=0.4,
                         random_state=42,
-                        shuffle=False
+                        shuffle=False,
                     )
                     grid_search = run_grid_search(
                         X_train, y_train, n_grid=n_grid, cv=cv, max_rank=max_rank
@@ -277,17 +294,17 @@ def run(
 
                     regressor.fit(X_train, y_train)
 
-                    mdl = CCA().fit(X_train, y_train)
-                    r2_cca.append(mdl.score(X_test, y_test))
-                    mse_cca.append(mean_squared_error(y_test, mdl.predict(X_test)))
+                    mdl_cca = CCA().fit(X_train, y_train)
+                    r2_cca.append(mdl_cca.score(X_test, y_test))
+                    mse_cca.append(mean_squared_error(y_test, mdl_cca.predict(X_test)))
 
-                    mdl = PLSCanonical().fit(X_train, y_train)
-                    r2_plsc.append(mdl.score(X_test, y_test))
-                    mse_plsc.append(mean_squared_error(y_test, mdl.predict(X_test)))
+                    mdl_plsc = PLSCanonical().fit(X_train, y_train)
+                    r2_plsc.append(mdl_plsc.score(X_test, y_test))
+                    mse_plsc.append(mean_squared_error(y_test, mdl_plsc.predict(X_test)))
 
-                    mdl = PLSRegression().fit(X_train, y_train)
-                    r2_plsr.append(mdl.score(X_test, y_test))
-                    mse_plsr.append(mean_squared_error(y_test, mdl.predict(X_test)))
+                    mdl_plsr = PLSRegression().fit(X_train, y_train)
+                    r2_plsr.append(mdl_plsr.score(X_test, y_test))
+                    mse_plsr.append(mean_squared_error(y_test, mdl_plsr.predict(X_test)))
 
                     # get model performance
                     training_error.append(
@@ -328,6 +345,52 @@ def run(
                         median_r2_shuff.append(np.median(r2_shuff))
                         r2_shuffles.append(r2_shuff)
 
+                    # multi-cell_performance
+                    train_error_units.append(
+                        mean_squared_error(
+                            y_train,
+                            regressor.predict(X_train),
+                            multioutput="raw_values",
+                        )
+                    )
+                    test_error_units.append(
+                        mean_squared_error(
+                            y_test, regressor.predict(X_test), multioutput="raw_values"
+                        )
+                    )
+
+                    mse_cca_units.append(
+                        mean_squared_error(
+                            y_test, mdl_cca.predict(X_test), multioutput="raw_values"
+                        )
+                    )
+                    mse_plsc_units.append(
+                        mean_squared_error(
+                            y_test, mdl_plsc.predict(X_test), multioutput="raw_values"
+                        )
+                    )
+                    mse_plsr_units.append(
+                        mean_squared_error(
+                            y_test, mdl_plsr.predict(X_test), multioutput="raw_values"
+                        )
+                    )
+
+                    # get metadata
+                    n_cells = len(test_error_units[-1])
+                    rrr_rank_units.append(np.tile(regressor.rank,n_cells))
+                    rrr_reg_units.append(np.tile(regressor.reg,n_cells))
+                    n_x_components_units.append(np.tile(X.shape[1],n_cells))
+                    epoch_units.append(np.tile(ep_df.environment.iloc[ep_i],n_cells))
+                    epoch_i_units.append(np.tile(ep_i,n_cells))
+                    states_units.append(np.tile(states_[state_i],n_cells))
+                    targ_reg_units.append(np.tile(region,n_cells))
+                    ca1_sub_layer_units.append(np.tile(ca1_sub,n_cells))
+                    n_ca1_units.append(np.tile(sum(ca1_idx),n_cells))
+                    n_target_cells_units.append(
+                        np.tile(sum(cm.brainRegion.str.contains(region).values),n_cells)
+                    )
+                    target_uid.append(cm[target_idx].UID.values)
+
     if len(epoch) == 0:
         return pd.DataFrame()
 
@@ -365,7 +428,33 @@ def run(
     df["basepath"] = basepath
     df["use_entire_session"] = use_entire_session
 
-    return df
+    df_unit = pd.DataFrame()
+    df_unit["epoch"] = np.hstack(epoch_units)
+    df_unit["epoch_i"] = np.hstack(epoch_i_units)
+    df_unit["state"] = np.hstack(states_units)
+    df_unit["targ_reg"] = np.hstack(targ_reg_units)
+    df_unit["ca1_sub_layer"] = np.hstack(ca1_sub_layer_units)
+    df_unit["n_x_components"] = np.hstack(n_x_components_units)
+    df_unit["training_error"] = np.hstack(train_error_units)
+    df_unit["testing_error"] = np.hstack(test_error_units)
+    df_unit["mse_cca"] = np.hstack(mse_cca_units)
+    df_unit["mse_plsc"] = np.hstack(mse_plsc_units)
+    df_unit["mse_plsr"] = np.hstack(mse_plsr_units)
+    # df_unit["r2_rrr_train"] = np.hstack(r2_rrr_train_units)
+    # df_unit["r2_rrr_test"] = np.hstack(r2_rrr_test_units)
+    df_unit["rrr_rank"] = np.hstack(rrr_rank_units)
+    df_unit["rrr_reg"] = np.hstack(rrr_reg_units)
+    # df_unit["r2_cca"] = np.hstack(r2_cca_units)
+    # df_unit["r2_plsc"] = np.hstack(r2_plsc_units)
+    # df_unit["r2_plsr"] = np.hstack(r2_plsr_units)
+    df_unit["n_ca1"] = np.hstack(n_ca1_units)
+    df_unit["n_target_cells"] = np.hstack(n_target_cells_units)
+    df_unit["basepath"] = basepath
+    df_unit["use_entire_session"] = use_entire_session
+    df_unit["target_uid"] = np.hstack(target_uid)
+
+    results = {"df": df, "df_unit": df_unit}
+    return results
 
 
 def load_results(save_path, verbose=False):
@@ -374,13 +463,16 @@ def load_results(save_path, verbose=False):
     """
     sessions = glob.glob(save_path + os.sep + "*.pkl")
     df = pd.DataFrame()
+    df_unit = pd.DataFrame()
     for session in sessions:
         if verbose:
             print(session)
         with open(session, "rb") as f:
             results = pickle.load(f)
-        if results is None:
+        if (results is None):
             continue
-        df = pd.concat([df, results], ignore_index=True)
+        if isinstance(results, dict):
+            df = pd.concat([df, results['df']], ignore_index=True)
+            df_unit = pd.concat([df, results['df_unit']], ignore_index=True)
 
-    return df
+    return df,df_unit
