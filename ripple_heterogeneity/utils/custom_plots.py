@@ -273,3 +273,23 @@ def plot_ecdf_box(
         pass
     
     return ax3
+
+def lighten_color(color, amount=0.5):
+    """
+    Lightens a color by a certain percentage.
+    This is useful for adjusting colors for a particular element of a page.
+    :param color: The hex color code, e.g. #AABBCC
+    :param amount: The amount to lighten the color by.
+    :return: The lightened color code in hex, e.g. #FFFFFF
+    """
+    try:
+        c = color.lstrip('#')
+        c = tuple(int(c[i:i + 2], 16) for i in (0, 2, 4))
+        c = (
+            int((1 - amount) * c[0] + amount * 255),
+            int((1 - amount) * c[1] + amount * 255),
+            int((1 - amount) * c[2] + amount * 255),
+        )
+        return '#%02x%02x%02x' % c
+    except ValueError:
+        return color
