@@ -93,7 +93,7 @@ def get_data(basepath, target_regions, reference_region, ripple_expand):
     )
 
 
-def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=64):
+def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=30):
     """
     grid_search: grid search for the reduced rank regressor
     """
@@ -153,8 +153,9 @@ def run(
     target_cell_type=None,  # cell type to use for target cells
     n_grid=20,  # number of grid search parameters to use
     cv=5,  # number of cross validation folds
-    max_rank=64,  # maximum rank to use in the reduced rank regressor
+    max_rank=30,  # maximum rank to use in the reduced rank regressor
     use_entire_session=False,  # use entire session or just pre task post
+    grid_search=True,  # use grid search to find the best rank
 ):
 
     (
@@ -214,6 +215,8 @@ def run(
     target_uid = []
     median_error_shuff_unit = []
     mean_error_shuff_unit = []
+    error_shuffles = []
+    error_shuff_unit_shuffles = []
 
     scaler = preprocessing.StandardScaler()
     # ts_cv = TimeSeriesSplit(n_splits=cv)
@@ -286,14 +289,18 @@ def run(
                         random_state=42,
                         shuffle=False,
                     )
-                    grid_search = run_grid_search(
-                        X_train, y_train, n_grid=n_grid, cv=cv, max_rank=max_rank
-                    )
+                    if grid_search:
+                        grid_search_result = run_grid_search(
+                            X_train, y_train, n_grid=n_grid, cv=cv, max_rank=max_rank
+                        )
 
                     regressor = (
                         kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
                     )
-                    regressor.rank = int(grid_search.best_params_["rank"])
+                    if grid_search:
+                        regressor.rank = int(grid_search_result.best_params_["rank"])
+                    else:
+                        regressor.rank = rank
                     regressor.reg = reg
 
                     # evaluate(regressor, X, y, cv, verbose=False)
@@ -350,6 +357,8 @@ def run(
                         mean_r2_shuff.append(np.mean(r2_shuff))
                         median_r2_shuff.append(np.median(r2_shuff))
                         r2_shuffles.append(r2_shuff)
+                        error_shuffles.append(error_shuff)
+                        error_shuff_unit_shuffles.append(error_shuff_unit)
                         median_error_shuff_unit.append(np.median(error_shuff_unit, axis=0))
                         mean_error_shuff_unit.append(np.mean(error_shuff_unit, axis=0))
 
@@ -428,7 +437,7 @@ def run(
         df["mean_r2_shuff"] = np.hstack(mean_r2_shuff)
         df["median_r2_shuff"] = np.hstack(median_r2_shuff)
         _, pval = functions.get_significant_events(
-            np.hstack(r2_rrr_train), np.vstack(r2_shuffles)
+            np.hstack(r2_rrr_test), np.vstack(r2_shuffles)
         )
         df["pvalues"] = pval
     df["n_ca1"] = np.hstack(n_ca1)
@@ -452,6 +461,11 @@ def run(
     if n_shuff > 0:
         df_unit["median_error_shuff_unit"] = np.hstack(median_error_shuff_unit)
         df_unit["mean_error_shuff_unit"] = np.hstack(mean_error_shuff_unit)
+
+        _, pval = functions.get_significant_events(
+            df_unit["testing_error"], np.vstack(error_shuffles)
+        )
+        df_unit["pvalues"] = pval
     # df_unit["r2_rrr_train"] = np.hstack(r2_rrr_train_units)
     # df_unit["r2_rrr_test"] = np.hstack(r2_rrr_test_units)
     df_unit["rrr_rank"] = np.hstack(rrr_rank_units)
