@@ -386,8 +386,8 @@ def find_sig_assemblies(patterns):
     """
 
     print("functions.find_sig_assemblies: is deprecated, use find_sig_assembly.main instead")
-    patterns, is_member, keep_assembly, is_member = find_sig_assembly.main(patterns)
-    return patterns, is_member, keep_assembly, is_member
+    patterns, is_member_sig, keep_assembly, is_member = find_sig_assembly.main(patterns)
+    return patterns, is_member_sig, keep_assembly, is_member
 
 
 @jit(nopython=True)
