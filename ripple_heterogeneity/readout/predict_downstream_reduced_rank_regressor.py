@@ -113,7 +113,6 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=30):
         parameters_grid_search,
         cv=cv,
         scoring="neg_mean_squared_error",
-        n_jobs=-2,
     )
     return grid_search.fit(X_train, y_train)
 
@@ -215,8 +214,7 @@ def run(
     target_uid = []
     median_error_shuff_unit = []
     mean_error_shuff_unit = []
-    error_shuffles = []
-    error_shuff_unit_shuffles = []
+    pval_shuffles_unit = []
 
     scaler = preprocessing.StandardScaler()
     # ts_cv = TimeSeriesSplit(n_splits=cv)
@@ -357,8 +355,15 @@ def run(
                         mean_r2_shuff.append(np.mean(r2_shuff))
                         median_r2_shuff.append(np.median(r2_shuff))
                         r2_shuffles.append(r2_shuff)
-                        error_shuffles.append(error_shuff)
-                        error_shuff_unit_shuffles.append(error_shuff_unit)
+                        # error_shuffles.append(error_shuff)
+                        # error_shuff_unit_shuffles.append(error_shuff_unit)
+                        mse = mean_squared_error(
+                            y_test, regressor.predict(X_test), multioutput="raw_values"
+                            )
+                        _, pval = functions.get_significant_events(
+                            mse, np.array(error_shuff_unit),tail="left"
+                        )
+                        pval_shuffles_unit.append(pval)
                         median_error_shuff_unit.append(np.median(error_shuff_unit, axis=0))
                         mean_error_shuff_unit.append(np.mean(error_shuff_unit, axis=0))
 
@@ -461,11 +466,7 @@ def run(
     if n_shuff > 0:
         df_unit["median_error_shuff_unit"] = np.hstack(median_error_shuff_unit)
         df_unit["mean_error_shuff_unit"] = np.hstack(mean_error_shuff_unit)
-
-        _, pval = functions.get_significant_events(
-            df_unit["testing_error"], np.vstack(error_shuffles)
-        )
-        df_unit["pvalues"] = pval
+        df_unit["pvalues"] = np.hstack(pval_shuffles_unit)
     # df_unit["r2_rrr_train"] = np.hstack(r2_rrr_train_units)
     # df_unit["r2_rrr_test"] = np.hstack(r2_rrr_test_units)
     df_unit["rrr_rank"] = np.hstack(rrr_rank_units)
