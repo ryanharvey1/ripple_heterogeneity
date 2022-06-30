@@ -4,7 +4,7 @@
 	This implementation was written in Feb 2019.
 	Please e-mail me if you have comments, doubts, bug reports or criticism (Vítor, vtlsantos@gmail.com /  vitor.lopesdossantos@pharm.ox.ac.uk).
 """
-
+from sklearn.decomposition import FastICA
 from sklearn.decomposition import PCA
 from scipy import stats
 import numpy as np
@@ -131,8 +131,6 @@ def extractPatterns(actmat, significance, method):
         idxs = np.argsort(-significance.explained_variance_)[0:nassemblies]
         patterns = significance.components_[idxs, :]
     elif method == "ica":
-        from sklearn.decomposition import FastICA
-
         ica = FastICA(n_components=nassemblies)
         ica.fit(actmat.T)
         patterns = ica.components_
