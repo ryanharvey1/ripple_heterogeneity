@@ -111,7 +111,11 @@ def runSignificance(zactmat, significance):
         lambdaMax = circshuffling(zactmat, significance)
     else:
         print("ERROR !")
-        print("    nyll hypothesis method " + str(significance.nullhyp) + " not understood")
+        print(
+            "    nyll hypothesis method "
+            + str(significance.nullhyp)
+            + " not understood"
+        )
         significance.nassemblies = np.nan
 
     nassemblies = np.sum(significance.explained_variance_ > lambdaMax)
