@@ -174,11 +174,14 @@ def load_cell_metrics(basepath,only_metrics=False):
             epochs = extract_epochs(data)
         except:
             epochs = []
-        # extract avg waveforms (one wavefrom per channel on shank)
+        # extract avg waveforms
         try:
-            waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0][0][0][0]]
+            waveforms = np.vstack(data['cell_metrics']['waveforms'][0][0]["filt"][0][0][0])
         except:
-            waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0]]
+            try:
+                waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0][0][0][0]]
+            except:
+                waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0]]
         # extract chanCoords
         try:
             chanCoords_x = data['cell_metrics']['general'][0][0]['chanCoords'][0][0][0][0]['x'].T[0]
