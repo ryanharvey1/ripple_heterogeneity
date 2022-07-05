@@ -47,21 +47,27 @@ def shuffle_data(X, y, rank, reg, n_shuff=1000):
         r2_test.append(regressor.score(X_test, y_test))
         testing_error.append(mean_squared_error(y_test, regressor.predict(X_test)))
         # mse for every downstream unit
-        testing_error_units.append(mean_squared_error(y_test, regressor.predict(X_test),multioutput="raw_values"))
+        testing_error_units.append(
+            mean_squared_error(
+                y_test, regressor.predict(X_test), multioutput="raw_values"
+            )
+        )
 
     return testing_error, r2_test, testing_error_units
 
 
-def get_data(basepath, target_regions, reference_region, ripple_expand):
+def get_data(
+    basepath, target_regions, reference_region, rip_exp_start=0.05, rip_exp_stop=0.1
+):
     st, cm = loading.load_spikes(
         basepath, brainRegion=[*target_regions, *reference_region]
     )
     cm = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cm)
 
     ripples = loading.load_ripples_events(basepath)
-    ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T]).expand(
-        ripple_expand
-    )
+    ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
+    ripple_epochs = ripple_epochs.expand(rip_exp_start, direction="start")
+    ripple_epochs = ripple_epochs.expand(rip_exp_stop, direction="stop")
 
     ep_df = loading.load_epoch(basepath)
     ep_df = compress_repeated_epochs.main(ep_df, epoch_name="sleep")
@@ -143,7 +149,7 @@ def run(
     reference_region=["CA1"],  # reference region
     target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
     min_cells=5,  # minimum number of cells per region
-    ripple_expand=0.2,  # in seconds, how much to expand ripples
+    ripple_expand=0.2,  # in seconds, how much to expand ripples (not used)
     min_ripples=10,  # minimum number of ripples per epoch
     n_shuff=500,  # number of shuffles to do
     rank=10,  # rank of the reduced rank regressor (not used)
@@ -155,6 +161,8 @@ def run(
     max_rank=30,  # maximum rank to use in the reduced rank regressor
     use_entire_session=False,  # use entire session or just pre task post
     grid_search=True,  # use grid search to find the best rank
+    rip_exp_start=0.05,  # ripple expansion start, in seconds, how much to expand ripples
+    rip_exp_stop=0.2,  # ripple expansion stop, in seconds, how much to expand ripples
 ):
 
     (
@@ -166,7 +174,13 @@ def run(
         session_epoch,
         nrem_epochs,
         wake_epochs,
-    ) = get_data(basepath, target_regions, reference_region, ripple_expand)
+    ) = get_data(
+        basepath,
+        target_regions,
+        reference_region,
+        rip_exp_start=rip_exp_start,
+        rip_exp_stop=rip_exp_stop,
+    )
     if st is None:
         return None
 
@@ -311,11 +325,15 @@ def run(
 
                     mdl_plsc = PLSCanonical().fit(X_train, y_train)
                     r2_plsc.append(mdl_plsc.score(X_test, y_test))
-                    mse_plsc.append(mean_squared_error(y_test, mdl_plsc.predict(X_test)))
+                    mse_plsc.append(
+                        mean_squared_error(y_test, mdl_plsc.predict(X_test))
+                    )
 
                     mdl_plsr = PLSRegression().fit(X_train, y_train)
                     r2_plsr.append(mdl_plsr.score(X_test, y_test))
-                    mse_plsr.append(mean_squared_error(y_test, mdl_plsr.predict(X_test)))
+                    mse_plsr.append(
+                        mean_squared_error(y_test, mdl_plsr.predict(X_test))
+                    )
 
                     # get model performance
                     training_error.append(
@@ -359,12 +377,14 @@ def run(
                         # error_shuff_unit_shuffles.append(error_shuff_unit)
                         mse = mean_squared_error(
                             y_test, regressor.predict(X_test), multioutput="raw_values"
-                            )
+                        )
                         _, pval = functions.get_significant_events(
-                            mse, np.array(error_shuff_unit),tail="left"
+                            mse, np.array(error_shuff_unit), tail="left"
                         )
                         pval_shuffles_unit.append(pval)
-                        median_error_shuff_unit.append(np.median(error_shuff_unit, axis=0))
+                        median_error_shuff_unit.append(
+                            np.median(error_shuff_unit, axis=0)
+                        )
                         mean_error_shuff_unit.append(np.mean(error_shuff_unit, axis=0))
 
                     # multi-cell_performance
@@ -399,17 +419,19 @@ def run(
 
                     # get metadata
                     n_cells = len(test_error_units[-1])
-                    rrr_rank_units.append(np.tile(regressor.rank,n_cells))
-                    rrr_reg_units.append(np.tile(regressor.reg,n_cells))
-                    n_x_components_units.append(np.tile(X.shape[1],n_cells))
-                    epoch_units.append(np.tile(ep_df.environment.iloc[ep_i],n_cells))
-                    epoch_i_units.append(np.tile(ep_i,n_cells))
-                    states_units.append(np.tile(states_[state_i],n_cells))
-                    targ_reg_units.append(np.tile(region,n_cells))
-                    ca1_sub_layer_units.append(np.tile(ca1_sub,n_cells))
-                    n_ca1_units.append(np.tile(sum(ca1_idx),n_cells))
+                    rrr_rank_units.append(np.tile(regressor.rank, n_cells))
+                    rrr_reg_units.append(np.tile(regressor.reg, n_cells))
+                    n_x_components_units.append(np.tile(X.shape[1], n_cells))
+                    epoch_units.append(np.tile(ep_df.environment.iloc[ep_i], n_cells))
+                    epoch_i_units.append(np.tile(ep_i, n_cells))
+                    states_units.append(np.tile(states_[state_i], n_cells))
+                    targ_reg_units.append(np.tile(region, n_cells))
+                    ca1_sub_layer_units.append(np.tile(ca1_sub, n_cells))
+                    n_ca1_units.append(np.tile(sum(ca1_idx), n_cells))
                     n_target_cells_units.append(
-                        np.tile(sum(cm.brainRegion.str.contains(region).values),n_cells)
+                        np.tile(
+                            sum(cm.brainRegion.str.contains(region).values), n_cells
+                        )
                     )
                     target_uid.append(cm[target_idx].UID.values)
 
@@ -496,10 +518,10 @@ def load_results(save_path, verbose=False):
             print(session)
         with open(session, "rb") as f:
             results = pickle.load(f)
-        if (results is None):
+        if results is None:
             continue
         if isinstance(results, dict):
-            df = pd.concat([df, results['df']], ignore_index=True)
-            df_unit = pd.concat([df_unit, results['df_unit']], ignore_index=True)
+            df = pd.concat([df, results["df"]], ignore_index=True)
+            df_unit = pd.concat([df_unit, results["df_unit"]], ignore_index=True)
 
-    return df,df_unit
+    return df, df_unit
