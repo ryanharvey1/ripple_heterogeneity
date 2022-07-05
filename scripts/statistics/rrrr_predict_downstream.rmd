@@ -1,0 +1,160 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+```
+
+```{r}
+
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/rrrr_results_unit.csv")
+
+data$epoch = factor(data$epoch)
+data$epoch_i = factor(data$epoch_i)
+data$state = factor(data$state)
+data$targ_reg = factor(data$targ_reg)
+
+data$ca1_sub_layer = factor(data$ca1_sub_layer)
+data$basepath = factor(data$basepath)
+data$ca1_sub_layer_targ_reg = factor(data$ca1_sub_layer_targ_reg)
+data$target_uid = factor(data$target_uid)
+data$animal_id = factor(data$animal_id)
+
+
+summary(data)
+```
+
+
+```{r}
+temp_data <- data[data$state == 'WAKE' & data$targ_reg == 'MEC' & data$rrr_rank > 1 & data$pvalues <0.05,]
+
+mdl_boxcox <- boxcox(testing_rmse ~ ca1_sub_layer, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$testing_rmse^max_lambda
+
+
+m1 = lmer(y_trans ~ ca1_sub_layer + (1 | basepath/target_uid), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+plot(y_trans ~ ca1_sub_layer, data = temp_data)
+```
+
+
+```{r}
+
+temp_data <- data[data$state == 'WAKE' & data$targ_reg == 'PFC' & data$rrr_rank > 1 & data$pvalues <0.05,]
+
+mdl_boxcox <- boxcox(testing_rmse ~ ca1_sub_layer, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$testing_rmse^max_lambda
+
+
+m1 = lmer(y_trans ~ ca1_sub_layer + (1 | basepath/target_uid), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+
+plot(y_trans ~ ca1_sub_layer, data = temp_data)
+```
+
+
+```{r}
+temp_data <- data[data$state == 'WAKE' & data$rrr_rank > 1 & data$pvalues <0.05,]
+
+
+mdl_boxcox <- boxcox(testing_rmse ~ targ_reg*ca1_sub_layer, data=temp_data, lambda = seq(-5, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$testing_rmse^max_lambda
+
+m1 = lm(y_trans~ targ_reg*ca1_sub_layer,data=temp_data)
+summary(m1)
+
+
+plot(y_trans~ targ_reg*ca1_sub_layer, data = temp_data)
+
+```
+
+
+```{r}
+
+temp_data <- data[data$state == 'WAKE' & data$rrr_rank > 1 & data$pvalues <0.05,]
+
+
+mdl_boxcox <- boxcox(testing_rmse ~ targ_reg*ca1_sub_layer, data=temp_data, lambda = seq(-5, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$testing_rmse^max_lambda
+
+m1 = lmer(y_trans~ targ_reg*ca1_sub_layer + (1 | basepath/target_uid),data=temp_data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+plot(y_trans~ targ_reg*ca1_sub_layer, data = temp_data)
+
+
+
+
+```
+
+```{r}
+
+
+```
+
+
+```{r}
+
+
+```
+
+
+```{r}
+
+
+```
+
+
+```{r}
+
+
+```
+
+
+```{r}
+
+
+```
