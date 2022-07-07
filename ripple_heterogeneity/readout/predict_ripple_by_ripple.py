@@ -46,6 +46,7 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=30):
         parameters_grid_search,
         cv=cv,
         scoring="neg_mean_squared_error",
+        n_jobs=-1,
     )
     return grid_search.fit(X_train, y_train)
 
@@ -98,6 +99,7 @@ def get_data(basepath, target_regions, reference_region, rip_exp=0.5):
         rem_epochs,
         theta_epochs,
         nontheta_epochs,
+        ripples
     )
 
 
@@ -137,6 +139,7 @@ def run(
         rem_epochs,
         theta_epochs,
         nontheta_epochs,
+        ripples
     ) = get_data(basepath, target_regions, reference_region, rip_exp=rip_exp)
     if st is None:
         return None
@@ -169,6 +172,9 @@ def run(
     environment = []
     name = []
     epoch_i = []
+
+    rip_n = []
+    ripple_duation = []
 
     # iterate over ripples
     for rip_i, rip in enumerate(ripple_epochs):
@@ -273,6 +279,9 @@ def run(
                 targ_reg.append(region)
                 ca1_sub_layer.append(ca1_sub)
 
+                rip_n.append(rip_i)
+                ripple_duation.append(ripples.duration.loc[rip_i])
+
     # create a dataframe
     df = pd.DataFrame()
     df["state"] = np.hstack(state)
@@ -301,6 +310,7 @@ def run(
     # df["mse_time_rrrr"] = np.hstack(mse_time_rrrr)
     df["n_epochs"] = np.hstack(ep_epochs.n_intervals)
     df["n_ripples"] = np.hstack(ripple_epochs.n_intervals)
+    df["basepath"] = basepath
 
     # df["n_samples"] = np.hstack(n_samples)
     # df["n_features"] = np.hstack(n_features)
