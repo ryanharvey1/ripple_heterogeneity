@@ -370,7 +370,7 @@ def run(
                 ignore_index=True,
             )
 
-    return processed_list
+    return results_df
     # df = []
     # # iterate over ca1 sublayers regions
     # for ca1_sub in ["Deep", "Superficial"]:
