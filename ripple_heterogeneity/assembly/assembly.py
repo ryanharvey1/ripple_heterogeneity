@@ -8,6 +8,7 @@ from sklearn.decomposition import FastICA
 from sklearn.decomposition import PCA
 from scipy import stats
 import numpy as np
+import numpy.matlib
 
 __author__ = "Vítor Lopes dos Santos"
 __version__ = "2019.1"
