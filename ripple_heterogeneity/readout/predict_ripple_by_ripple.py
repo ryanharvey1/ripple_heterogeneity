@@ -53,7 +53,9 @@ def run_grid_search(X_train, y_train, n_grid=10, cv=5, max_rank=30):
     return grid_search.fit(X_train, y_train)
 
 
-def get_data(basepath, target_regions, reference_region, rip_exp=0.5):
+def get_data(
+    basepath, target_regions, reference_region, min_ripple_duration, rip_exp=0.5
+):
     """
     get_data: get the data for the analysis
 
@@ -64,6 +66,7 @@ def get_data(basepath, target_regions, reference_region, rip_exp=0.5):
     cm = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cm)
 
     ripples = loading.load_ripples_events(basepath)
+    ripples = ripples[ripples["duration"] >= min_ripple_duration]
     ripple_epochs = nel.EpochArray([np.array([ripples.peaks, ripples.peaks]).T]).expand(
         rip_exp
     )
@@ -174,13 +177,13 @@ def main_analysis(
     # predict across whole ripple and estimate error
     mse_time_lr = mse_axis(y, reg.predict(x), axis=1)
 
-    reg = ExtraTreesRegressor().fit(X_train, y_train)
-    r2_train_et = reg.score(X_train, y_train)
-    r2_test_et = reg.score(X_test, y_test)
-    mse_train_et = mean_squared_error(y_train, reg.predict(X_train))
-    mse_test_et = mean_squared_error(y_test, reg.predict(X_test))
-    # predict across whole ripple and estimate error
-    mse_time_et = mse_axis(y, reg.predict(x), axis=1)
+    # reg = ExtraTreesRegressor().fit(X_train, y_train)
+    # r2_train_et = reg.score(X_train, y_train)
+    # r2_test_et = reg.score(X_test, y_test)
+    # mse_train_et = mean_squared_error(y_train, reg.predict(X_train))
+    # mse_test_et = mean_squared_error(y_test, reg.predict(X_test))
+    # # predict across whole ripple and estimate error
+    # mse_time_et = mse_axis(y, reg.predict(x), axis=1)
 
     # reduced rank regression
     # reg = kernel_reduced_rank_ridge_regression.ReducedRankRegressor()
@@ -227,13 +230,12 @@ def main_analysis(
     ca1_sub_layer = ca1_sub
 
     rip_n = rip_i
-    ripple_duation = ripples.duration.loc[rip_i]
-    ripple_start = ripples.start.loc[rip_i]
-    ripple_stop = ripples.stop.loc[rip_i]
-    ripple_peak = ripples.peaks.loc[rip_i]
-    ripple_amp = ripples.amplitude.loc[rip_i]
-    ripple_freq = ripples.frequency.loc[rip_i]
-
+    ripple_duation = ripples.duration.iloc[rip_i]
+    ripple_start = ripples.start.iloc[rip_i]
+    ripple_stop = ripples.stop.iloc[rip_i]
+    ripple_peak = ripples.peaks.iloc[rip_i]
+    ripple_amp = ripples.amplitude.iloc[rip_i]
+    ripple_freq = ripples.frequency.iloc[rip_i]
 
     df = {
         "state": state,
@@ -254,10 +256,10 @@ def main_analysis(
         "mse_train_lr": mse_train_lr,
         "mse_test_lr": mse_test_lr,
         # "mse_time_lr": mse_time_lr,
-        "r2_train_et": r2_train_et,
-        "r2_test_et": r2_test_et,
-        "mse_train_et": mse_train_et,
-        "mse_test_et": mse_test_et,
+        # "r2_train_et": r2_train_et,
+        # "r2_test_et": r2_test_et,
+        # "mse_train_et": mse_train_et,
+        # "mse_test_et": mse_test_et,
         # "mse_time_et": mse_time_et,
         "n_target": n_target,
         "n_ca1": n_ca1,
@@ -281,7 +283,8 @@ def run(
     use_entire_session=False,  # use entire session or just pre task post
     grid_search=True,  # use grid search to find the best rank
     rip_exp=0.5,  # expansion for ripples (center plus/minus this amount)
-    parallel=False,  # use parallel processing
+    run_parallel=False,  # use parallel processing
+    min_ripple_duration=0.1,  # minimum duration of ripple in seconds
 ):
 
     (
@@ -297,22 +300,26 @@ def run(
         theta_epochs,
         nontheta_epochs,
         ripples,
-    ) = get_data(basepath, target_regions, reference_region, rip_exp=rip_exp)
+    ) = get_data(
+        basepath, target_regions, reference_region, min_ripple_duration, rip_exp=rip_exp
+    )
     if st is None:
         return None
-
 
     # if parallel:
     # get number of cores
     num_cores = multiprocessing.cpu_count()
 
+    results_df = pd.DataFrame()
+
     # iterate over ca1 sublayers regions
     for ca1_sub in ["Deep", "Superficial"]:
         # iterate over target regions
-        for region in target_regions:    
-            # run in parallel
-            processed_list = Parallel(n_jobs=num_cores)(
-                delayed(main_analysis)(
+        for region in target_regions:
+            if run_parallel:
+                # run in parallel
+                processed_list = Parallel(n_jobs=num_cores)(
+                    delayed(main_analysis)(
                         rip,
                         ca1_sub,
                         region,
@@ -330,8 +337,37 @@ def run(
                         ep_df,
                         ripples,
                         rip_i,
+                    )
+                    for rip_i, rip in enumerate(ripple_epochs)
                 )
-                for rip_i, rip in enumerate(ripple_epochs)
+            else:
+                # run serially
+                processed_list = [
+                    main_analysis(
+                        rip,
+                        ca1_sub,
+                        region,
+                        st,
+                        cm,
+                        min_cells,
+                        source_cell_type,
+                        target_cell_type,
+                        nrem_epochs,
+                        wake_epochs,
+                        rem_epochs,
+                        theta_epochs,
+                        nontheta_epochs,
+                        ep_epochs,
+                        ep_df,
+                        ripples,
+                        rip_i,
+                    )
+                    for rip_i, rip in enumerate(ripple_epochs)
+                ]
+        for result in processed_list:
+            results_df = pd.concat(
+                [results_df, pd.DataFrame.from_dict(result, orient="index").T],
+                ignore_index=True,
             )
 
     return processed_list
@@ -340,29 +376,28 @@ def run(
     # for ca1_sub in ["Deep", "Superficial"]:
     #     # iterate over target regions
     #     for region in target_regions:
-            # for rip_i, rip in enumerate(ripple_epochs):
-            #     df.append(main_analysis(
-            #         rip,
-            #         ca1_sub,
-            #         region,
-            #         st,
-            #         cm,
-            #         min_cells,
-            #         source_cell_type,
-            #         target_cell_type,
-            #         nrem_epochs,
-            #         wake_epochs,
-            #         rem_epochs,
-            #         theta_epochs,
-            #         nontheta_epochs,
-            #         ep_epochs,
-            #         ep_df,
-            #         ripples,
-            #         rip_i,
-            #     ))
+    # for rip_i, rip in enumerate(ripple_epochs):
+    #     df.append(main_analysis(
+    #         rip,
+    #         ca1_sub,
+    #         region,
+    #         st,
+    #         cm,
+    #         min_cells,
+    #         source_cell_type,
+    #         target_cell_type,
+    #         nrem_epochs,
+    #         wake_epochs,
+    #         rem_epochs,
+    #         theta_epochs,
+    #         nontheta_epochs,
+    #         ep_epochs,
+    #         ep_df,
+    #         ripples,
+    #         rip_i,
+    #     ))
 
     # pd.DataFrame.from_dict(df[0], orient="index")
-
 
     # initialize output vars (not the best way to do this, long format is better)
     # r2_train_lr = []
