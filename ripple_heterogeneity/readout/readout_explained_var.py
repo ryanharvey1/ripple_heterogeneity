@@ -14,7 +14,7 @@ from ripple_heterogeneity.utils import compress_repeated_epochs
 import itertools
 
 
-def get_corrcoef(st, epoch, bin_size=0.50):
+def get_corrcoef(st, epoch, bin_size=0.05):
     """
     Calculate correlation coefficient for epoch
     input:
@@ -24,21 +24,17 @@ def get_corrcoef(st, epoch, bin_size=0.50):
     output:
         corrcoef_r: correlation matrix
     """
-    spiketrain = []
     spk_train_list = st[epoch]
     if spk_train_list.isempty:
         return None
-    for spk in spk_train_list.data:
-        spiketrain.append(
-            SpikeTrain(spk, t_start=epoch.start, t_stop=epoch.stop, units="s")
-        )
-    corrcoef = correlation_coefficient(
-        BinnedSpikeTrain(spiketrain, bin_size=bin_size * pq.s)
-    )
-    return corrcoef
+    bst = spk_train_list.bin(ds=bin_size)
+
+    return np.corrcoef(bst.data)
 
 
-def get_cells(basepath, ref="CA1", target="PFC", ref_sublayer="Deep"):
+def get_cells(
+    basepath, ref="CA1", target="PFC", ref_sublayer="Deep", putativeCellType="Pyr"
+):
     """
     Get cells from a specific region and sublayer (Deep or Superficial)
     input:
@@ -51,7 +47,9 @@ def get_cells(basepath, ref="CA1", target="PFC", ref_sublayer="Deep"):
         cell_metrics: pandas dataframe with cell metrics
     """
     # get cells from these regions
-    st, cell_metrics = loading.load_spikes(basepath, brainRegion=[ref, target])
+    st, cell_metrics = loading.load_spikes(
+        basepath, brainRegion=[ref, target], putativeCellType=putativeCellType
+    )
     # classify deep and superficial cells by distance to pyr layer
     cell_metrics = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cell_metrics)
     # re-label any ca1 to ca1
@@ -96,17 +94,17 @@ def get_explained_var(st, beh_epochs, cell_metrics, state_epoch, restrict_task=F
 
     # get correlation matrix per epoch
     st_restrict = st[state_epoch]
-    corrcoef_r_pre = get_corrcoef(st_restrict, beh_epochs[0])
+    corrcoef_r_pre = get_corrcoef(st_restrict, beh_epochs[0], bin_size=0.05)
     if restrict_task:
-        corrcoef_r_beh = get_corrcoef(st_restrict, beh_epochs[1])
+        corrcoef_r_beh = get_corrcoef(st_restrict, beh_epochs[1], bin_size=0.05)
     else:
-        corrcoef_r_beh = get_corrcoef(st, beh_epochs[1])
-    corrcoef_r_post = get_corrcoef(st_restrict, beh_epochs[2])
+        corrcoef_r_beh = get_corrcoef(st, beh_epochs[1], bin_size=0.5)
+    corrcoef_r_post = get_corrcoef(st_restrict, beh_epochs[2], bin_size=0.05)
 
     # get uids for ref and target cells
     c = np.array(list(itertools.product(cell_metrics.UID.values, repeat=2)))
-    ref_uid = c[:,0]
-    target_uid = c[:,1]
+    ref_uid = c[:, 0]
+    target_uid = c[:, 1]
 
     if corrcoef_r_pre is None or corrcoef_r_beh is None or corrcoef_r_post is None:
         return np.nan, np.nan
@@ -158,6 +156,7 @@ def run(
     basepath,  # path to data folder
     reference_region="CA1",  # reference region
     target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # regions to compare ref to
+    putativeCellType="Pyr",  # cell type
     min_cells=5,  # minimum number of cells per region
     restrict_task=False,  # restrict restriction_type to task epochs (ex. ripples in task (True) vs. all task (False))
     restriction_type="ripples",  # "ripples" or "NREMstate"
@@ -205,13 +204,25 @@ def run(
     for region in target_regions:
         for sublayer in ["Deep", "Superficial"]:
             st, cell_metrics = get_cells(
-                basepath, ref=reference_region, target=region, ref_sublayer=sublayer
+                basepath,
+                ref=reference_region,
+                target=region,
+                ref_sublayer=sublayer,
+                putativeCellType=putativeCellType,
             )
             n_ca1 = cell_metrics.brainRegion.str.contains("CA1").sum()
             n_target = cell_metrics.brainRegion.str.contains(region).sum()
             if st.isempty | (n_ca1 < min_cells) | (n_target < min_cells):
                 continue
-            ev, rev, cor_pre, cor_beh, cor_post, ref_uid, target_uid = get_explained_var(
+            (
+                ev,
+                rev,
+                cor_pre,
+                cor_beh,
+                cor_post,
+                ref_uid,
+                target_uid,
+            ) = get_explained_var(
                 st, beh_epochs, cell_metrics, restrict_epochs, restrict_task
             )
             evs.append(ev)
@@ -224,7 +235,9 @@ def run(
             # store pairwise correlations
             pairwise_corr.append(np.hstack([cor_pre, cor_beh, cor_post]))
             pairwise_corr_ref_uid.append(np.hstack([ref_uid, ref_uid, ref_uid]))
-            pairwise_corr_target_uid.append(np.hstack([target_uid, target_uid, target_uid]))
+            pairwise_corr_target_uid.append(
+                np.hstack([target_uid, target_uid, target_uid])
+            )
             pairwise_corr_epoch.append(
                 np.hstack(
                     [
