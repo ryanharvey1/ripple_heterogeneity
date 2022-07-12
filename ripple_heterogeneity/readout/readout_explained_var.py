@@ -263,6 +263,10 @@ def run(
                 restrict_task,
                 theta_epochs,
             )
+            
+            if np.isnan(ev):
+                continue
+
             evs.append(ev)
             revs.append(rev)
             sublayers.append(sublayer)
