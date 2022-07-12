@@ -431,15 +431,24 @@ def get_participation(st, event_starts, event_stops, par_type="binary"):
     Input:
         st: spike train list
         event_starts: event starts
-        event_stops: event stops 
+        event_stops: event stops
         par_type: participation type (counts, binary, firing_rate)
     """
-
+    # convert to numpy array
     event_starts, event_stops = np.array(event_starts), np.array(event_stops)
 
-    unit_mat = get_participation_(
-        fix_array_or_list(list(st)), event_starts, event_stops
-    )
+    # initialize matrix
+    unit_mat = np.zeros((len(st), (len(event_starts) * 2) - 1))
+
+    # initialize bin edges
+    bins = np.zeros(len(event_starts) * 2)
+    bins[::2], bins[1::2] = event_starts, event_stops
+
+    # loop over units and bin spikes into epochs
+    for i, s in enumerate(st):
+        unit_mat[i, :], _ = np.histogram(s, bins=bins)
+    # only take even bins (start and stop of epochs)
+    unit_mat = unit_mat[:,::2]
 
     if par_type == "counts":
         pass
