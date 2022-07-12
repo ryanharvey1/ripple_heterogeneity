@@ -98,7 +98,7 @@ def get_explained_var(st, beh_epochs, cell_metrics, state_epoch, restrict_task=F
     if restrict_task:
         corrcoef_r_beh = get_corrcoef(st_restrict, beh_epochs[1], bin_size=0.05)
     else:
-        corrcoef_r_beh = get_corrcoef(st, beh_epochs[1], bin_size=0.5)
+        corrcoef_r_beh = get_corrcoef(st, beh_epochs[1], bin_size=0.05)
     corrcoef_r_post = get_corrcoef(st_restrict, beh_epochs[2], bin_size=0.05)
 
     # get uids for ref and target cells
