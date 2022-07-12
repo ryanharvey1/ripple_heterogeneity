@@ -81,7 +81,13 @@ def remov_within_reg_corr(U, brainRegion):
 
 
 def get_explained_var(
-    st, beh_epochs, cell_metrics, state_epoch, task_binsize, restrict_task=False
+    st,
+    beh_epochs,
+    cell_metrics,
+    state_epoch,
+    task_binsize=0.125,
+    restrict_task=False,
+    theta_epochs=None,
 ):
     """
     Calculate explained variance
@@ -95,12 +101,24 @@ def get_explained_var(
     """
 
     # get correlation matrix per epoch
+
+    # restrict spike times to epoch (could be many things)
     st_restrict = st[state_epoch]
+
+    # restrict to spike times to theta epochs
+    if theta_epochs is not None:
+        st = st[theta_epochs]
+
+    # pre task
     corrcoef_r_pre = get_corrcoef(st_restrict, beh_epochs[0], bin_size=0.05)
+
+    # task
     if restrict_task:
         corrcoef_r_beh = get_corrcoef(st_restrict, beh_epochs[1], bin_size=0.05)
     else:
         corrcoef_r_beh = get_corrcoef(st, beh_epochs[1], bin_size=task_binsize)
+
+    # post task
     corrcoef_r_post = get_corrcoef(st_restrict, beh_epochs[2], bin_size=0.05)
 
     # get uids for ref and target cells
@@ -164,6 +182,7 @@ def run(
     restriction_type="ripples",  # "ripples" or "NREMstate" or "barrage"
     ripple_expand=0.05,  # in seconds, how much to expand ripples
     task_binsize=0.125,  # in seconds, bin size for task epochs
+    restrict_task_to_theta=True,  # restrict task to theta epochs
 ):
     # locate epochs
     ep_df = loading.load_epoch(basepath)
@@ -192,6 +211,12 @@ def run(
     else:
         raise ValueError("restriction_type must be 'ripples' or 'NREMstate'")
 
+    if restrict_task_to_theta:
+        state_dict = loading.load_SleepState_states(basepath)
+        theta_epochs = nel.EpochArray(state_dict["THETA"])
+    else:
+        theta_epochs = None
+        
     # needs exactly 3 epochs for analysis
     if ep_df.shape[0] != 3:
         return None
@@ -230,7 +255,13 @@ def run(
                 ref_uid,
                 target_uid,
             ) = get_explained_var(
-                st, beh_epochs, cell_metrics, restrict_epochs, task_binsize, restrict_task
+                st,
+                beh_epochs,
+                cell_metrics,
+                restrict_epochs,
+                task_binsize,
+                restrict_task,
+                theta_epochs,
             )
             evs.append(ev)
             revs.append(rev)
