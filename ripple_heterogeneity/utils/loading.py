@@ -440,6 +440,59 @@ def load_ripples_events(basepath):
 
     return df
 
+def load_barrage_events(basepath):
+    """
+    load info from barrage.events.mat and store within df
+
+    basepath: path to your session where ripples.events.mat is
+
+    returns pandas dataframe with the following fields
+        start: start time of ripple
+        stop: end time of ripple
+        peaks: peak time of ripple
+        amplitude: envlope value at peak time
+        duration: ripple duration
+        basepath: path name
+        basename: session id
+        animal: animal id *
+
+        * Note that basepath/basename/animal relies on specific folder 
+        structure and may be incorrect for some data structures
+    """
+
+    # locate .mat file
+    try:
+        filename = glob.glob(basepath+os.sep+'Barrage_Files'+os.sep+'*HSE.mat')[0]
+    except:
+        warnings.warn("file does not exist")
+        return pd.DataFrame()
+
+    # load matfile
+    data = sio.loadmat(filename)
+
+    # make data frame of known fields 
+    df = pd.DataFrame()
+    df['start'] = data['HSE']['timestamps'][0][0][:,0]
+    df['stop'] = data['HSE']['timestamps'][0][0][:,1]
+    df['peaks'] = data['HSE']['peaks'][0][0]
+    try:
+        df['amplitude'] = data['HSE']['amplitudes'][0][0]
+    except:
+        df['amplitude'] = np.nan
+    try:
+        df['duration'] = data['HSE']['duration'][0][0]
+    except:
+        df['duration'] = np.nan
+
+    # get basename and animal
+    normalized_path = os.path.normpath(filename)
+    path_components = normalized_path.split(os.sep)
+    df['basepath'] = basepath  
+    df['basename'] = path_components[-2]
+    df['animal'] = path_components[-3]
+
+    return df
+
 def load_dentate_spike(basepath):
     """
     load info from DS*.events.mat and store within df
