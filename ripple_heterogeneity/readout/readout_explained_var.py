@@ -127,7 +127,7 @@ def get_explained_var(
     target_uid = c[:, 1]
 
     if corrcoef_r_pre is None or corrcoef_r_beh is None or corrcoef_r_post is None:
-        return np.nan, np.nan
+        return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
 
     # remove correlations within region
     corrcoef_r_pre = remov_within_reg_corr(corrcoef_r_pre, cell_metrics.brainRegion)
@@ -216,7 +216,7 @@ def run(
         theta_epochs = nel.EpochArray(state_dict["THETA"])
     else:
         theta_epochs = None
-        
+
     # needs exactly 3 epochs for analysis
     if ep_df.shape[0] != 3:
         return None
