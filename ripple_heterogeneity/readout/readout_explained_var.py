@@ -80,7 +80,9 @@ def remov_within_reg_corr(U, brainRegion):
     return U
 
 
-def get_explained_var(st, beh_epochs, cell_metrics, state_epoch, restrict_task=False):
+def get_explained_var(
+    st, beh_epochs, cell_metrics, state_epoch, task_binsize, restrict_task=False
+):
     """
     Calculate explained variance
     input:
@@ -98,7 +100,7 @@ def get_explained_var(st, beh_epochs, cell_metrics, state_epoch, restrict_task=F
     if restrict_task:
         corrcoef_r_beh = get_corrcoef(st_restrict, beh_epochs[1], bin_size=0.05)
     else:
-        corrcoef_r_beh = get_corrcoef(st, beh_epochs[1], bin_size=0.05)
+        corrcoef_r_beh = get_corrcoef(st, beh_epochs[1], bin_size=task_binsize)
     corrcoef_r_post = get_corrcoef(st_restrict, beh_epochs[2], bin_size=0.05)
 
     # get uids for ref and target cells
@@ -159,8 +161,9 @@ def run(
     putativeCellType="Pyr",  # cell type
     min_cells=5,  # minimum number of cells per region
     restrict_task=False,  # restrict restriction_type to task epochs (ex. ripples in task (True) vs. all task (False))
-    restriction_type="ripples",  # "ripples" or "NREMstate"
+    restriction_type="ripples",  # "ripples" or "NREMstate" or "barrage"
     ripple_expand=0.05,  # in seconds, how much to expand ripples
+    task_binsize=0.125,  # in seconds, bin size for task epochs
 ):
     # locate epochs
     ep_df = loading.load_epoch(basepath)
@@ -227,7 +230,7 @@ def run(
                 ref_uid,
                 target_uid,
             ) = get_explained_var(
-                st, beh_epochs, cell_metrics, restrict_epochs, restrict_task
+                st, beh_epochs, cell_metrics, restrict_epochs, task_binsize, restrict_task
             )
             evs.append(ev)
             revs.append(rev)
