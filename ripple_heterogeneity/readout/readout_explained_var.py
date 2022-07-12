@@ -185,7 +185,7 @@ def run(
     elif restriction_type == "barrage":
         barrage = loading.load_barrage_events(basepath)
         barrage_epochs = nel.EpochArray(np.array([barrage.start, barrage.stop]).T)
-        restrict_epochs = barrage_epochs.expand(barrage_expand)
+        restrict_epochs = barrage_epochs.expand(ripple_expand)
     else:
         raise ValueError("restriction_type must be 'ripples' or 'NREMstate'")
 
