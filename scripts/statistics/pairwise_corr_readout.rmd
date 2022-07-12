@@ -72,6 +72,51 @@ F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 lme.dscore(m1,data=data,type="lme4")
 plot(y_trans ~ sublayer * region, data = data)
 ```
+```{r}
+hist(data$r2_pre_post,100)
+```
+
+```{r}
+
+data$r2_pre_post_offset <- data$r2_pre_post+1
+
+mdl_boxcox <- boxcox(r2_pre_post_offset ~ sublayer, data=data[data$region=="MEC",], lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$r2_pre_post_offset^max_lambda
+
+m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath/unique_uid_basepath), data = data[data$region=="MEC",],REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ sublayer , data = data[data$region=="MEC",])
+```
+
+```{r}
+
+mdl_boxcox <- boxcox(r2_pre_post_offset ~ sublayer, data=data[data$region=="PFC",], lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$r2_pre_post_offset^max_lambda
+
+m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath/unique_uid_basepath), data = data[data$region=="PFC",],REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ sublayer , data = data[data$region=="PFC",])
+```
 
 
 ```{r}
@@ -144,11 +189,11 @@ plot(y_trans ~ sublayer , data = data[data$region=="MEC",])
 ```{r}
 data$r2_pre <- data$cor_pre^2
 
-# mdl_boxcox <- boxcox(r2_pre ~ sublayer, data=data[data$region=="PFC",], lambda = seq(-5, 10, length = 100))
-# max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+mdl_boxcox <- boxcox(r2_pre ~ sublayer, data=data[data$region=="PFC",], lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
 
 # data$y_trans <- log(abs(data$corrcoef.1))
-data$y_trans <- log(data$r2_pre+1)
+data$y_trans <- data$r2_pre^max_lambda
 
 m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath/unique_uid_basepath), data = data[data$region=="PFC",],REML=FALSE)
 summary(m1)
@@ -165,17 +210,20 @@ plot(y_trans ~ sublayer , data = data[data$region=="PFC",])
 
 
 ```{r}
-temp_data <- data[!is.nan(data$cor_pre),]
-temp_data <- temp_data[!is.na(temp_data$cor_pre),]
+
+temp_data <- data[data$region=="MEC",]
+
+# temp_data <- temp_data[!is.nan(temp_data$cor_pre),]
+# temp_data <- temp_data[!is.na(temp_data$cor_pre),]
 
 temp_data$cor_pre_abs <- abs(temp_data$cor_pre)+1
 
-mdl_boxcox <- boxcox(cor_pre_abs ~ region, data=temp_data, lambda = seq(-5, 10, length = 100))
+mdl_boxcox <- boxcox(cor_pre_abs ~ sublayer, data=temp_data, lambda = seq(-100, 10, length = 100))
 max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
 
 temp_data$y_trans <- temp_data$cor_pre_abs^max_lambda
 
-m1 = lmer(y_trans ~ region + (1 | animal_id/basepath/unique_uid_basepath), data = temp_data,REML=FALSE)
+m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath), data = temp_data,REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
@@ -185,12 +233,35 @@ a1 = anova(m1)
 F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
 lme.dscore(m1,data=temp_data,type="lme4")
-plot(y_trans ~ region , data = temp_data)
+plot(y_trans ~ sublayer, data = temp_data)
 ```
 
 
 ```{r}
-temp_data$cor_pre_abs
+
+temp_data <- data[data$region=="PFC",]
+
+# temp_data <- temp_data[!is.nan(temp_data$cor_pre),]
+# temp_data <- temp_data[!is.na(temp_data$cor_pre),]
+
+temp_data$cor_pre_abs <- abs(temp_data$cor_pre)+1
+
+mdl_boxcox <- boxcox(cor_pre_abs ~ sublayer, data=temp_data, lambda = seq(-100, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$cor_pre_abs^max_lambda
+
+m1 = lmer(y_trans ~ sublayer + (1 | animal_id/basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+plot(y_trans ~ sublayer, data = temp_data)
 ```
 
 
