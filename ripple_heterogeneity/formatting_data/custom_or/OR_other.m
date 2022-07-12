@@ -50,3 +50,42 @@ coords = readtable("D:\github\ripple_heterogeneity\data\electrodes_coordinates_A
 
 chanCoords.x(1:64) = coords.x_um_;
 chanCoords.y(1:64) = coords.y_um_;
+
+%% sleep states
+for i = 1:length(basepaths)
+    basepath = basepaths{i};
+
+    SleepScoreMaster(basepath,'noPrompts',true); % takes lfp in base 0
+    thetaEpochs(basepath);
+end
+
+%% get spikes
+for i = 1:length(basepaths)
+    basepath = basepaths{i};
+    spikes = loadSpikes('basepath',basepath)
+%     spikes = loadSpikes('basepath',basepath,'getWaveformsFromSource',true,'getWaveformsFromDat',false);
+end
+
+%% get cell metrics
+
+for i = 1:length(basepaths)
+    
+    basepath = basepaths{i};
+    basename = basenameFromBasepath(basepath);
+    
+    load(fullfile(basepath,[basename,'.session.mat']))
+    load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
+
+    cell_metrics = ProcessCellMetrics('session',session,'spikes',spikes,...
+        'manualAdjustMonoSyn',false,'showGUI',false,'getWaveformsFromDat',false);
+end
+
+% basepath = pwd
+% basename = basenameFromBasepath(basepath);
+% 
+% load(fullfile(basepath,[basename,'.session.mat']))
+% 
+% ripples = DetectSWR([session.channelTags.Ripple.channels, session.channelTags.SharpWave.channels],...
+%     'basepath',basepath,...
+%     'saveMat',true,'thresSDswD', [0.25, 1],'thresSDrip', [0.25, 1],...
+%     'forceDetect',true,'check',true);
