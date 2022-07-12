@@ -5,11 +5,6 @@ import numpy as np
 import pandas as pd
 from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
 import nelpy as nel
-from quantities import s
-import quantities as pq
-from neo.core import SpikeTrain
-from elephant.conversion import BinnedSpikeTrain
-from elephant.spike_train_correlation import correlation_coefficient
 from ripple_heterogeneity.utils import compress_repeated_epochs
 import itertools
 
@@ -43,7 +38,7 @@ def get_cells(
         target: target region (e.g. "PFC")
         ref_sublayer: reference sublayer (e.g. "Deep")
     output:
-        st: neo.SpikeTrain object
+        st: nelpy.SpikeTrain object
         cell_metrics: pandas dataframe with cell metrics
     """
     # get cells from these regions
@@ -92,7 +87,7 @@ def get_explained_var(
     """
     Calculate explained variance
     input:
-        st: neo.SpikeTrain object
+        st: nelpy.SpikeTrain object
         beh_epochs: nel.EpochArray object with 3 epochs: sleep, task, sleep
         cell_metrics: pandas dataframe with cell metrics
     output:
@@ -263,7 +258,7 @@ def run(
                 restrict_task,
                 theta_epochs,
             )
-            
+
             if np.isnan(ev):
                 continue
 
