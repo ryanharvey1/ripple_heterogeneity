@@ -24,13 +24,14 @@ end
 cumsum_nSamp = cumsum([nSamp]);
 starts = [0,cumsum_nSamp(1:end-1)];
 transitiontimes_samp = [starts',cumsum_nSamp'];
-transitiontimes_sec = transitiontimes_samp./sessionInfo.lfpSampleRate;
+transitiontimes_sec = transitiontimes_samp./sessionInfo.SampleRate;
 
 firstlasttimepoints = [zeros(length(nSamp),1),nSamp'];
 
 recordingnames = [];
 for didx = 1:length(dat_files)
-    recordingnames{1,didx} = basenameFromBasepath(dat_files(didx).folder);
+    [a,b] = fileparts(dat_files(didx).folder);
+    recordingnames{1,didx} = b;
 end
 
 MergePoints.timestamps = transitiontimes_sec;
@@ -66,6 +67,45 @@ for i = 1:length(basepaths)
 %     spikes = loadSpikes('basepath',basepath,'getWaveformsFromSource',true,'getWaveformsFromDat',false);
 end
 
+%% ripples
+basepath = pwd
+basename = basenameFromBasepath(basepath);
+
+load(fullfile(basepath,[basename,'.session.mat']))
+ripples = DetectSWR([session.channelTags.Ripple.channels, session.channelTags.SharpWave.channels],...
+    'basepath',basepath,...
+    'saveMat',true,'thresSDswD', [0.25, 1],'thresSDrip', [0.25, 1],...
+    'forceDetect',true,'check',true);
+
+
+%% opto pulse
+% old_pulses = load('hc300118.stimPulses.mat');
+old_pulses = load('hc280118.stimPulses.mat');
+% basepaths = {'Z:\Data\ORproject\OR15\hc280118','Z:\Data\ORproject\OR15\hc300118'}
+
+pulses.timestamps(:,1) = old_pulses.pulses;
+pulses.timestamps(:,2) = old_pulses.pulses+.1;
+
+pulses.amplitude = nan(length(pulses.timestamps),1);
+
+pulses.eventGroupID(ismember(pulses.timestamps(:,1),old_pulses.pulsesD)) = 0;
+pulses.eventGroupID(ismember(pulses.timestamps(:,1),old_pulses.pulsesCL)) = 1;
+
+pulses.duration = pulses.timestamps(:,2) - pulses.timestamps(:,1);
+
+optoStim.timestamps = pulses.timestamps;
+optoStim.peaks = median(pulses.timestamps,2);
+optoStim.amplitude = pulses.amplitude;
+optoStim.amplitudeUnits = 'au';
+optoStim.eventID = pulses.eventGroupID;
+optoStim.eventIDlabels = {'delayed','closed_loop'};
+optoStim.eventIDbinary = true;
+optoStim.center = median(pulses.timestamps,2);
+optoStim.duration = pulses.duration;
+optoStim.detectorinfo = 'getAnalogPulses_pulses_to_manipulation';
+
+saveStruct(optoStim,'manipulation','session',session);
+
 %% get cell metrics
 
 for i = 1:length(basepaths)
@@ -75,9 +115,12 @@ for i = 1:length(basepaths)
     
     load(fullfile(basepath,[basename,'.session.mat']))
     load(fullfile(basepath,[basename,'.spikes.cellinfo.mat']))
-
+    
     cell_metrics = ProcessCellMetrics('session',session,'spikes',spikes,...
-        'manualAdjustMonoSyn',false,'showGUI',false,'getWaveformsFromDat',false);
+        'manualAdjustMonoSyn',false,'showGUI',true);
+    
+%     cell_metrics = ProcessCellMetrics('session',session,'spikes',spikes,...
+%         'manualAdjustMonoSyn',false,'showGUI',false,'getWaveformsFromDat',false);
 end
 
 % basepath = pwd
