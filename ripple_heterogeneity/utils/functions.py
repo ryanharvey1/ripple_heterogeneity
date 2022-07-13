@@ -433,22 +433,23 @@ def get_participation(st, event_starts, event_stops, par_type="binary"):
         event_starts: event starts
         event_stops: event stops
         par_type: participation type (counts, binary, firing_rate)
+
+        quick binning solution using searchsorted from:
+        https://stackoverflow.com/questions/57631469/extending-histogram-function-to-overlapping-bins-and-bins-with-arbitrary-gap
     """
     # convert to numpy array
     event_starts, event_stops = np.array(event_starts), np.array(event_stops)
 
     # initialize matrix
-    unit_mat = np.zeros((len(st), (len(event_starts) * 2) - 1))
-
-    # initialize bin edges
-    bins = np.zeros(len(event_starts) * 2)
-    bins[::2], bins[1::2] = event_starts, event_stops
+    unit_mat = np.zeros((len(st), (len(event_starts))))
 
     # loop over units and bin spikes into epochs
     for i, s in enumerate(st):
-        unit_mat[i, :], _ = np.histogram(s, bins=bins)
-    # only take even bins (start and stop of epochs)
-    unit_mat = unit_mat[:,::2]
+        idx1 = np.searchsorted(s, event_starts, 'right')
+        idx2 = np.searchsorted(s, event_stops, 'left')
+        unit_mat[i, :] = idx2 - idx1
+    # divide by duration to get counts
+    unit_mat = unit_mat / (event_stops - event_starts)
 
     if par_type == "counts":
         pass
