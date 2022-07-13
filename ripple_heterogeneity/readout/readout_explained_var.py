@@ -213,37 +213,45 @@ def run(
     min_cells=5,  # minimum number of cells per region
     restrict_task=False,  # restrict restriction_type to task epochs (ex. ripples in task (True) vs. all task (False))
     restriction_type="ripples",  # "ripples" or "NREMstate" or "barrage"
-    ripple_expand=0.05,  # in seconds, how much to expand ripples
+    barrage_expand=0.05,  # in seconds, how much to expand barrage on each side
     task_binsize=0.125,  # in seconds, bin size for task epochs
     restrict_task_to_theta=True,  # restrict task to theta epochs
     single_bin_per_epoch=True,  # use single bin per restriction_type epoch for pre and post (ex. each ripple is a bin)
+    rip_exp_start=0.05,  # ripple expansion start, in seconds, how much to expand ripples
+    rip_exp_stop=0.2,  # ripple expansion stop, in seconds, how much to expand ripples
 ):
     # locate epochs
     ep_df = loading.load_epoch(basepath)
+    # compress back to back sleep epochs
     ep_df = compress_repeated_epochs.main(ep_df, epoch_name="sleep")
 
     # locate pre task post structure
     idx, _ = functions.find_pre_task_post(ep_df.environment)
     if idx is None:
         return None
-
     ep_df = ep_df[idx]
+    # needs exactly 3 epochs for analysis
+    if ep_df.shape[0] != 3:
+        return None
     beh_epochs = nel.EpochArray(np.array([ep_df.startTime, ep_df.stopTime]).T)
 
-    # choose which times to restrict to
+    # choose which event times to restrict to
     if restriction_type == "ripples":
         ripples = loading.load_ripples_events(basepath)
         ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
-        restrict_epochs = ripple_epochs.expand(ripple_expand)
+        ripple_epochs = ripple_epochs.expand(rip_exp_start, direction="start")
+        restrict_epochs = ripple_epochs.expand(rip_exp_stop, direction="stop")
     elif restriction_type == "NREMstate":
         state_dict = loading.load_SleepState_states(basepath)
         restrict_epochs = nel.EpochArray(state_dict["NREMstate"])
     elif restriction_type == "barrage":
         barrage = loading.load_barrage_events(basepath)
         barrage_epochs = nel.EpochArray(np.array([barrage.start, barrage.stop]).T)
-        restrict_epochs = barrage_epochs.expand(ripple_expand)
+        restrict_epochs = barrage_epochs.expand(barrage_expand)
     else:
-        raise ValueError("restriction_type must be 'ripples' or 'NREMstate'")
+        raise ValueError(
+            "restriction_type must be 'ripples' or 'NREMstate' or 'barrage'"
+        )
 
     if restrict_task_to_theta:
         state_dict = loading.load_SleepState_states(basepath)
@@ -251,10 +259,7 @@ def run(
     else:
         theta_epochs = None
 
-    # needs exactly 3 epochs for analysis
-    if ep_df.shape[0] != 3:
-        return None
-
+    # initialize output
     evs = []
     revs = []
     sublayers = []
@@ -267,7 +272,10 @@ def run(
     pairwise_corr_sublayer = []
     pairwise_corr_ref_uid = []
     pairwise_corr_target_uid = []
+
+    # iterate through target regions
     for region in target_regions:
+        # iterate through ca1 layers
         for sublayer in ["Deep", "Superficial"]:
             st, cell_metrics = get_cells(
                 basepath,
@@ -276,10 +284,14 @@ def run(
                 ref_sublayer=sublayer,
                 putativeCellType=putativeCellType,
             )
+
+            # check if enough cells
             n_ca1 = cell_metrics.brainRegion.str.contains("CA1").sum()
             n_target = cell_metrics.brainRegion.str.contains(region).sum()
             if st.isempty | (n_ca1 < min_cells) | (n_target < min_cells):
                 continue
+
+            # main calculation of explained variance
             (
                 ev,
                 rev,
@@ -302,6 +314,7 @@ def run(
             if np.isnan(ev):
                 continue
 
+            # store output
             evs.append(ev)
             revs.append(rev)
             sublayers.append(sublayer)
@@ -343,6 +356,7 @@ def run(
                 )
             )
 
+    # package output into dataframe
     ev_df = pd.DataFrame()
     ev_df["region"] = regions
     ev_df["sublayer"] = sublayers
@@ -370,6 +384,7 @@ def run(
         pairwise_corr_df["target_uid"] = np.hstack(pairwise_corr_target_uid)
         pairwise_corr_df["basepath"] = basepath
 
+    # nest dataframes into dictionary and return
     results = {"ev_df": ev_df, "pairwise_corr_df": pairwise_corr_df}
     return results
 
