@@ -395,19 +395,12 @@ def load_ripples_events(basepath):
         df['start'] = data['ripples']['times'][0][0][:,0]
         df['stop'] = data['ripples']['times'][0][0][:,1]
 
-    df['peaks'] = data['ripples']['peaks'][0][0]
-    try:
-        df['amplitude'] = data['ripples']['amplitude'][0][0]
-    except:
-        df['amplitude'] = np.nan
-    try:
-        df['duration'] = data['ripples']['duration'][0][0]
-    except:
-        df['duration'] = np.nan
-    try:
-        df['frequency'] = data['ripples']['frequency'][0][0]
-    except:
-        df['frequency'] = np.nan
+    for name in ['peaks','amplitude','duration','frequency']:
+        try:
+            df[name] = data['ripples'][name][0][0]
+        except:
+            df[name] = np.nan
+
     try:
         df['detectorName'] = data['ripples']['detectorinfo'][0][0]['detectorname'][0][0][0]
     except:
@@ -437,6 +430,13 @@ def load_ripples_events(basepath):
     df['basepath'] = basepath  
     df['basename'] = path_components[-2]
     df['animal'] = path_components[-3]
+
+    # remove flagged ripples, if exist
+    try:
+        df.drop(labels=np.array(data['ripples']["flagged"][0][0]).T[0] - 1, axis=0, inplace=True)
+        df.reset_index(inplace=True)
+    except:
+        pass
 
     return df
 
