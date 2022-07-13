@@ -9,22 +9,32 @@ from ripple_heterogeneity.utils import compress_repeated_epochs
 import itertools
 
 
-def get_corrcoef(st, epoch, bin_size=0.05):
+def get_corrcoef(st, epoch, state_epoch, bin_size=0.05, single_bin_per_epoch=True):
     """
     Calculate correlation coefficient for epoch
     input:
         st: nel.SpikeTrain object
         epoch: nel.Epoch object
-        bin_size: bin size in seconds
+        state_epoch: nel.Epoch object
+        bin_size: bin size in seconds (default: 0.05)
+        single_bin_per_epoch: if True, each epoch is binned into a single bin, otherwise each epoch is binned into multiple bins
     output:
         corrcoef_r: correlation matrix
     """
-    spk_train_list = st[epoch]
-    if spk_train_list.isempty:
-        return None
-    bst = spk_train_list.bin(ds=bin_size)
+    if single_bin_per_epoch:
+        bst = functions.get_participation(
+            st[epoch].data,
+            state_epoch[epoch].starts,
+            state_epoch[epoch].stops,
+            par_type="firing_rate",
+        )
+    else:
+        spk_train_list = st[epoch]
+        if spk_train_list.isempty:
+            return None
+        bst = spk_train_list.bin(ds=bin_size).data
 
-    return np.corrcoef(bst.data)
+    return np.corrcoef(bst)
 
 
 def get_cells(
@@ -83,6 +93,7 @@ def get_explained_var(
     task_binsize=0.125,
     restrict_task=False,
     theta_epochs=None,
+    single_bin_per_epoch=True,
 ):
     """
     Calculate explained variance
@@ -90,6 +101,11 @@ def get_explained_var(
         st: nelpy.SpikeTrain object
         beh_epochs: nel.EpochArray object with 3 epochs: sleep, task, sleep
         cell_metrics: pandas dataframe with cell metrics
+        state_epoch: nel.Epoch object
+        task_binsize: bin size in seconds for task epoch
+        restrict_task: restrict to task epochs
+        theta_epochs: nel.Epoch object with theta epochs
+        single_bin_per_epoch: if True, make one bin per state_epoch
     output:
         EV: explained variance
         rEV: reverse explained variance
@@ -105,16 +121,38 @@ def get_explained_var(
         st = st[theta_epochs]
 
     # pre task
-    corrcoef_r_pre = get_corrcoef(st_restrict, beh_epochs[0], bin_size=0.05)
+    corrcoef_r_pre = get_corrcoef(
+        st_restrict,
+        beh_epochs[0],
+        state_epoch,
+        single_bin_per_epoch=single_bin_per_epoch,
+    )
 
     # task
+    # choice to restict to same epochs (state_epoch) as pre and post
     if restrict_task:
-        corrcoef_r_beh = get_corrcoef(st_restrict, beh_epochs[1], bin_size=0.05)
+        corrcoef_r_beh = get_corrcoef(
+            st_restrict,
+            beh_epochs[1],
+            state_epoch,
+            single_bin_per_epoch=single_bin_per_epoch,
+        )
     else:
-        corrcoef_r_beh = get_corrcoef(st, beh_epochs[1], bin_size=task_binsize)
+        corrcoef_r_beh = get_corrcoef(
+            st,
+            beh_epochs[1],
+            state_epoch,
+            bin_size=task_binsize,
+            single_bin_per_epoch=False,
+        )
 
     # post task
-    corrcoef_r_post = get_corrcoef(st_restrict, beh_epochs[2], bin_size=0.05)
+    corrcoef_r_post = get_corrcoef(
+        st_restrict,
+        beh_epochs[2],
+        state_epoch,
+        single_bin_per_epoch=single_bin_per_epoch,
+    )
 
     # get uids for ref and target cells
     c = np.array(list(itertools.product(cell_metrics.UID.values, repeat=2)))
@@ -178,6 +216,7 @@ def run(
     ripple_expand=0.05,  # in seconds, how much to expand ripples
     task_binsize=0.125,  # in seconds, bin size for task epochs
     restrict_task_to_theta=True,  # restrict task to theta epochs
+    single_bin_per_epoch=True,  # use single bin per restriction_type epoch for pre and post (ex. each ripple is a bin)
 ):
     # locate epochs
     ep_df = loading.load_epoch(basepath)
@@ -257,6 +296,7 @@ def run(
                 task_binsize,
                 restrict_task,
                 theta_epochs,
+                single_bin_per_epoch=single_bin_per_epoch,
             )
 
             if np.isnan(ev):
