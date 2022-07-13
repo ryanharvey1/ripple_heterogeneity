@@ -94,6 +94,7 @@ def get_explained_var(
     restrict_task=False,
     theta_epochs=None,
     single_bin_per_epoch=True,
+    shrink_post=None,
 ):
     """
     Calculate explained variance
@@ -106,6 +107,7 @@ def get_explained_var(
         restrict_task: restrict to task epochs
         theta_epochs: nel.Epoch object with theta epochs
         single_bin_per_epoch: if True, make one bin per state_epoch
+        shrink_post: if not None, shrink post-task epochs to this amount
     output:
         EV: explained variance
         rEV: reverse explained variance
@@ -147,9 +149,16 @@ def get_explained_var(
         )
 
     # post task
+    if shrink_post is not None:
+        post_epoch = beh_epochs[2].shrink(
+            beh_epochs[2].length - shrink_post * 60, direction="stop"
+        )
+    else:
+        post_epoch = beh_epochs[2]
+    
     corrcoef_r_post = get_corrcoef(
         st_restrict,
-        beh_epochs[2],
+        post_epoch,
         state_epoch,
         single_bin_per_epoch=single_bin_per_epoch,
     )
@@ -219,6 +228,7 @@ def run(
     single_bin_per_epoch=True,  # use single bin per restriction_type epoch for pre and post (ex. each ripple is a bin)
     rip_exp_start=0.05,  # ripple expansion start, in seconds, how much to expand ripples
     rip_exp_stop=0.2,  # ripple expansion stop, in seconds, how much to expand ripples
+    shrink_post=30,  # in minutes, how much time to shrink post task epoch to (ex. 30 minutes)
 ):
     # locate epochs
     ep_df = loading.load_epoch(basepath)
@@ -309,6 +319,7 @@ def run(
                 restrict_task,
                 theta_epochs,
                 single_bin_per_epoch=single_bin_per_epoch,
+                shrink_post=shrink_post,
             )
 
             if np.isnan(ev):
