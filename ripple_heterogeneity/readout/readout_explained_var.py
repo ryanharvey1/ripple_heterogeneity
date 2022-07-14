@@ -228,7 +228,7 @@ def run(
     single_bin_per_epoch=True,  # use single bin per restriction_type epoch for pre and post (ex. each ripple is a bin)
     rip_exp_start=0.05,  # ripple expansion start, in seconds, how much to expand ripples
     rip_exp_stop=0.2,  # ripple expansion stop, in seconds, how much to expand ripples
-    shrink_post=30,  # in minutes, how much time to shrink post task epoch to (ex. 30 minutes)
+    shrink_post=None,  # in minutes, how much time to shrink post task epoch to (ex. 30 minutes)
 ):
     # locate epochs
     ep_df = loading.load_epoch(basepath)
