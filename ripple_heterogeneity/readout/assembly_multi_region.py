@@ -1,6 +1,11 @@
+import glob
+import os
+import pickle
 import numpy as np
 import pandas as pd
 from ripple_heterogeneity.assembly import assembly_reactivation, find_sig_assembly
+from ripple_heterogeneity.utils import add_new_deep_sup
+
 
 
 def run(
@@ -9,7 +14,7 @@ def run(
     putativeCellType="Pyr",
     weight_dt=0.02,
     verbose=False,
-    rip_expand=0.05
+    rip_expand=0.05,
 ):
     """
     Gets the pre and post assembly strengths
@@ -63,10 +68,122 @@ def run(
 
     return results
 
-def load_results(save_path):
+
+def compile_results_df(results):
+
+    patterns, is_member_sig, keep_assembly, is_member = find_sig_assembly.main(
+        results.get("react").patterns
+    )
+
+    assembly_df = pd.DataFrame()
+    assembly_df["patterns"] = patterns.ravel()
+    assembly_df["is_member_sig"] = is_member_sig.ravel()
+    assembly_df["assembly_n"] = (
+        (np.ones_like(patterns).T * np.arange(patterns.shape[0])).T.astype(int).ravel()
+    )
+    assembly_df["UID"] = np.tile(
+        results.get("react").cell_metrics.UID.values, patterns.shape[0]
+    )
+    assembly_df["putativeCellType"] = np.tile(
+        results.get("react").cell_metrics.putativeCellType.values, patterns.shape[0]
+    )
+    assembly_df["brainRegion"] = np.tile(
+        results.get("react").cell_metrics.brainRegion.values, patterns.shape[0]
+    )
+    assembly_df["deepSuperficial"] = np.tile(
+        results.get("react").cell_metrics.deepSuperficial.values, patterns.shape[0]
+    )
+    assembly_df["deepSuperficialDistance"] = np.tile(
+        results.get("react").cell_metrics.deepSuperficialDistance.values,
+        patterns.shape[0],
+    )
+    assembly_df = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(assembly_df)
+
+    deep_mec = []
+    deep_pfc = []
+    superficial_mec = []
+    superficial_pfc = []
+
+    for n in assembly_df.assembly_n.unique():
+        temp_assembly_df = assembly_df[
+            (assembly_df.assembly_n == n) & (assembly_df.is_member_sig)
+        ]
+        deep_mec.append(
+            any(temp_assembly_df.brainRegion.str.contains("EC1|EC2|EC3|EC4|EC5|MEC"))
+            & any((temp_assembly_df.deepSuperficial == "Deep"))
+        )
+        deep_pfc.append(
+            any(temp_assembly_df.brainRegion.str.contains("PFC"))
+            & any((temp_assembly_df.deepSuperficial == "Deep"))
+        )
+        superficial_mec.append(
+            any(temp_assembly_df.brainRegion.str.contains("EC1|EC2|EC3|EC4|EC5|MEC"))
+            & any((temp_assembly_df.deepSuperficial == "Superficial"))
+        )
+        superficial_pfc.append(
+            any(temp_assembly_df.brainRegion.str.contains("PFC"))
+            & any((temp_assembly_df.deepSuperficial == "Superficial"))
+        )
+
+    prop_df = pd.DataFrame()
+    prop_df["prop_cross_region"] = [
+        np.mean(np.array(superficial_pfc) > 0),
+        np.mean(np.array(superficial_mec) > 0),
+        np.mean(np.array(deep_pfc) > 0),
+        np.mean(np.array(deep_mec) > 0),
+    ]
+    prop_df["labels"] = ["Superficial PFC", "Superficial MEC", "Deep PFC", "Deep MEC"]
+
+    results.get(
+        "react"
+    ).cell_metrics = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(
+        results.get("react").cell_metrics
+    )
+
+    prop_df["n_deep"] = sum(results.get("react").cell_metrics.deepSuperficial == "Deep")
+    prop_df["n_sup"] = sum(
+        results.get("react").cell_metrics.deepSuperficial == "Superficial"
+    )
+    prop_df["n_mec"] = sum(
+        results.get("react").cell_metrics.brainRegion.str.contains(
+            "EC1|EC2|EC3|EC4|EC5|MEC"
+        )
+    )
+    prop_df["n_pfc"] = sum(
+        results.get("react").cell_metrics.brainRegion.str.contains("PFC")
+    )
+    prop_df["n_assemblies"] = len(assembly_df.assembly_n.unique())
+    prop_df["basepath"] = results.get("react").basepath
+
+    return prop_df, assembly_df
+
+
+def load_results(save_path, verbose=False):
+    """
+    load_results: load results from a directory
+    """
+
     print("Loading results...")
-    print("not implemented yet")
-    pass
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+    prop_df = pd.DataFrame()
+    assembly_df = pd.DataFrame()
+    for session in sessions:
+        if verbose:
+            print(session)
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+        if results is None:
+            continue
+
+        prop_df_, assembly_df_ = compile_results_df(results)
+
+        prop_df = pd.concat([prop_df, prop_df_], ignore_index=True)
+        assembly_df = pd.concat(
+            [assembly_df, assembly_df_], ignore_index=True
+        )
+    return prop_df, assembly_df
+
+
 # def run(basepath, regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC", putativeCellType="Pyr"):
 
 #     ar = assembly_reactivation.AssemblyReact(
