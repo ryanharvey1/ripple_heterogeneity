@@ -955,9 +955,9 @@ def get_linear_track_lap_epochs(
     return outbound_epochs, inbound_epochs
 
 
-def find_pre_task_post(env):
+def find_pre_task_post(env, pre_post_label="sleep"):
     """
-    given list of environment, finds contigous epochs that meet pre/task/post
+    given list of environment, finds first contigous epochs that meet pre/task/post
 
     Input:
         environment list, can be pandas column
@@ -975,7 +975,7 @@ def find_pre_task_post(env):
     """
     if len(env) < 3:
         return None, None
-    numeric_idx = ("sleep" == env) * 1
+    numeric_idx = (pre_post_label == env) * 1
     dummy = np.zeros_like(numeric_idx) == 1
     if all(numeric_idx[:3] == [1, 0, 1]):
         dummy[:3] = True
