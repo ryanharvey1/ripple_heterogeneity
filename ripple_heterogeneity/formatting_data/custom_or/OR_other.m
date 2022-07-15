@@ -79,17 +79,30 @@ ripples = DetectSWR([session.channelTags.Ripple.channels, session.channelTags.Sh
 
 
 %% opto pulse
-% old_pulses = load('hc300118.stimPulses.mat');
-old_pulses = load('hc280118.stimPulses.mat');
+old_pulses = load('hc300118.stimPulses.mat');
+% old_pulses = load('hc280118.stimPulses.mat');
 % basepaths = {'Z:\Data\ORproject\OR15\hc280118','Z:\Data\ORproject\OR15\hc300118'}
 
-pulses.timestamps(:,1) = old_pulses.pulses;
-pulses.timestamps(:,2) = old_pulses.pulses+.1;
+% added closed loop and delayed pulses, pulses lasted for 100ms
+pulses.timestamps(:,1) = [old_pulses.pulsesCL;old_pulses.pulsesD];
+pulses.timestamps(:,2) = pulses.timestamps(:,1) + 0.1;
+
+% add event label (closed loop is 0 and delayed is 1)
+pulses.eventGroupID = [zeros(length(old_pulses.pulsesCL),1) ;...
+    zeros(length(old_pulses.pulsesD),1) + 1];
+
+% make sure ts are sorted
+[~,idx] = sort(pulses.timestamps(:,1));
+pulses.timestamps = pulses.timestamps(idx,:);
+
+
+% pulses.timestamps(:,1) = old_pulses.pulses;
+% pulses.timestamps(:,2) = old_pulses.pulses+.1;
 
 pulses.amplitude = nan(length(pulses.timestamps),1);
 
-pulses.eventGroupID(ismember(pulses.timestamps(:,1),old_pulses.pulsesD)) = 0;
-pulses.eventGroupID(ismember(pulses.timestamps(:,1),old_pulses.pulsesCL)) = 1;
+% pulses.eventGroupID(ismember(pulses.timestamps(:,1),old_pulses.pulsesD)) = 0;
+% pulses.eventGroupID(ismember(pulses.timestamps(:,1),old_pulses.pulsesCL)) = 1;
 
 pulses.duration = pulses.timestamps(:,2) - pulses.timestamps(:,1);
 
@@ -98,7 +111,7 @@ optoStim.peaks = median(pulses.timestamps,2);
 optoStim.amplitude = pulses.amplitude;
 optoStim.amplitudeUnits = 'au';
 optoStim.eventID = pulses.eventGroupID;
-optoStim.eventIDlabels = {'delayed','closed_loop'};
+optoStim.eventIDlabels = {'closed_loop','delayed'};
 optoStim.eventIDbinary = true;
 optoStim.center = median(pulses.timestamps,2);
 optoStim.duration = pulses.duration;
