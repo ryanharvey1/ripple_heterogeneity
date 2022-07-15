@@ -1083,6 +1083,18 @@ def load_manipulation(
     df["amplitude"] = data[struct_name]["amplitude"][0][0]
     df["amplitudeUnits"] = data[struct_name]["amplitudeUnits"][0][0][0]
 
+    # extract event label names
+    eventIDlabels = []
+    for name in data[struct_name]["eventIDlabels"][0][0][0]:
+        eventIDlabels.append(name[0])
+
+    # extract numeric category labels associated with label names
+    eventID = np.array(data[struct_name]["eventID"][0][0]).ravel()
+    
+    # add eventIDlabels and eventID to df
+    for ev_label, ev_num in zip(eventIDlabels,np.unique(eventID)):
+        df.loc[eventID == ev_num, "ev_label"] = ev_label
+
     if return_epoch_array:
         # get session epochs to add support for epochs
         epoch_df = load_epoch(basepath)
@@ -1090,11 +1102,24 @@ def load_manipulation(
         session_bounds = nel.EpochArray(
             [epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[-1]]
         )
-        manipulation_epoch = nel.EpochArray(
-            np.array([df["start"], df["stop"]]).T, domain=session_bounds
-        )
-        if merge_gap is not None:
-            manipulation_epoch = manipulation_epoch.merge(gap=merge_gap)
+        # if many types of manipulations, add them to dictinary
+        if df.ev_label.unique().size > 1:
+            manipulation_epoch = {}
+            for label in df.ev_label.unique():
+                manipulation_epoch_ = nel.EpochArray(
+                    np.array([df[df.ev_label == label]["start"], df[df.ev_label == label]["stop"]]).T, 
+                    domain=session_bounds
+                )
+                if merge_gap is not None:
+                    manipulation_epoch_ = manipulation_epoch_.merge(gap=merge_gap)
+
+                manipulation_epoch[label] = manipulation_epoch_       
+        else:
+            manipulation_epoch = nel.EpochArray(
+                np.array([df["start"], df["stop"]]).T, domain=session_bounds
+            )
+            if merge_gap is not None:
+                manipulation_epoch = manipulation_epoch.merge(gap=merge_gap)
 
         return manipulation_epoch
     else:
