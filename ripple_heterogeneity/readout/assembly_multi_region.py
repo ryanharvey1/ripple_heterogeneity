@@ -328,6 +328,8 @@ def load_reactivation(results):
         np.in1d(df_strength.assembly_n, np.where(superficial_pfc)[0]), "superficial_pfc"
     ] = 1
 
+    df_strength["basepath"] = results.get("basepath")
+    
     return df_strength
 
 
