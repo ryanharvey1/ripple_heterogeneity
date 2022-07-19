@@ -5,6 +5,7 @@ import seaborn as sns
 from matplotlib.ticker import AutoMinorLocator
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.patches import PathPatch
 
 
 def ecdf(x):
@@ -157,7 +158,7 @@ def plot_events(events, labels, cmap="tab20", gridlines=True, alpha=0.75, ax=Non
     """
     # get colormap
     cmap = matplotlib.cm.get_cmap(cmap)
-    
+
     # set up y axis
     y = np.linspace(0, 1, len(events) + 1)
 
@@ -271,8 +272,9 @@ def plot_ecdf_box(
         ax3.get_legend().remove()
     except:
         pass
-    
+
     return ax3
+
 
 def lighten_color(color, amount=0.5):
     """
@@ -283,13 +285,47 @@ def lighten_color(color, amount=0.5):
     :return: The lightened color code in hex, e.g. #FFFFFF
     """
     try:
-        c = color.lstrip('#')
-        c = tuple(int(c[i:i + 2], 16) for i in (0, 2, 4))
+        c = color.lstrip("#")
+        c = tuple(int(c[i : i + 2], 16) for i in (0, 2, 4))
         c = (
             int((1 - amount) * c[0] + amount * 255),
             int((1 - amount) * c[1] + amount * 255),
             int((1 - amount) * c[2] + amount * 255),
         )
-        return '#%02x%02x%02x' % c
+        return "#%02x%02x%02x" % c
     except ValueError:
         return color
+
+
+def adjust_box_widths(g, fac):
+    """
+    Adjust the widths of a seaborn-generated boxplot.
+    """
+
+    # iterating through Axes instances
+    for ax in g.axes:
+
+        # iterating through axes artists:
+        for c in ax.get_children():
+
+            # searching for PathPatches
+            if isinstance(c, PathPatch):
+                # getting current width of box:
+                p = c.get_path()
+                verts = p.vertices
+                verts_sub = verts[:-1]
+                xmin = np.min(verts_sub[:, 0])
+                xmax = np.max(verts_sub[:, 0])
+                xmid = 0.5 * (xmin + xmax)
+                xhalf = 0.5 * (xmax - xmin)
+
+                # setting new width of box
+                xmin_new = xmid - fac * xhalf
+                xmax_new = xmid + fac * xhalf
+                verts_sub[verts_sub[:, 0] == xmin, 0] = xmin_new
+                verts_sub[verts_sub[:, 0] == xmax, 0] = xmax_new
+
+                # setting new width of median line
+                for l in ax.lines:
+                    if np.all(l.get_xdata() == [xmin, xmax]):
+                        l.set_xdata([xmin_new, xmax_new])
