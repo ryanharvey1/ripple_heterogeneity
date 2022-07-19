@@ -9,22 +9,236 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
 ```
 
-## Including Plots
+```{r}
 
-You can also embed plots, for example:
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/assembly_multi_region_react_df.csv")
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+data$basepath = factor(data$basepath)
+data$epoch = factor(data$epoch)
+data$single_cross_region_label = factor(data$single_cross_region_label)
+
+summary(data)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+
+temp_data <- data[data$single_cross_region_label == "deep_mec" | data$single_cross_region_label == "superficial_mec",]
+temp_data$single_cross_region_label = factor(temp_data$single_cross_region_label)
+
+mdl_boxcox <- boxcox(strength ~ single_cross_region_label, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$strength^max_lambda
+
+m1 = lmer(y_trans ~ single_cross_region_label + (1 | basepath), data = temp_data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+plot(y_trans ~ single_cross_region_label, data=temp_data)
+```
+
+```{r}
+temp_data <- data[data$single_cross_region_label == "deep_pfc" | data$single_cross_region_label == "superficial_pfc",]
+temp_data$single_cross_region_label = factor(temp_data$single_cross_region_label)
+
+mdl_boxcox <- boxcox(strength ~ single_cross_region_label, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$strength^max_lambda
+
+m1 = lmer(y_trans ~ single_cross_region_label + (1 | basepath), data = temp_data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+plot(y_trans ~ single_cross_region_label, data=temp_data)
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
