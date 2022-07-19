@@ -207,11 +207,18 @@ def load_reactivation(results):
         output:
             strength_df: a dataframe of the strength of the signal at each timepoint
         """
+
         df_strength = pd.DataFrame()
         df_strength["strength"] = strength.flatten()
+        # assembly index
         df_strength["assembly_n"] = (
             np.ones_like(strength).T * np.arange(strength.shape[0])
         ).T.flatten()
+        # ripple index
+        df_strength["ripple_n"] = (
+            (np.ones_like(strength) * np.arange(strength.shape[1]))
+        ).flatten()
+        # if the assembly is significant, mark it as 1
         df_strength["sig"] = (np.ones_like(strength).T * keep_assembly).T.flatten()
         return df_strength
 
@@ -328,7 +335,7 @@ def load_reactivation(results):
         np.in1d(df_strength.assembly_n, np.where(superficial_pfc)[0]), "superficial_pfc"
     ] = 1
 
-    df_strength["basepath"] = results['react'].basepath
+    df_strength["basepath"] = results["react"].basepath
 
     return df_strength
 
