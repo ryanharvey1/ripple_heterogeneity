@@ -42,6 +42,9 @@ def main(epoch_df, epoch_name="sleep"):
         for item in epoch_df.keys():
             temp_dict[item] = epoch_df[match == m][item].iloc[0]
 
+        temp_dict["startTime"] = epoch_df[match == m].startTime.min()
+        temp_dict["stopTime"] = epoch_df[match == m].stopTime.max()
+
         temp_df = pd.DataFrame.from_dict(temp_dict, orient="index").T
 
         results = pd.concat([results, temp_df], ignore_index=True)
