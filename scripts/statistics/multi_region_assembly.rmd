@@ -28,6 +28,9 @@ data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/assembly_multi_reg
 data$basepath = factor(data$basepath)
 data$epoch = factor(data$epoch)
 data$single_cross_region_label = factor(data$single_cross_region_label)
+data$animal_id = factor(data$animal_id)
+data$assembly_n = factor(data$assembly_n)
+
 
 summary(data)
 ```
@@ -40,9 +43,10 @@ temp_data$single_cross_region_label = factor(temp_data$single_cross_region_label
 mdl_boxcox <- boxcox(strength ~ single_cross_region_label, data=temp_data, lambda = seq(-5, 10, length = 100))
 max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
 
-data$y_trans <- data$strength^max_lambda
+# temp_data$y_trans <- temp_data$strength^max_lambda
+temp_data$y_trans <- log(temp_data$strength)
 
-m1 = lmer(y_trans ~ single_cross_region_label + (1 | basepath), data = temp_data, REML=FALSE)
+m1 = lmer(y_trans ~ single_cross_region_label + (1 | animal_id/basepath), data = temp_data, REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
@@ -62,9 +66,9 @@ temp_data$single_cross_region_label = factor(temp_data$single_cross_region_label
 mdl_boxcox <- boxcox(strength ~ single_cross_region_label, data=temp_data, lambda = seq(-5, 10, length = 100))
 max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
 
-data$y_trans <- data$strength^max_lambda
+temp_data$y_trans <- temp_data$strength^max_lambda
 
-m1 = lmer(y_trans ~ single_cross_region_label + (1 | basepath), data = temp_data, REML=FALSE)
+m1 = lmer(y_trans ~ single_cross_region_label + (1 | animal_id/basepath), data = temp_data, REML=FALSE)
 summary(m1)
 
 simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
