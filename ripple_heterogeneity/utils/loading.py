@@ -395,11 +395,14 @@ def load_ripples_events(basepath):
         df['start'] = data['ripples']['times'][0][0][:,0]
         df['stop'] = data['ripples']['times'][0][0][:,1]
 
-    for name in ['peaks','amplitude','duration','frequency']:
+    for name in ['peaks','amplitude','duration','frequency','peakNormedPower']:
         try:
             df[name] = data['ripples'][name][0][0]
         except:
             df[name] = np.nan
+
+    if df.duration.isna().all():
+        df['duration'] = df.stop - df.start
 
     try:
         df['detectorName'] = data['ripples']['detectorinfo'][0][0]['detectorname'][0][0][0]
@@ -416,7 +419,10 @@ def load_ripples_events(basepath):
             try:
                 df['ripple_channel'] = data['ripples']['detectorinfo'][0][0]['detectionparms'][0][0]['channel'][0][0][0][0]
             except:
-                df['ripple_channel'] = data['ripples']['detectorinfo'][0][0]['detectionparms'][0][0]['ripple_channel'][0][0][0][0]
+                try:
+                    df['ripple_channel'] = data['ripples']['detectorinfo'][0][0]['detectionparms'][0][0]['ripple_channel'][0][0][0][0]
+                except:
+                    df['ripple_channel'] = data['ripples']['detectorinfo'][0][0]['detectionchannel1'][0][0][0][0]
 
     dt = data['ripples'].dtype
     if "eventSpikingParameters" in dt.names:
