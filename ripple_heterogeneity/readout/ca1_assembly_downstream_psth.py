@@ -109,7 +109,7 @@ def get_psths(
                     ),
                 ],
                 ignore_index=True,
-                axis=1
+                axis=1,
             )
         # add the psth to the dict
         psths[label] = psth
@@ -235,6 +235,15 @@ def load_results(save_path, verbose=False):
 
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
+    pre_deep = pd.DataFrame()
+    task_deep = pd.DataFrame()
+    post_deep = pd.DataFrame()
+    pre_sup = pd.DataFrame()
+    task_sup = pd.DataFrame()
+    post_sup = pd.DataFrame()
+    meta_data_deep = pd.DataFrame()
+    meta_data_sup = pd.DataFrame()
+
     for session in sessions:
         if verbose:
             print(session)
@@ -242,3 +251,67 @@ def load_results(save_path, verbose=False):
             results = pickle.load(f)
         if results is None:
             continue
+
+        if not (results["pre"]["Superficial"].shape[1] == results["task"]["Superficial"].shape[1] == results["post"]["Superficial"].shape[1]):
+            print("Error: unequal number of columns")
+            continue
+
+        if not (results["pre"]["Deep"].shape[1] == results["task"]["Deep"].shape[1] == results["post"]["Deep"].shape[1]):
+            print("Error: unequal number of columns")
+            continue
+
+        pre_deep = pd.concat(
+            [pre_deep, results["pre"]["Deep"]], axis=1, ignore_index=True
+        )
+        task_deep = pd.concat(
+            [task_deep, results["task"]["Deep"]], axis=1, ignore_index=True
+        )
+        post_deep = pd.concat(
+            [post_deep, results["post"]["Deep"]], axis=1, ignore_index=True
+        )
+
+        pre_sup = pd.concat(
+            [pre_sup, results["pre"]["Superficial"]], axis=1, ignore_index=True
+        )
+        task_sup = pd.concat(
+            [task_sup, results["task"]["Superficial"]], axis=1, ignore_index=True
+        )
+        post_sup = pd.concat(
+            [post_sup, results["post"]["Superficial"]], axis=1, ignore_index=True
+        )
+
+
+        fields_to_keep = ["UID", "brainRegion", "putativeCellType", "basepath"]
+
+        if results["cell_metrics"].shape[0] > 0:
+            n_assembly = int(
+                results["pre"]["Deep"].shape[1] / results["cell_metrics"].shape[0]
+            )
+            for n_assem in range(n_assembly):
+                temp_df = results["cell_metrics"][fields_to_keep].copy()
+                temp_df["assembly_n"] = n_assem
+                meta_data_deep = pd.concat([meta_data_deep, temp_df], ignore_index=True)
+
+            if not (meta_data_deep.shape[0] == post_deep.shape[1]):
+                print("Error: unequal number of columns")
+                
+
+            n_assembly = int(
+                results["pre"]["Superficial"].shape[1] / results["cell_metrics"].shape[0]
+            )
+            for n_assem in range(n_assembly):
+                temp_df = results["cell_metrics"][fields_to_keep].copy()
+                temp_df["assembly_n"] = n_assem
+                meta_data_sup = pd.concat([meta_data_sup, temp_df], ignore_index=True)
+        else:
+            print("No cell metrics found")
+    return (
+        pre_deep,
+        task_deep,
+        post_deep,
+        pre_sup,
+        task_sup,
+        post_sup,
+        meta_data_deep,
+        meta_data_sup,
+    )
