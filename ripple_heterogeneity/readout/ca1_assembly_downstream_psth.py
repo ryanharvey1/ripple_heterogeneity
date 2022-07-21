@@ -120,10 +120,11 @@ def run(
     regions="CA1",
     target_regions=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],
     putativeCellType="Pyr",
-    weight_dt=0.1,  # dt in seconds for binning st to get weights for each assembly
+    weight_dt=0.02,  # dt in seconds for binning st to get weights for each assembly
     verbose=False,  # print out progress
     rip_exp_start=0.05,  # ripple expansion start, in seconds, how much to expand ripples
     rip_exp_stop=0.05,  # ripple expansion stop, in seconds, how much to expand ripples
+    min_cells=5,  # minimum number of cells in analysis (n deep, n superficial, n cortex)
 ):
     """
     Gets the pre and post assembly strengths
@@ -138,6 +139,17 @@ def run(
 
     # load data
     m1.load_data()
+
+    # check if enough data is available
+    m1.cell_metrics = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(
+        m1.cell_metrics
+    )
+
+    if not ((m1.cell_metrics.deepSuperficial == "Deep").sum() >= min_cells) & (
+        (m1.cell_metrics.deepSuperficial == "Superficial").sum() >= min_cells
+    ):
+        print("Not enough cells")
+        return None
 
     # extend ripples to include some extra time
     m1.ripples = m1.ripples.expand(rip_exp_start, direction="start")
@@ -197,29 +209,30 @@ def run(
             assembly_df.loc[assembly_n_idx, "assembly_label"] = "mixed"
 
     result = {}
-    result["pre"] = get_psths(
-        st,
-        results.get("assembly_act_pre"),
-        assembly_df
-    )
+    result["pre"] = get_psths(st, results.get("assembly_act_pre"), assembly_df)
 
-    result["task"] = get_psths(
-        st,
-        results.get("assembly_act_task"),
-        assembly_df
-    )
+    result["task"] = get_psths(st, results.get("assembly_act_task"), assembly_df)
 
-    result["post"] = get_psths(
-        st,
-        results.get("assembly_act_post"),
-        assembly_df
-    )
+    result["post"] = get_psths(st, results.get("assembly_act_post"), assembly_df)
+
+    result["cell_metrics"] = cell_metrics
+    
     return result
 
-def load_results():
+
+def load_results(save_path, verbose=False):
     """
-    Loads the results from the previous run
+    load_results: load results from a pickle file
     """
+    warnings.filterwarnings("ignore")
     print("Loading results...")
-    print("not implemented yet")
-    pass
+
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+
+    for session in sessions:
+        if verbose:
+            print(session)
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+        if results is None:
+            continue
