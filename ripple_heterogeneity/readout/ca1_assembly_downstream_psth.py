@@ -197,16 +197,21 @@ def run(
         results.get("react").patterns
     )
     assembly_df = get_assembly_df(results, is_member)
-    # assembly_df
 
+    # iterate over unique assemblies
     for assembly_n in assembly_df.assembly_n.unique():
-        assembly_n_idx = assembly_df.assembly_n == assembly_n
-        if (assembly_df[assembly_n_idx].deepSuperficial == "Deep").all():
-            assembly_df.loc[assembly_n_idx, "assembly_label"] = "Deep"
-        elif (assembly_df[assembly_n_idx].deepSuperficial == "Superficial").all():
-            assembly_df.loc[assembly_n_idx, "assembly_label"] = "Superficial"
+        assem_idx = assembly_df.assembly_n == assembly_n
+        sig_mem_idx = assembly_df.is_member == True
+
+        # check if the significant members are deep or superficial or mixed
+        if (assembly_df[assem_idx & sig_mem_idx].deepSuperficial == "Deep").all():
+            assembly_df.loc[assem_idx, "assembly_label"] = "Deep"
+        elif (
+            assembly_df[assem_idx & sig_mem_idx].deepSuperficial == "Superficial"
+        ).all():
+            assembly_df.loc[assem_idx, "assembly_label"] = "Superficial"
         else:
-            assembly_df.loc[assembly_n_idx, "assembly_label"] = "mixed"
+            assembly_df.loc[assem_idx, "assembly_label"] = "mixed"
 
     result = {}
     result["pre"] = get_psths(st, results.get("assembly_act_pre"), assembly_df)
@@ -216,7 +221,7 @@ def run(
     result["post"] = get_psths(st, results.get("assembly_act_post"), assembly_df)
 
     result["cell_metrics"] = cell_metrics
-    
+
     return result
 
 
