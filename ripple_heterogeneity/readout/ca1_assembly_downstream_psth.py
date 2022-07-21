@@ -11,13 +11,13 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-def get_assembly_df(results, is_member):
+def get_assembly_df(results, patterns, is_member):
     """
     Returns a dataframe of the assembly properties.
     """
     assembly_df = pd.DataFrame()
 
-    patterns = results.get("react").patterns
+    # patterns = results.get("react").patterns
 
     assembly_df["patterns"] = patterns.ravel()
     assembly_df["is_member"] = is_member.ravel()
@@ -109,6 +109,7 @@ def get_psths(
                     ),
                 ],
                 ignore_index=True,
+                axis=1
             )
         # add the psth to the dict
         psths[label] = psth
@@ -196,7 +197,7 @@ def run(
     patterns, is_member_sig, keep_assembly, is_member = find_sig_assembly.main(
         results.get("react").patterns
     )
-    assembly_df = get_assembly_df(results, is_member)
+    assembly_df = get_assembly_df(results, patterns, is_member_sig)
 
     # iterate over unique assemblies
     for assembly_n in assembly_df.assembly_n.unique():
