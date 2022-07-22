@@ -50,7 +50,7 @@ def run(
         min_epoch_dur=min_epoch_dur,
     )
 
-    if epochs.n_intervals < 2:
+    if (epochs.n_intervals < 2) or spikes.isempty:
         return None
 
     # bin spikes and smooth
@@ -99,7 +99,7 @@ def run(
 
     return results
 
-def load_results(save_path):
+def load_results(save_path,verbose=False):
     """
     load_results: load results from a pickle file
     """
@@ -108,8 +108,11 @@ def load_results(save_path):
 
     results_df = pd.DataFrame()
     for session in sessions:
+        if verbose:
+            print(f"Loading {session}")
         with open(session, "rb") as f:
             results = pickle.load(f)
         if results is None:
             continue
         results_df = pd.concat([results_df, results], ignore_index=True)
+    return results_df
