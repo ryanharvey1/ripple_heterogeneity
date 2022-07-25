@@ -90,7 +90,7 @@ def get_psths(
 
         # keep the assemblies that are specific to the label
         assembly_n = assembly_df[
-            assembly_df.assembly_label == label
+            (assembly_df.assembly_label == label) & (assembly_df.assembly_keep == True)
         ].assembly_n.unique()
 
         strength = strength[assembly_n, :]
@@ -194,10 +194,20 @@ def run(
         basepath, brainRegion=target_regions, putativeCellType=putativeCellType
     )
 
-    patterns, is_member_sig, keep_assembly, is_member = find_sig_assembly.main(
+    _, _, keep_assembly, is_member = find_sig_assembly.main(
         results.get("react").patterns
     )
-    assembly_df = get_assembly_df(results, patterns, is_member_sig)
+    assembly_df = get_assembly_df(results, results.get("react").patterns, is_member)
+
+    # add keep assembly labels to the assembly df
+    keep_assembly_df = pd.DataFrame(
+        index=np.arange(results.get("react").patterns.shape[0]), data=keep_assembly
+    )
+    keep_assembly_dict = keep_assembly_df.to_dict()
+    assembly_df["assembly_keep"] = assembly_df["assembly_n"]
+    assembly_df["assembly_keep"] = assembly_df["assembly_keep"].map(
+        keep_assembly_dict[0]
+    )
 
     # iterate over unique assemblies
     for assembly_n in assembly_df.assembly_n.unique():
@@ -252,11 +262,19 @@ def load_results(save_path, verbose=False):
         if results is None:
             continue
 
-        if not (results["pre"]["Superficial"].shape[1] == results["task"]["Superficial"].shape[1] == results["post"]["Superficial"].shape[1]):
+        if not (
+            results["pre"]["Superficial"].shape[1]
+            == results["task"]["Superficial"].shape[1]
+            == results["post"]["Superficial"].shape[1]
+        ):
             print("Error: unequal number of columns")
             continue
 
-        if not (results["pre"]["Deep"].shape[1] == results["task"]["Deep"].shape[1] == results["post"]["Deep"].shape[1]):
+        if not (
+            results["pre"]["Deep"].shape[1]
+            == results["task"]["Deep"].shape[1]
+            == results["post"]["Deep"].shape[1]
+        ):
             print("Error: unequal number of columns")
             continue
 
@@ -280,7 +298,6 @@ def load_results(save_path, verbose=False):
             [post_sup, results["post"]["Superficial"]], axis=1, ignore_index=True
         )
 
-
         fields_to_keep = ["UID", "brainRegion", "putativeCellType", "basepath"]
 
         if results["cell_metrics"].shape[0] > 0:
@@ -294,10 +311,10 @@ def load_results(save_path, verbose=False):
 
             if not (meta_data_deep.shape[0] == post_deep.shape[1]):
                 print("Error: unequal number of columns")
-                
 
             n_assembly = int(
-                results["pre"]["Superficial"].shape[1] / results["cell_metrics"].shape[0]
+                results["pre"]["Superficial"].shape[1]
+                / results["cell_metrics"].shape[0]
             )
             for n_assem in range(n_assembly):
                 temp_df = results["cell_metrics"][fields_to_keep].copy()
