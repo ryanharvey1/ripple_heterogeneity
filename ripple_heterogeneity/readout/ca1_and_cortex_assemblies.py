@@ -162,6 +162,9 @@ def run(
         cm = pd.concat([cm, m1.cell_metrics], ignore_index=True)
         react.append(m1)
 
+    if len(assembly_act_all) == 0:
+        return None
+        
     assembly_act_all = np.vstack(assembly_act_all)
 
     crosscorrs = compute_cross_correlogram(assembly_act_all, dt=m1.z_mat_dt)
