@@ -118,7 +118,7 @@ def run(
 
     epoch_df = loading.load_epoch(basepath)
     epoch_df = compress_repeated_epochs.main(epoch_df, epoch_name="sleep")
-    idx = functions.find_pre_task_post(epoch_df.environment)
+    idx, _ = functions.find_pre_task_post(epoch_df.environment)
     if idx is None:
         return None
 
