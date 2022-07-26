@@ -200,6 +200,7 @@ def load_results(save_path):
     deep_pfc_cc = pd.DataFrame()
     sup_mec_cc = pd.DataFrame()
     sup_pfc_cc = pd.DataFrame()
+    assembly_df_all = pd.DataFrame()
 
     for session in sessions:
         with open(session, "rb") as f:
@@ -210,6 +211,9 @@ def load_results(save_path):
 
         assembly_df = results.get("assembly_df")
         crosscorrs = results.get("crosscorrs")
+
+        assembly_df["basepath"] = results.get("react")[0].basepath
+        assembly_df_all = pd.concat([assembly_df_all, assembly_df], ignore_index=True)
 
         deep_idx = assembly_df[assembly_df.affiliation == "Deep"].assembly_n.unique()
         sup_idx = assembly_df[
@@ -228,23 +232,31 @@ def load_results(save_path):
 
         for val in deep_idx:
             try:
-                deep_mec_cc = pd.concat([deep_mec_cc, crosscorrs[val][mec_idx]], axis=1,ignore_index=True)
+                deep_mec_cc = pd.concat(
+                    [deep_mec_cc, crosscorrs[val][mec_idx]], axis=1, ignore_index=True
+                )
             except:
                 pass
 
         for val in deep_idx:
             try:
-                deep_pfc_cc = pd.concat([deep_pfc_cc, crosscorrs[val][pfc_idx]], axis=1,ignore_index=True)
+                deep_pfc_cc = pd.concat(
+                    [deep_pfc_cc, crosscorrs[val][pfc_idx]], axis=1, ignore_index=True
+                )
             except:
                 pass
         for val in sup_idx:
             try:
-                sup_mec_cc = pd.concat([sup_mec_cc, crosscorrs[val][mec_idx]], axis=1,ignore_index=True)
+                sup_mec_cc = pd.concat(
+                    [sup_mec_cc, crosscorrs[val][mec_idx]], axis=1, ignore_index=True
+                )
             except:
                 pass
         for val in sup_idx:
             try:
-                sup_pfc_cc = pd.concat([sup_pfc_cc, crosscorrs[val][pfc_idx]], axis=1,ignore_index=True)
+                sup_pfc_cc = pd.concat(
+                    [sup_pfc_cc, crosscorrs[val][pfc_idx]], axis=1, ignore_index=True
+                )
             except:
                 pass
     results = {
@@ -252,5 +264,6 @@ def load_results(save_path):
         "deep_pfc": deep_pfc_cc,
         "sup_mec": sup_mec_cc,
         "sup_pfc": sup_pfc_cc,
+        "assembly_df_all": assembly_df_all,
     }
     return results
