@@ -100,7 +100,7 @@ def construct_assembly_df(react):
         assembly_df.loc[assembly_df.region == region, "assembly_n"] = (
             assembly_df[assembly_df.region == region].assembly_n.values + assem_offset
         )
-        assem_offset += assembly_df[assembly_df.region == region].assembly_n.max() + 1
+        assem_offset = assembly_df[assembly_df.region == region].assembly_n.max() + 1
     return assembly_df
 
 
@@ -199,6 +199,10 @@ def run(
 
     assembly_act_all = np.vstack(assembly_act_all)
 
+    # only single assembly
+    if assembly_act_all.shape[0] == 1:
+        return None
+
     crosscorrs, pairs = compute_cross_correlogram(assembly_act_all, dt=m1.z_mat_dt)
     crosscorrs_id_df = pd.DataFrame({"ref": pairs[:, 0], "tar": pairs[:, 1]})
 
@@ -242,6 +246,7 @@ def load_results(save_path):
         assembly_df_all = pd.concat([assembly_df_all, assembly_df], ignore_index=True)
 
         deep_idx = assembly_df[assembly_df.affiliation == "Deep"].assembly_n.unique()
+
         sup_idx = assembly_df[
             assembly_df.affiliation == "Superficial"
         ].assembly_n.unique()
@@ -260,25 +265,29 @@ def load_results(save_path):
             (np.in1d(x_id.ref, deep_idx) & np.in1d(x_id.tar, mec_idx))
             | (np.in1d(x_id.ref, mec_idx) & np.in1d(x_id.tar, deep_idx))
         )[0]
-        deep_mec_cc = pd.concat([deep_mec_cc, crosscorrs[idx]])
+        deep_mec_cc = pd.concat(
+            [deep_mec_cc, crosscorrs[idx]], axis=1, ignore_index=True
+        )
 
         idx = np.where(
             (np.in1d(x_id.ref, deep_idx) & np.in1d(x_id.tar, pfc_idx))
             | (np.in1d(x_id.ref, pfc_idx) & np.in1d(x_id.tar, deep_idx))
         )[0]
-        deep_pfc_cc = pd.concat([deep_pfc_cc, crosscorrs[idx]])
+        deep_pfc_cc = pd.concat(
+            [deep_pfc_cc, crosscorrs[idx]], axis=1, ignore_index=True
+        )
 
         idx = np.where(
             (np.in1d(x_id.ref, sup_idx) & np.in1d(x_id.tar, mec_idx))
             | (np.in1d(x_id.ref, mec_idx) & np.in1d(x_id.tar, sup_idx))
         )[0]
-        sup_mec_cc = pd.concat([sup_mec_cc, crosscorrs[idx]])
+        sup_mec_cc = pd.concat([sup_mec_cc, crosscorrs[idx]], axis=1, ignore_index=True)
 
         idx = np.where(
             (np.in1d(x_id.ref, sup_idx) & np.in1d(x_id.tar, pfc_idx))
             | (np.in1d(x_id.ref, pfc_idx) & np.in1d(x_id.tar, sup_idx))
         )[0]
-        sup_pfc_cc = pd.concat([sup_pfc_cc, crosscorrs[idx]])
+        sup_pfc_cc = pd.concat([sup_pfc_cc, crosscorrs[idx]], axis=1, ignore_index=True)
 
     results = {
         "deep_mec": deep_mec_cc,
