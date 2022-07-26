@@ -10,6 +10,35 @@ import os
 import pickle
 
 
+# def compute_cross_correlogram(X, dt=1, window=0.5):
+#     """
+#     Cross-correlate two N-dimensional arrays.
+#     Input:
+#         X: N-dimensional array of shape  (n_signals, n_timepoints)
+#         dt: time step in seconds
+#         window: window size in seconds, output will be +- window
+#     Output:
+#         cross_correlogram: pandas dataframe with pairwise cross-correlogram
+#     """
+
+#     crosscorrs = {}
+#     pairs = list(combinations(np.arange(X.shape[0]), 2))
+#     for i, j in pairs:
+#         auc = signal.correlate(X[i], X[j])
+#         times = signal.correlation_lags(len(X[i]), len(X[j])) * dt
+#         # normalize by coeff
+#         normalizer = np.sqrt((X[i] ** 2).sum(axis=0) * (X[j] ** 2).sum(axis=0))
+#         auc /= normalizer
+
+#         crosscorrs[(i, j)] = pd.Series(index=times, data=auc, dtype="float32")
+#     crosscorrs = pd.DataFrame.from_dict(crosscorrs)
+
+#     if window is None:
+#         return crosscorrs
+#     else:
+#         return crosscorrs[(crosscorrs.index >= -window) & (crosscorrs.index <= window)]
+
+
 def compute_cross_correlogram(X, dt=1, window=0.5):
     """
     Cross-correlate two N-dimensional arrays.
@@ -20,23 +49,23 @@ def compute_cross_correlogram(X, dt=1, window=0.5):
     Output:
         cross_correlogram: pandas dataframe with pairwise cross-correlogram
     """
+    pairs = np.array(list(combinations(np.arange(X.shape[0]), 2)))
 
-    crosscorrs = {}
-    pairs = list(combinations(np.arange(X.shape[0]), 2))
-    for i, j in pairs:
-        auc = signal.correlate(X[i], X[j])
-        times = signal.correlation_lags(len(X[i]), len(X[j])) * dt
+    times = np.arange(-window, window + dt, dt)
+    crosscorrs = pd.DataFrame(index=times, columns=np.arange(len(pairs)))
+
+    for i_pair, pair in enumerate(pairs):
+        auc = signal.correlate(X[pair[0]], X[pair[1]])
+        times = signal.correlation_lags(len(X[pair[0]]), len(X[pair[1]])) * dt
         # normalize by coeff
-        normalizer = np.sqrt((X[i] ** 2).sum(axis=0) * (X[j] ** 2).sum(axis=0))
+        normalizer = np.sqrt(
+            (X[pair[0]] ** 2).sum(axis=0) * (X[pair[1]] ** 2).sum(axis=0)
+        )
         auc /= normalizer
 
-        crosscorrs[(i, j)] = pd.Series(index=times, data=auc, dtype="float32")
-    crosscorrs = pd.DataFrame.from_dict(crosscorrs)
+        crosscorrs[i_pair] = auc[(times >= -window) & (times <= window)]
 
-    if window is None:
-        return crosscorrs
-    else:
-        return crosscorrs[(crosscorrs.index >= -window) & (crosscorrs.index <= window)]
+    return crosscorrs, pairs
 
 
 def construct_assembly_df(react):
@@ -170,21 +199,17 @@ def run(
 
     assembly_act_all = np.vstack(assembly_act_all)
 
-    crosscorrs = compute_cross_correlogram(assembly_act_all, dt=m1.z_mat_dt)
+    crosscorrs, pairs = compute_cross_correlogram(assembly_act_all, dt=m1.z_mat_dt)
+    crosscorrs_id_df = pd.DataFrame({"ref": pairs[:, 0], "tar": pairs[:, 1]})
 
     assembly_df = construct_assembly_df(react)
 
     assembly_df = add_affiliation(assembly_df)
 
-    # deep_idx = assembly_df[assembly_df.affiliation == "Deep"].assembly_n.unique()
-    # cortex_idx = assembly_df[assembly_df.affiliation == "Cortex"].assembly_n.unique()
-    # # temp_crosscorrs = crosscorrs.loc[deep_idx,cortex_idx]
-    # temp_crosscorrs = pd.DataFrame()
-    # for val in deep_idx:
-    #     temp_crosscorrs = pd.concat([temp_crosscorrs,crosscorrs[val][cortex_idx]],axis=1)
     results = {
         "assembly_df": assembly_df,
         "crosscorrs": crosscorrs,
+        "crosscorrs_id_df": crosscorrs_id_df,
         "assembly_act": assembly_act,
         "assembly_act_all": assembly_act_all,
         "cell_metrics": cm,
@@ -211,6 +236,7 @@ def load_results(save_path):
 
         assembly_df = results.get("assembly_df")
         crosscorrs = results.get("crosscorrs")
+        x_id = results.get("crosscorrs_id_df")
 
         assembly_df["basepath"] = results.get("react")[0].basepath
         assembly_df_all = pd.concat([assembly_df_all, assembly_df], ignore_index=True)
@@ -230,35 +256,30 @@ def load_results(save_path):
             & assembly_df.brainRegion.str.contains("PFC")
         ].assembly_n.unique()
 
-        for val in deep_idx:
-            try:
-                deep_mec_cc = pd.concat(
-                    [deep_mec_cc, crosscorrs[val][mec_idx]], axis=1, ignore_index=True
-                )
-            except:
-                pass
+        idx = np.where(
+            (np.in1d(x_id.ref, deep_idx) & np.in1d(x_id.tar, mec_idx))
+            | (np.in1d(x_id.ref, mec_idx) & np.in1d(x_id.tar, deep_idx))
+        )[0]
+        deep_mec_cc = pd.concat([deep_mec_cc, crosscorrs[idx]])
 
-        for val in deep_idx:
-            try:
-                deep_pfc_cc = pd.concat(
-                    [deep_pfc_cc, crosscorrs[val][pfc_idx]], axis=1, ignore_index=True
-                )
-            except:
-                pass
-        for val in sup_idx:
-            try:
-                sup_mec_cc = pd.concat(
-                    [sup_mec_cc, crosscorrs[val][mec_idx]], axis=1, ignore_index=True
-                )
-            except:
-                pass
-        for val in sup_idx:
-            try:
-                sup_pfc_cc = pd.concat(
-                    [sup_pfc_cc, crosscorrs[val][pfc_idx]], axis=1, ignore_index=True
-                )
-            except:
-                pass
+        idx = np.where(
+            (np.in1d(x_id.ref, deep_idx) & np.in1d(x_id.tar, pfc_idx))
+            | (np.in1d(x_id.ref, pfc_idx) & np.in1d(x_id.tar, deep_idx))
+        )[0]
+        deep_pfc_cc = pd.concat([deep_pfc_cc, crosscorrs[idx]])
+
+        idx = np.where(
+            (np.in1d(x_id.ref, sup_idx) & np.in1d(x_id.tar, mec_idx))
+            | (np.in1d(x_id.ref, mec_idx) & np.in1d(x_id.tar, sup_idx))
+        )[0]
+        sup_mec_cc = pd.concat([sup_mec_cc, crosscorrs[idx]])
+
+        idx = np.where(
+            (np.in1d(x_id.ref, sup_idx) & np.in1d(x_id.tar, pfc_idx))
+            | (np.in1d(x_id.ref, pfc_idx) & np.in1d(x_id.tar, sup_idx))
+        )[0]
+        sup_pfc_cc = pd.concat([sup_pfc_cc, crosscorrs[idx]])
+
     results = {
         "deep_mec": deep_mec_cc,
         "deep_pfc": deep_pfc_cc,
