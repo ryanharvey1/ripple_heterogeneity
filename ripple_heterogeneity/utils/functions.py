@@ -12,6 +12,8 @@ import nelpy as nel
 import warnings
 from scipy import stats
 from ripple_heterogeneity.assembly import find_sig_assembly
+from itertools import combinations
+from scipy import signal
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -248,6 +250,33 @@ def compute_psth(spikes, event, bin_width=0.002, n_bins=100):
         ccg[i] = crossCorr(event, s, bin_width, n_bins)
     return ccg
 
+def compute_cross_correlogram(X, dt=1, window=0.5):
+    """
+    Cross-correlate two N-dimensional arrays (pairwise).
+    Input:
+        X: N-dimensional array of shape  (n_signals, n_timepoints)
+        dt: time step in seconds, default 1 is nlags
+        window: window size in seconds, output will be +- window
+    Output:
+        cross_correlogram: pandas dataframe with pairwise cross-correlogram
+    """
+
+    crosscorrs = {}
+    pairs = list(combinations(np.arange(X.shape[0]), 2))
+    for i, j in pairs:
+        auc = signal.correlate(X[i], X[j])
+        times = signal.correlation_lags(len(X[i]), len(X[j])) * dt
+        # normalize by coeff
+        normalizer = np.sqrt((X[i] ** 2).sum(axis=0) * (X[j] ** 2).sum(axis=0))
+        auc /= normalizer
+
+        crosscorrs[(i, j)] = pd.Series(index=times, data=auc, dtype="float32")
+    crosscorrs = pd.DataFrame.from_dict(crosscorrs)
+
+    if window is None:
+        return crosscorrs
+    else:
+        return crosscorrs[(crosscorrs.index >= -window) & (crosscorrs.index <= window)]
 
 def BurstIndex_Royer_2012(autocorrs):
     # calc burst index from royer 2012
