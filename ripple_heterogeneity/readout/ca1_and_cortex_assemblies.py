@@ -5,6 +5,9 @@ import pandas as pd
 import numpy as np
 from itertools import combinations
 from scipy import signal
+import glob
+import os
+import pickle
 
 
 def compute_cross_correlogram(X, dt=1, window=0.5):
@@ -164,7 +167,7 @@ def run(
 
     if len(assembly_act_all) == 0:
         return None
-        
+
     assembly_act_all = np.vstack(assembly_act_all)
 
     crosscorrs = compute_cross_correlogram(assembly_act_all, dt=m1.z_mat_dt)
@@ -186,5 +189,68 @@ def run(
         "assembly_act_all": assembly_act_all,
         "cell_metrics": cm,
         "react": react,
+    }
+    return results
+
+
+def load_results(save_path):
+    sessions = glob.glob(os.path.join(save_path, "*.pkl"))
+
+    deep_mec_cc = pd.DataFrame()
+    deep_pfc_cc = pd.DataFrame()
+    sup_mec_cc = pd.DataFrame()
+    sup_pfc_cc = pd.DataFrame()
+
+    for session in sessions:
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+
+        if results is None:
+            continue
+
+        assembly_df = results.get("assembly_df")
+        crosscorrs = results.get("crosscorrs")
+
+        deep_idx = assembly_df[assembly_df.affiliation == "Deep"].assembly_n.unique()
+        sup_idx = assembly_df[
+            assembly_df.affiliation == "Superficial"
+        ].assembly_n.unique()
+
+        mec_idx = assembly_df[
+            (assembly_df.affiliation == "Cortex")
+            & assembly_df.brainRegion.str.contains("EC1|EC2|EC3|EC4|EC5|MEC")
+        ].assembly_n.unique()
+
+        pfc_idx = assembly_df[
+            (assembly_df.affiliation == "Cortex")
+            & assembly_df.brainRegion.str.contains("PFC")
+        ].assembly_n.unique()
+
+        for val in deep_idx:
+            try:
+                deep_mec_cc = pd.concat([deep_mec_cc, crosscorrs[val][mec_idx]], axis=1,ignore_index=True)
+            except:
+                pass
+
+        for val in deep_idx:
+            try:
+                deep_pfc_cc = pd.concat([deep_pfc_cc, crosscorrs[val][pfc_idx]], axis=1,ignore_index=True)
+            except:
+                pass
+        for val in sup_idx:
+            try:
+                sup_mec_cc = pd.concat([sup_mec_cc, crosscorrs[val][mec_idx]], axis=1,ignore_index=True)
+            except:
+                pass
+        for val in sup_idx:
+            try:
+                sup_pfc_cc = pd.concat([sup_pfc_cc, crosscorrs[val][pfc_idx]], axis=1,ignore_index=True)
+            except:
+                pass
+    results = {
+        "deep_mec": deep_mec_cc,
+        "deep_pfc": deep_pfc_cc,
+        "sup_mec": sup_mec_cc,
+        "sup_pfc": sup_pfc_cc,
     }
     return results
