@@ -327,6 +327,9 @@ def run(
     st, cell_metrics = loading.load_spikes(
         basepath, brainRegion=brainRegion, putativeCellType=putativeCellType
     )
+    
+    if st.isempty:
+        return None
 
     # add deep superficial labels
     cell_metrics = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cell_metrics)
