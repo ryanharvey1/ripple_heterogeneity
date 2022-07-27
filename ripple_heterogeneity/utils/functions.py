@@ -480,8 +480,6 @@ def get_participation(st, event_starts, event_stops, par_type="binary"):
         idx1 = np.searchsorted(s, event_starts, 'right')
         idx2 = np.searchsorted(s, event_stops, 'left')
         unit_mat[i, :] = idx2 - idx1
-    # divide by duration to get counts
-    unit_mat = unit_mat / (event_stops - event_starts)
 
     if par_type == "counts":
         pass
