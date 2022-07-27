@@ -100,6 +100,7 @@ def construct_assembly_df(react):
         assembly_df.loc[assembly_df.region == region, "assembly_n"] = (
             assembly_df[assembly_df.region == region].assembly_n.values + assem_offset
         )
+        # update offset
         assem_offset = assembly_df[assembly_df.region == region].assembly_n.max() + 1
     return assembly_df
 
