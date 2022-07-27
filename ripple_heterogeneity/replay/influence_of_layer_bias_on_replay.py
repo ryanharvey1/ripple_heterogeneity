@@ -281,13 +281,14 @@ def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc
 
 def run(
     basepath=None,
-    replay_df=None,
-    n_shuffles=1000,
-    q_perc=90,
-    expand_replay_epoch=0.05,
-    brainRegion="CA1",
-    putativeCellType="Pyr",
-    only_significant_replay=False,
+    replay_df=None, # provide if you want to just look at replay events
+    use_replay_df=False, # if true, use replay_df instead of all ripples
+    n_shuffles=500, # number of shuffles
+    q_perc=95, # percentile of significant events threshold
+    expand_replay_epoch=0.05, # how much to expand the replay/ripple epoch
+    brainRegion="CA1", # brain region
+    putativeCellType="Pyr", # cell type
+    only_significant_replay=False, # if true, only look at significant replay events
 ):
     """
     Run the analysis to locate replay events with significant bias
@@ -303,17 +304,19 @@ def run(
     """
     if basepath is None:
         raise ValueError("basepath is required")
-    if replay_df is None:
-        raise ValueError("df is required")
 
-    if only_significant_replay:
-        df_idx = (replay_df.score_pval_time_swap < 0.05) & (
-            replay_df.basepath == basepath
-        )
-        replay_df = replay_df[df_idx]
+    if use_replay_df:
+        if only_significant_replay:
+            df_idx = (replay_df.score_pval_time_swap < 0.05) & (
+                replay_df.basepath == basepath
+            )
+            replay_df = replay_df[df_idx]
+        else:
+            df_idx = replay_df.basepath == basepath
+            replay_df = replay_df[df_idx]
     else:
-        df_idx = replay_df.basepath == basepath
-        replay_df = replay_df[df_idx]
+        replay_df = loading.load_ripples_events(basepath)
+
 
     # get the replay epochs for this basepath
     replay_epochs = nel.EpochArray(np.array([replay_df.start, replay_df.stop]).T)
