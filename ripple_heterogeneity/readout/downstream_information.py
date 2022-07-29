@@ -208,6 +208,9 @@ def run(
     )
     cm = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cm)
 
+    if st.isempty:
+        return None
+
     # load ripples and apply ripple expansion
     ripples_df = loading.load_ripples_events(basepath)
     ripples = (
@@ -217,6 +220,7 @@ def run(
     )
 
     results = pd.DataFrame()
+    # iterate over pre/task/post epochs
     for ep, ep_label in zip(epochs, epoch_df.environment.values):
         # bin spikes into ripples and get firing rate
         ripple_mat = functions.get_participation(
