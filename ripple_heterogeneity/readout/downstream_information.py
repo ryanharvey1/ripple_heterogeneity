@@ -210,6 +210,8 @@ def run(
 
     if st.isempty:
         return None
+    if st.n_active < 2:
+        return None
 
     # load ripples and apply ripple expansion
     ripples_df = loading.load_ripples_events(basepath)
@@ -221,7 +223,9 @@ def run(
 
     results = pd.DataFrame()
     # iterate over pre/task/post epochs
-    for ep, ep_label in zip(epochs, epoch_df.environment.values):
+    for ep, env_label, ep_label in zip(
+        epochs, epoch_df.environment.values, ["pre", "task", "post"]
+    ):
         # bin spikes into ripples and get firing rate
         ripple_mat = functions.get_participation(
             st[ep].data, ripples[ep].starts, ripples[ep].stops, par_type="firing_rate"
@@ -251,8 +255,9 @@ def run(
             [mutual_info_df, conditional_entropy_df], ignore_index=True
         )
 
-        results_temp["basepath"] = basepath
+        results_temp["environment"] = env_label
         results_temp["epoch"] = ep_label
+        results_temp["basepath"] = basepath
 
         results = pd.concat([results, results_temp], ignore_index=True)
 
