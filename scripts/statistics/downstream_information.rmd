@@ -1,0 +1,312 @@
+---
+title: "downstream_information"
+author: "ryan"
+date: '2022-07-29'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+```
+
+```{r}
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/downstream_information_results.csv")
+
+
+data$label = factor(data$label)
+data$reference = factor(data$reference)
+data$target = factor(data$target)
+data$environment = factor(data$environment)
+data$epoch = factor(data$epoch)
+data$basepath = factor(data$basepath)
+data$animal_id = factor(data$animal_id)
+
+
+summary(data)
+
+```
+
+```{r}
+temp_data <- data[data$epoch == "post" & (data$label == "deep_mec" | data$label == "sup_mec") & !is.na(data$mutual_info) & data$mutual_info != 0,]
+temp_data$basepath = factor(temp_data$basepath)
+temp_data$animal_id = factor(temp_data$animal_id)
+temp_data$label = factor(temp_data$label)
+
+temp_data$mutual_info <- temp_data$mutual_info
+
+mdl_boxcox <- boxcox(mutual_info ~ label, data=temp_data, lambda = seq(-5, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$mutual_info^max_lambda
+
+# temp_data$y_trans <- log(temp_data$mutual_info)
+
+m1 = lmer(y_trans ~ label + (1 | animal_id/basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+plot(y_trans ~ label, data = temp_data)
+```
+
+```{r}
+temp_data <- data[data$epoch == "post" & (data$label == "deep_pfc" | data$label == "sup_pfc") & !is.na(data$mutual_info) & data$mutual_info != 0,]
+temp_data$basepath = factor(temp_data$basepath)
+temp_data$animal_id = factor(temp_data$animal_id)
+temp_data$label = factor(temp_data$label)
+
+
+mdl_boxcox <- boxcox(mutual_info ~ label, data=temp_data, lambda = seq(-5, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$mutual_info^max_lambda
+
+
+m1 = lmer(y_trans ~ label + (1 | basepath), data = temp_data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+plot(y_trans ~ label, data = temp_data)
+```
+
+```{r}
+temp_data <- data[data$epoch == "post" & (data$label == "deep_mec" | data$label == "sup_mec") & !is.nan(data$mutual_info) & data$mutual_info != 0,]
+temp_data$basepath = factor(temp_data$basepath)
+temp_data$animal_id = factor(temp_data$animal_id)
+temp_data$label = factor(temp_data$label)
+
+temp_data$mutual_info <- temp_data$mutual_info
+
+
+# hist(temp_data$y_trans,100)
+hist(temp_data$mutual_info,100)
+hist(log(temp_data$mutual_info),100)
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
