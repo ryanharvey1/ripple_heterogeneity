@@ -12,9 +12,11 @@ import nelpy as nel
 import os
 import itertools
 from pyinform import conditional_entropy, mutual_info
+import multiprocessing
+from joblib import Parallel, delayed
 
 
-def pairwise_info(X):
+def pairwise_info(X, return_index=True):
     """
     Compute the pairwise mutual information between all pairs of variables in X.
     inputs:
@@ -27,11 +29,12 @@ def pairwise_info(X):
     x = np.arange(0, X.shape[0])
     pairs = np.array(list(itertools.combinations(x, 2)))
     mi = []
-    ce = []
     for pair in pairs:
         mi.append(mutual_info(X[pair[0], :], X[pair[1], :]))
-        ce.append(conditional_entropy(X[pair[0], :], X[pair[1], :]))
-    return np.hstack(mi), np.hstack(ce), pairs
+    if return_index:
+        return np.hstack(mi), pairs
+    else:
+        return np.hstack(mi)
 
 
 def pairwise_conditional_entropy(X):
@@ -93,6 +96,7 @@ def make_df(
     y_label=None,
     reference_region="CA1",
     target_region=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],
+    optional_pval=None,
 ):
     """
     make a dataframe from the input ce and map to cell_metrics(cm)
@@ -114,6 +118,17 @@ def make_df(
     df = pd.DataFrame()
 
     df[y_label] = np.hstack([ce[deep_pfc], ce[deep_mec], ce[sup_pfc], ce[sup_mec]])
+
+    if optional_pval is not None:
+        df["pval"] = np.hstack(
+            [
+                optional_pval[deep_pfc],
+                optional_pval[deep_mec],
+                optional_pval[sup_pfc],
+                optional_pval[sup_mec],
+            ]
+        )
+
     df["label"] = np.hstack(
         [
             ["deep_pfc"] * len(ce[deep_pfc]),
@@ -177,15 +192,24 @@ def make_df(
     return df
 
 
-def run(
-    basepath,
-    putativeCellType="Pyr",  # type of cell to use for the analysis
-    reference_region="CA1",  # reference region
-    target_region=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # downstream of reference_region
-    brainRegions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # brain regions to include
-    rip_exp_start=0.05,  # ripple expansion start, in seconds, how much to expand ripples
-    rip_exp_stop=0.2,  # ripple expansion stop, in seconds, how much to expand ripples
-):
+def shuffle_mi(ripple_mat, n_shuffles=500, parallel=True):
+    def shuffle_patterns(patterns):
+        return np.random.permutation(patterns.flatten()).reshape(patterns.shape)
+
+    if parallel:
+        num_cores = multiprocessing.cpu_count()
+        shuffle_val = Parallel(n_jobs=num_cores)(
+            delayed(pairwise_info)(shuffle_patterns(ripple_mat), return_index=False)
+            for _ in range(n_shuffles)
+        )
+    else:
+        shuffle_val = [
+            pairwise_info(shuffle_patterns(ripple_mat), return_index=False)
+            for _ in range(n_shuffles)
+        ]
+    return shuffle_val
+
+def get_epochs(basepath):
     # load session epoch data
     epoch_df = loading.load_epoch(basepath)
 
@@ -194,13 +218,30 @@ def run(
     # search for pre task post epochs
     idx, _ = functions.find_pre_task_post(epoch_df.environment)
     if idx is None:
-        return None
+        return None, None
 
     epoch_df = epoch_df[idx]
     epochs = nel.EpochArray(
         [np.array([epoch_df.startTime, epoch_df.stopTime]).T],
         label=epoch_df.environment.values,
     )
+    return epochs, epoch_df
+
+def run(
+    basepath,
+    putativeCellType="Pyr",  # type of cell to use for the analysis
+    reference_region="CA1",  # reference region
+    target_region=["PFC", "EC1|EC2|EC3|EC4|EC5|MEC"],  # downstream of reference_region
+    brainRegions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # brain regions to include
+    rip_exp_start=0.05,  # ripple expansion start, in seconds, how much to expand ripples
+    rip_exp_stop=0.2,  # ripple expansion stop, in seconds, how much to expand ripples
+    parallel_shuffle=True,  # whether to run shuffle in parallel
+    n_shuffles=500,  # number of shuffles to run
+):
+
+    epochs, epoch_df = get_epochs(basepath)
+    if epochs is None:
+        return None
 
     # load in spike data
     st, cm = loading.load_spikes(
@@ -232,13 +273,23 @@ def run(
         )
 
         # get mutual information
-        mi, ce, pairs_mi = pairwise_info(ripple_mat)
+        mi, pairs_mi = pairwise_info(ripple_mat)
         # get conditional entropy
         ce, pairs_ce = pairwise_conditional_entropy(ripple_mat)
 
+        # get shuffle values
+        mi_shuff = shuffle_mi(ripple_mat, n_shuffles=n_shuffles, parallel=parallel_shuffle)
+        _, pvalues = functions.get_significant_events(mi, np.array(mi_shuff))
+
         # add multual information and conditional entropy to dataframe
         mutual_info_df = make_df(
-            mi, pairs_mi, cm, "mutual_info", reference_region, target_region
+            mi,
+            pairs_mi,
+            cm,
+            "mutual_info",
+            reference_region,
+            target_region,
+            optional_pval=pvalues,
         )
 
         conditional_entropy_df = make_df(
