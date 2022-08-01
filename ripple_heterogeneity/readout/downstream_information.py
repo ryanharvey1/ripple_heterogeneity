@@ -275,14 +275,14 @@ def run(
         # get mutual information
         mi, pairs_mi = pairwise_info(ripple_mat)
         # get conditional entropy
-        ce, pairs_ce = pairwise_conditional_entropy(ripple_mat)
+        # ce, pairs_ce = pairwise_conditional_entropy(ripple_mat)
 
         # get shuffle values
         mi_shuff = shuffle_mi(ripple_mat, n_shuffles=n_shuffles, parallel=parallel_shuffle)
         _, pvalues = functions.get_significant_events(mi, np.array(mi_shuff))
 
         # add multual information and conditional entropy to dataframe
-        mutual_info_df = make_df(
+        results_temp = make_df(
             mi,
             pairs_mi,
             cm,
@@ -292,19 +292,19 @@ def run(
             optional_pval=pvalues,
         )
 
-        conditional_entropy_df = make_df(
-            ce, pairs_ce, cm, "conditional_entropy", reference_region, target_region
-        )
+        # conditional_entropy_df = make_df(
+        #     ce, pairs_ce, cm, "conditional_entropy", reference_region, target_region
+        # )
         # because conditional entropy is directional, remove the pairs where the reference is the target
-        conditional_entropy_df.loc[
-            ~conditional_entropy_df.reference.str.contains(reference_region),
-            "conditional_entropy",
-        ] = np.nan
-        conditional_entropy_df.dropna(inplace=True)
+        # conditional_entropy_df.loc[
+        #     ~conditional_entropy_df.reference.str.contains(reference_region),
+        #     "conditional_entropy",
+        # ] = np.nan
+        # conditional_entropy_df.dropna(inplace=True)
 
-        results_temp = pd.concat(
-            [mutual_info_df, conditional_entropy_df], ignore_index=True
-        )
+        # results_temp = pd.concat(
+        #     [mutual_info_df, conditional_entropy_df], ignore_index=True
+        # )
 
         results_temp["environment"] = env_label
         results_temp["epoch"] = ep_label
