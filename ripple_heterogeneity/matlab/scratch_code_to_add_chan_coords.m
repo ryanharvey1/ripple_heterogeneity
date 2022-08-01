@@ -43,6 +43,33 @@ chanCoords.x(65:end) = chanCoords.x(65:end) + 900;
 chanCoords.y(65:end) = (0:63)*-20
 
 chanCoords.x(65:end) = repmat(1200,1,64)
+
+
+%% shanks missing, poly3 and middle finger, manual
+
+% plot the coords we have
+figure;scatter(chanCoords.x,chanCoords.y,[],1:length(chanCoords.x))
+
+% read in middle finger geometry
+coords = readtable("D:\github\ripple_heterogeneity\data\electrodes_coordinates_A5x12-16-Buz-lin-5mm-100-200-160-177 (1).csv");
+
+% visualize channels with chan numbers
+figure;scatter(coords.x_um_,coords.y_um_,[],1:length(coords.y_um_))
+hold on
+text(coords.x_um_,coords.y_um_,string(1:length(coords.y_um_)),...
+    'VerticalAlignment','bottom','HorizontalAlignment','center','fontsize',8);
+% removed these channels that were associated with the missing shank
+coords(49:60,:) = []
+
+% add remaining channels
+chanCoords.x(97:end) = coords.x_um_;
+chanCoords.y(97:end) = coords.y_um_;
+
+% add offset
+chanCoords.x(97:end) = chanCoords.x(97:end) + 400
+
+
+
 %%
 
 session.extracellular.chanCoords.y .* deepSuperficial_ChDistance3'
