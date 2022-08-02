@@ -209,6 +209,7 @@ def shuffle_mi(ripple_mat, n_shuffles=500, parallel=True):
         ]
     return shuffle_val
 
+
 def get_epochs(basepath):
     # load session epoch data
     epoch_df = loading.load_epoch(basepath)
@@ -227,6 +228,7 @@ def get_epochs(basepath):
     )
     return epochs, epoch_df
 
+
 def run(
     basepath,
     putativeCellType="Pyr",  # type of cell to use for the analysis
@@ -236,7 +238,7 @@ def run(
     rip_exp_start=0.05,  # ripple expansion start, in seconds, how much to expand ripples
     rip_exp_stop=0.2,  # ripple expansion stop, in seconds, how much to expand ripples
     parallel_shuffle=True,  # whether to run shuffle in parallel
-    n_shuffles=500,  # number of shuffles to run
+    n_shuffles=500,  # number of shuffles to run (None if no shuffle)
 ):
 
     epochs, epoch_df = get_epochs(basepath)
@@ -262,15 +264,36 @@ def run(
         .expand(rip_exp_stop, direction="stop")
     )
 
+    state_dict = loading.load_SleepState_states(basepath)
+    nrem_epochs = nel.EpochArray(state_dict["NREMstate"])
+    wake_epochs = nel.EpochArray(state_dict["WAKEstate"])
+
     results = pd.DataFrame()
     # iterate over pre/task/post epochs
     for ep, env_label, ep_label in zip(
         epochs, epoch_df.environment.values, ["pre", "task", "post"]
     ):
         # bin spikes into ripples and get firing rate
-        ripple_mat = functions.get_participation(
-            st[ep].data, ripples[ep].starts, ripples[ep].stops, par_type="firing_rate"
-        )
+        try:
+            if (ep_label == "pre") | (ep_label == "post"):
+                ripple_mat = functions.get_participation(
+                    st[nrem_epochs][ep].data,
+                    ripples[nrem_epochs][ep].starts,
+                    ripples[nrem_epochs][ep].stops,
+                    par_type="firing_rate",
+                )
+            else:
+                ripple_mat = functions.get_participation(
+                    st[wake_epochs][ep].data,
+                    ripples[wake_epochs][ep].starts,
+                    ripples[wake_epochs][ep].stops,
+                    par_type="firing_rate",
+                )
+        except:
+            continue
+        # skip if no ripples
+        if ripple_mat.shape[1] == 0:
+            continue
 
         # get mutual information
         mi, pairs_mi = pairwise_info(ripple_mat)
@@ -278,8 +301,13 @@ def run(
         # ce, pairs_ce = pairwise_conditional_entropy(ripple_mat)
 
         # get shuffle values
-        mi_shuff = shuffle_mi(ripple_mat, n_shuffles=n_shuffles, parallel=parallel_shuffle)
-        _, pvalues = functions.get_significant_events(mi, np.array(mi_shuff))
+        if n_shuffles is not None:
+            mi_shuff = shuffle_mi(
+                ripple_mat, n_shuffles=n_shuffles, parallel=parallel_shuffle
+            )
+            _, pvalues = functions.get_significant_events(mi, np.array(mi_shuff))
+        else:
+            pvalues = None
 
         # add multual information and conditional entropy to dataframe
         results_temp = make_df(
