@@ -79,8 +79,8 @@ ripples = DetectSWR([session.channelTags.Ripple.channels, session.channelTags.Sh
 
 
 %% opto pulse
-old_pulses = load('hc300118.stimPulses.mat');
-% old_pulses = load('hc280118.stimPulses.mat');
+% old_pulses = load('hc300118.stimPulses.mat');
+old_pulses = load('hc280118.stimPulses.mat');
 % basepaths = {'Z:\Data\ORproject\OR15\hc280118','Z:\Data\ORproject\OR15\hc300118'}
 
 % added closed loop and delayed pulses, pulses lasted for 100ms
@@ -94,7 +94,7 @@ pulses.eventGroupID = [zeros(length(old_pulses.pulsesCL),1) ;...
 % make sure ts are sorted
 [~,idx] = sort(pulses.timestamps(:,1));
 pulses.timestamps = pulses.timestamps(idx,:);
-
+pulses.eventGroupID = pulses.eventGroupID(idx,:);
 
 % pulses.timestamps(:,1) = old_pulses.pulses;
 % pulses.timestamps(:,2) = old_pulses.pulses+.1;
