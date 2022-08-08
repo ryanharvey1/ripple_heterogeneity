@@ -7,10 +7,16 @@ import matplotlib.pyplot as plt
 from track_linearization import make_track_graph
 from track_linearization import get_linearized_position
 from scipy.io import savemat, loadmat
-from matplotlib.widgets import Button
 
 plt.ion()
-plt.style.use('dark_background')
+plt.style.use("dark_background")
+
+"""
+TODO: 
+-fix bugs in removing nodes and edges
+-make behavior loader local to this file
+-option to linearize epoch by epoch (different mazes)
+"""
 
 class NodePicker:
     """Interactive creation of track graph by looking at video frames."""
@@ -30,6 +36,8 @@ class NodePicker:
         ax.set_title(
             "Left click to place node.\nRight click to remove node."
             "\nShift+Left click to clear nodes.\nCntrl+Left click two nodes to place an edge"
+            "\nEnter to save and exit.",
+            fontsize=8,
         )
 
         self.canvas.draw()
@@ -43,11 +51,16 @@ class NodePicker:
     def connect(self):
         if self.cid is None:
             self.cid = self.canvas.mpl_connect("button_press_event", self.click_event)
+            self.canvas.mpl_connect("key_press_event", self.process_key)
 
     def disconnect(self):
         if self.cid is not None:
             self.canvas.mpl_disconnect(self.cid)
             self.cid = None
+
+    def process_key(self, event):
+        if event.key == "enter":
+            self.format_and_save()
 
     def click_event(self, event):
         if not event.inaxes:
@@ -66,10 +79,7 @@ class NodePicker:
                 self.edges[-1].append(closest_node_ind)
             else:
                 self.edges.append([closest_node_ind])
-            # print(self.edges)
-        # print(event.key)
         if event.key == "enter":
-            # self.disconnect()
             self.format_and_save()
 
         self.redraw()
@@ -82,7 +92,6 @@ class NodePicker:
             self._nodes_plot.set_offsets([])
 
         # Draw Node Numbers
-        # self.ax.texts = []
         for ind, (x, y) in enumerate(self.node_positions):
             self.ax.text(
                 x,
@@ -97,7 +106,6 @@ class NodePicker:
                 transform=self.ax.transData,
             )
         # Draw Edges
-        # self.ax.lines = []  # clears the existing lines
         for edge in self.edges:
             if len(edge) > 1:
                 x1, y1 = self.node_positions[edge[0]]
@@ -105,8 +113,6 @@ class NodePicker:
                 self.ax.plot(
                     [x1, x2], [y1, y2], color=self.node_color, linewidth=5, zorder=1000
                 )
-
-        # self.canvas.draw_idle()
         self.canvas.draw()
 
     def remove_point(self, point):
@@ -149,15 +155,22 @@ class NodePicker:
         ] = position_df.projected_y_position.values
 
         filename = glob.glob(os.path.join(self.basepath, "*.animal.behavior.mat"))[0]
-        data = loadmat(filename,simplify_cells=True)
+        data = loadmat(filename, simplify_cells=True)
 
         data["behavior"]["position"]["linearized"] = behave_df.linear_position.values
         data["behavior"]["states"] = behave_df.track_segment_id.values
-        data["behavior"]["position"]["projected_x"] = behave_df.projected_x_position.values
-        data["behavior"]["position"]["projected_y"] = behave_df.projected_y_position.values
+        data["behavior"]["position"][
+            "projected_x"
+        ] = behave_df.projected_x_position.values
+        data["behavior"]["position"][
+            "projected_y"
+        ] = behave_df.projected_y_position.values
 
         savemat(filename, data)
+
+        self.disconnect()
         plt.close()
+
 
 def run(basepath):
     print("here is the file,", basepath)
@@ -165,62 +178,18 @@ def run(basepath):
 
     behave_df = loading.load_animal_behavior(basepath)
 
-    ax.scatter(behave_df.x, behave_df.y, color="white", s=.5, alpha=.5)
+    ax.scatter(behave_df.x, behave_df.y, color="white", s=0.5, alpha=0.5)
     ax.axis("equal")
     ax.set_axisbelow(True)
-    ax.yaxis.grid(color='gray', linestyle='dashed')
-    ax.xaxis.grid(color='gray', linestyle='dashed')
+    ax.yaxis.grid(color="gray", linestyle="dashed")
+    ax.xaxis.grid(color="gray", linestyle="dashed")
     ax.set_ylabel("y")
     ax.set_xlabel("x")
-        
-    picker = NodePicker(ax=ax, basepath=basepath)
 
-    ax_save = plt.axes([0.9, .9, 0.1, 0.075])
-    b_save = Button(ax_save, 'Save', color="#1f8e4f")
-    b_save.on_clicked(picker.format_and_save())
+    picker = NodePicker(ax=ax, basepath=basepath)
 
     plt.show(block=True)
 
 
 if __name__ == "__main__":
-    # fig.show()
     run(sys.argv[1])
-    # while not picker.finished:
-    #     pass
-
-    # track_graph = make_track_graph(picker.node_positions, picker.edges)
-
-    # position = np.vstack(behave_df[["x", "y"]].values)[:, ~na_idx].T
-    # position_df = get_linearized_position(
-    #     position=position,
-    #     track_graph=track_graph,
-    #     edge_order=picker.edges,
-    #     use_HMM=True,
-    # )
-
-    # behave_df.loc[~na_idx, "linear_position"] = position_df.linear_position.values
-    # behave_df.loc[~na_idx, "track_segment_id"] = position_df.track_segment_id.values
-    # behave_df.loc[
-    #     ~na_idx, "projected_x_position"
-    # ] = position_df.projected_x_position.values
-    # behave_df.loc[
-    #     ~na_idx, "projected_y_position"
-    # ] = position_df.projected_y_position.values
-
-    # filename = glob.glob(os.path.join(basepath, "*.animal.behavior.mat"))[0]
-    # data = loadmat(filename)
-
-    # data["behavior"]["position"][0][0]["linearized"][0][0][
-    #     0
-    # ] = behave_df.linear_position.values
-    # data["behavior"]["states"][0][0][0] = behave_df.track_segment_id.values
-    # data["behavior"]["position"][0][0]["projected_x"][0][0][
-    #     0
-    # ] = behave_df.projected_x_position.values
-    # data["behavior"]["position"][0][0]["projected_y"][0][0][
-    #     0
-    # ] = behave_df.projected_y_position.values
-
-    # savemat(filename, data)
-
-    # return behave_df
