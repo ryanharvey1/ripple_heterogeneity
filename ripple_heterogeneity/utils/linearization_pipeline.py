@@ -9,7 +9,7 @@ from track_linearization import get_linearized_position
 from scipy.io import savemat, loadmat
 
 plt.ion()
-
+plt.style.use('dark_background')
 
 class NodePicker:
     """Interactive creation of track graph by looking at video frames."""
@@ -161,7 +161,13 @@ def run(basepath):
 
     behave_df = loading.load_animal_behavior(basepath)
 
-    ax.scatter(behave_df.x, behave_df.y, color="grey", s=1)
+    ax.scatter(behave_df.x, behave_df.y, color="white", s=.5, alpha=.5)
+    ax.axis("equal")
+    ax.set_axisbelow(True)
+    ax.yaxis.grid(color='gray', linestyle='dashed')
+    ax.xaxis.grid(color='gray', linestyle='dashed')
+    ax.set_ylabel("y")
+    ax.set_xlabel("x")
 
     picker = NodePicker(ax=ax, basepath=basepath)
     plt.show(block=True)
