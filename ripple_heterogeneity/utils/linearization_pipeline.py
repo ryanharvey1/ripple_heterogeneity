@@ -21,7 +21,7 @@ TODO:
 class NodePicker:
     """Interactive creation of track graph by looking at video frames."""
 
-    def __init__(self, ax=None, basepath=None, node_color="r", node_size=100):
+    def __init__(self, ax=None, basepath=None, node_color="#177ee6", node_size=100):
         if ax is None:
             ax = plt.gca()
         self.ax = ax
@@ -98,7 +98,7 @@ class NodePicker:
                 y,
                 ind,
                 zorder=6,
-                fontsize=12,
+                fontsize=10,
                 horizontalalignment="center",
                 verticalalignment="center",
                 clip_on=True,
@@ -111,7 +111,7 @@ class NodePicker:
                 x1, y1 = self.node_positions[edge[0]]
                 x2, y2 = self.node_positions[edge[1]]
                 self.ax.plot(
-                    [x1, x2], [y1, y2], color=self.node_color, linewidth=5, zorder=1000
+                    [x1, x2], [y1, y2], color="#1f8e4f", linewidth=3, zorder=1000
                 )
         self.canvas.draw()
 
