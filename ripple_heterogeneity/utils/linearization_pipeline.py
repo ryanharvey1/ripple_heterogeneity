@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from track_linearization import make_track_graph
 from track_linearization import get_linearized_position
 from scipy.io import savemat, loadmat
+from matplotlib.widgets import Button
 
 plt.ion()
 plt.style.use('dark_background')
@@ -30,6 +31,7 @@ class NodePicker:
             "Left click to place node.\nRight click to remove node."
             "\nShift+Left click to clear nodes.\nCntrl+Left click two nodes to place an edge"
         )
+
         self.canvas.draw()
 
         self.connect()
@@ -123,6 +125,7 @@ class NodePicker:
         behave_df = loading.load_animal_behavior(self.basepath)
         na_idx = np.isnan(behave_df.x)
 
+        print("running hmm...")
         track_graph = make_track_graph(self.node_positions, self.edges)
 
         position = np.vstack(
@@ -135,6 +138,7 @@ class NodePicker:
             use_HMM=True,
         )
 
+        print("saving to disk...")
         behave_df.loc[~na_idx, "linear_position"] = position_df.linear_position.values
         behave_df.loc[~na_idx, "track_segment_id"] = position_df.track_segment_id.values
         behave_df.loc[
@@ -153,7 +157,7 @@ class NodePicker:
         data["behavior"]["position"]["projected_y"] = behave_df.projected_y_position.values
 
         savemat(filename, data)
-
+        plt.close()
 
 def run(basepath):
     print("here is the file,", basepath)
@@ -168,8 +172,13 @@ def run(basepath):
     ax.xaxis.grid(color='gray', linestyle='dashed')
     ax.set_ylabel("y")
     ax.set_xlabel("x")
-
+        
     picker = NodePicker(ax=ax, basepath=basepath)
+
+    ax_save = plt.axes([0.9, .9, 0.1, 0.075])
+    b_save = Button(ax_save, 'Save', color="#1f8e4f")
+    b_save.on_clicked(picker.format_and_save())
+
     plt.show(block=True)
 
 
