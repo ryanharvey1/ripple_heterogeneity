@@ -145,12 +145,12 @@ class NodePicker:
         ] = position_df.projected_y_position.values
 
         filename = glob.glob(os.path.join(self.basepath, "*.animal.behavior.mat"))[0]
-        data = loadmat(filename)
+        data = loadmat(filename,simplify_cells=True)
 
-        data["behavior"]["position"][0][0]["linearized"][0][0] = [behave_df.linear_position.values]
-        data["behavior"]["states"][0][0][0] = behave_df.track_segment_id.values
-        data["behavior"]["position"][0][0]["projected_x"][0][0] = [behave_df.projected_x_position.values]
-        data["behavior"]["position"][0][0]["projected_y"][0][0] = [behave_df.projected_y_position.values]
+        data["behavior"]["position"]["linearized"] = behave_df.linear_position.values
+        data["behavior"]["states"] = behave_df.track_segment_id.values
+        data["behavior"]["position"]["projected_x"] = behave_df.projected_x_position.values
+        data["behavior"]["position"]["projected_y"] = behave_df.projected_y_position.values
 
         savemat(filename, data)
 
