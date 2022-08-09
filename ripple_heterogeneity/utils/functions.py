@@ -1229,3 +1229,12 @@ def overlap_intersect(epoch,interval,return_indices=True):
     if return_indices:
         return out, indices
     return out
+
+def get_velocity(position, time=None):
+    if time is None:
+        time = np.arange(position.shape[0])
+    return np.gradient(position, time, axis=0)
+
+def get_speed(position, time=None):
+    velocity = get_velocity(position, time=time)
+    return np.sqrt(np.sum(velocity ** 2, axis=1))
