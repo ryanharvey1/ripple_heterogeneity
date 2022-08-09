@@ -6,6 +6,7 @@ import numpy as np
 import glob
 import nelpy as nel
 import warnings
+from ripple_heterogeneity.utils import functions
 from warnings import simplefilter
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
@@ -659,64 +660,42 @@ def load_animal_behavior(basepath):
         warnings.warn("file does not exist")
         return 
 
-    def extract_epochs(data):
-        startTime = [ep['startTime'][0][0][0][0] for ep in data['behavior']['epochs'][0][0][0] if len(ep[0]) > 0]
-        stopTime = [ep['stopTime'][0][0][0][0] for ep in data['behavior']['epochs'][0][0][0] if len(ep[0]) > 0]
-        name = [ep['name'][0][0][0] for ep in data['behavior']['epochs'][0][0][0] if len(ep[0]) > 0]
-
-        epochs = pd.DataFrame()
-        epochs['name'] = name
-        epochs['startTime'] = startTime
-        epochs['stopTime'] = stopTime
-        return epochs
-
-    # load cell_metrics file
-    data = sio.loadmat(filename)
-
-    trials = data['behavior']['trials'][0][0]
-    
-    epochs = extract_epochs(data)
+    data = []
+    data = sio.loadmat(filename, simplify_cells=True)
 
     df = pd.DataFrame()
-    try:
-        df['time'] = data['behavior']['timestamps'][0][0][0]
-    except:
-        warnings.warn("no tracking data")
-        return pd.DataFrame()
-        
-    try:
-        df['x'] = data['behavior']['position'][0][0]['x'][0][0][0]
-    except:
-        df['x'] = np.nan
-    try:
-        df['y'] = data['behavior']['position'][0][0]['y'][0][0][0]
-    except:
-        df['y'] = np.nan
-    try:
-        df['z'] = data['behavior']['position'][0][0]['z'][0][0][0]
-    except:
-        df['z'] = np.nan
-    try:
-        df['linearized'] = data['behavior']['position'][0][0]['linearized'][0][0][0]
-    except:
-        df['linearized'] = np.nan
-    try:
-        df['speed'] = data['behavior']['speed'][0][0][0]
-    except:
-        df['speed'] = np.nan
-    try:
-        df['acceleration'] = data['behavior']['acceleration'][0][0][0]
-    except:
-        df['acceleration'] = np.nan
+    # add timestamps first which provide the correct shape of df
+    # here, I'm naming them time, but this should be depreciated
+    df['time'] = data['behavior']['timestamps']
 
+    # add all other position coordinates to df (will add everything it can within position)
+    for key in data['behavior']["position"].keys():
+        try:
+            df[key] = data['behavior']["position"][key]
+        except:
+            pass
+    # add other fields from behavior to df (acceleration,speed,states)
+    for key in data['behavior'].keys():
+        try:
+            df[key] = data['behavior'][key]
+        except:
+            pass
+    # add speed and acceleration 
+    if "speed" not in df.columns:
+        df["speed"] = functions.get_speed(df[["x","y"]].values, df.time.values)
+    if "acceleration" not in df.columns:
+        df.loc[1:,"acceleration"] = np.diff(df["speed"])
+
+    trials = data['behavior']['trials']
     for t in range(trials.shape[0]):
         idx = (df.time >= trials[t,0]) & (df.time <= trials[t,1])
         df.loc[idx,'trials'] = t
 
+    epochs = load_epoch(basepath)
     for t in range(epochs.shape[0]):
         idx = (df.time >= epochs.startTime.iloc[t]) & (df.time <= epochs.stopTime.iloc[t])
         df.loc[idx,'epochs'] = epochs.name.iloc[t] 
-
+        df.loc[idx,'environment'] = epochs.environment.iloc[t] 
     return df
 
 def load_epoch(basepath):
