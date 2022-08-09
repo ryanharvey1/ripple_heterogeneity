@@ -1,7 +1,7 @@
 import glob
 import os
 import sys
-from ripple_heterogeneity.utils import loading
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from track_linearization import make_track_graph
@@ -14,9 +14,12 @@ plt.style.use("dark_background")
 """
 TODO: 
 -fix bugs in removing nodes and edges
--make behavior loader local to this file
 -option to linearize epoch by epoch (different mazes)
+-automatically determine get_linearized_position params "sensor_std_dev"
+    for instances where data is not in cm
+-add option to input your own nodes and edges
 """
+
 
 class NodePicker:
     """Interactive creation of track graph by looking at video frames."""
@@ -128,7 +131,7 @@ class NodePicker:
 
     def format_and_save(self):
 
-        behave_df = loading.load_animal_behavior(self.basepath)
+        behave_df = load_animal_behavior(self.basepath)
         na_idx = np.isnan(behave_df.x)
 
         print("running hmm...")
@@ -172,19 +175,32 @@ class NodePicker:
         plt.close()
 
 
+def load_animal_behavior(basepath):
+    filename = glob.glob(os.path.join(basepath, "*.animal.behavior.mat"))[0]
+    data = loadmat(filename, simplify_cells=True)
+    df = pd.DataFrame()
+    df["time"] = data["behavior"]["timestamps"]
+    for key in data["behavior"]["position"].keys():
+        try:
+            df[key] = data["behavior"]["position"][key]
+        except:
+            pass
+    return df
+
+
 def run(basepath):
     print("here is the file,", basepath)
     fig, ax = plt.subplots(figsize=(5, 5))
 
-    behave_df = loading.load_animal_behavior(basepath)
+    behave_df = load_animal_behavior(basepath)
 
     ax.scatter(behave_df.x, behave_df.y, color="white", s=0.5, alpha=0.5)
     ax.axis("equal")
     ax.set_axisbelow(True)
     ax.yaxis.grid(color="gray", linestyle="dashed")
     ax.xaxis.grid(color="gray", linestyle="dashed")
-    ax.set_ylabel("y")
-    ax.set_xlabel("x")
+    ax.set_ylabel("y (cm)")
+    ax.set_xlabel("x (cm)")
 
     picker = NodePicker(ax=ax, basepath=basepath)
 
