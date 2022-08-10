@@ -163,12 +163,8 @@ class NodePicker:
 
         data["behavior"]["position"]["linearized"] = behave_df.linear_position.values
         data["behavior"]["states"] = behave_df.track_segment_id.values
-        data["behavior"]["position"][
-            "projected_x"
-        ] = behave_df.projected_x_position.values
-        data["behavior"]["position"][
-            "projected_y"
-        ] = behave_df.projected_y_position.values
+        data["behavior"]["position"]["projected_x"] = behave_df.projected_x_position.values
+        data["behavior"]["position"]["projected_y"] = behave_df.projected_y_position.values
 
         savemat(filename, data)
 
