@@ -1,5 +1,6 @@
 import glob
 import os
+import pickle
 import sys
 import pandas as pd
 import numpy as np
@@ -171,8 +172,15 @@ class NodePicker:
 
         savemat(filename, data)
 
+        self.save_nodes_edges()
         self.disconnect()
         plt.close()
+
+    def save_nodes_edges(self):
+        results = {"node_positions": self.node_positions, "edges": self.edges}
+        save_file = os.path.join(self.basepath, "linearization_nodes_edges.pkl")
+        with open(save_file, "wb") as f:
+            pickle.dump(results, f)
 
 
 def load_animal_behavior(basepath):
