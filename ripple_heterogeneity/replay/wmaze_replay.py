@@ -1,4 +1,6 @@
 import copy
+import glob
+import pickle
 from ripple_heterogeneity.utils import (
     functions,
     loading,
@@ -11,7 +13,6 @@ import numpy as np
 import nelpy as nel
 import os
 from scipy import stats
-from scipy.ndimage import gaussian_filter1d
 import warnings
 from nelpy.analysis import replay
 
@@ -104,61 +105,6 @@ def flip_pos_within_epoch(pos, dir_epoch):
     pos._data = np.expand_dims(pos_df.x.values, axis=0)
 
     return pos
-
-
-def handle_canidate_events(
-    basepath,
-    ripples,
-    expand_canidate_by_mua,
-    min_rip_dur,
-    session_bounds,
-    manipulation_epochs,
-    restrict_manipulation,
-    extend_ripples_dur,
-):
-    """
-    This function takes a list of ripple events and expands them by MUA events
-        if expand_canidate_by_mua is True. It also removes events that are too short.
-    Input:
-        basepath: path to the folder containing the mua events
-        ripples: pd.DataFrame of ripple events
-        expand_canidate_by_mua: boolean, if True, will expand ripple events by MUA events
-        min_rip_dur: minimum duration of ripple events to keep
-    Output:
-        ripples: pd.DataFrame of ripple events
-        ripple_epochs: nel.Epochs object of ripple events
-    """
-    if expand_canidate_by_mua:
-        # put ripples into epoch array
-        ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
-        # get mua
-        mua_df = loading.load_mua_events(basepath)
-        # add mua to epoch array
-        mua_epoch = nel.EpochArray(np.array([mua_df.start, mua_df.stop]).T)
-        # find overlap between ripple and mua epochs
-        # also expand ripples by 50ms to allow more overlap
-        ripple_epochs, idx = functions.overlap_intersect(
-            mua_epoch, ripple_epochs.expand(extend_ripples_dur)
-        )
-        ripples = ripples.loc[idx]
-    else:
-        # restrict to events at least xx s long if not using mua
-        ripples = ripples[ripples.duration >= min_rip_dur]
-
-        ripple_epochs = nel.EpochArray(
-            np.array([ripples.start, ripples.stop]).T
-        ).expand(extend_ripples_dur)
-    if restrict_manipulation:
-        ripple_epochs = ripple_epochs[~manipulation_epochs]
-
-    # reassign ripple epochs to ripples dataframe
-    ripples = pd.DataFrame()
-    ripples["start"] = ripple_epochs.starts
-    ripples["stop"] = ripple_epochs.stops
-    ripples["duration"] = ripples.stop - ripples.start
-
-    return ripples, ripple_epochs
-
 
 def get_tuning_curves(
     pos, st_all, dir_epoch, speed_thres, ds_50ms, s_binsize, tuning_curve_sigma
@@ -412,6 +358,9 @@ def run(
     epoch_df = loading.load_epoch(basepath)
     epoch_df = epoch_df[epoch_df.environment == restrict_ripples_epoch]
 
+    if epoch_df.shape[0] == 0:
+        return None
+        
     # get session bounds to provide support
     session_bounds = nel.EpochArray(
         [epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[-1]]
@@ -605,4 +554,58 @@ def run(
 
 
 def load_results(save_path):
-    pass
+    """
+    Load results from a previous run.
+    """
+
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+
+    df = pd.DataFrame()
+
+    for session in sessions:
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+        if results is None:
+            continue
+
+        # locate basepath
+        for key_ in results.keys():
+            try:
+                basepath = results[key_]["session"]
+                break
+            except:
+                continue
+
+        for key_ in results.keys():
+            try:
+                results[key_]["sta_placecells"]
+            except:
+                continue
+
+            # calc and add ripple participation
+            st = results[key_]["sta_placecells"]
+            bst = results[key_]["bst_placecells"]
+            if len(bst.support.starts) == 0:
+                results[key_]["df"]["pop_partic"] = 0
+            else:
+                particip_mat = functions.get_participation(
+                    st.data, bst.support.starts, bst.support.stops
+                )
+                results[key_]["df"]["pop_partic"] = particip_mat.mean(axis=0)
+
+            # add behavioral decoding quality
+            results[key_]["df"]["decoding_r2"] = float(results[key_]["decoding_r2"])
+            results[key_]["df"]["decoding_r2_pval"] = float(
+                results[key_]["decoding_r2_pval"]
+            )
+            results[key_]["df"]["decoding_median_error"] = float(
+                results[key_]["decoding_median_error"]
+            )
+            results[key_]["df"]["total_units"] = float(results[key_]["total_units"])
+            results[key_]["df"]["direction"] = key_
+
+
+            results[key_]["df"]["basepath"] = basepath
+            df = pd.concat([df, results[key_]["df"]], ignore_index=True)
+
+    return df
