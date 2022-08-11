@@ -30,6 +30,9 @@ def plot_all_replay(
     tc = tuningcurve
     tc_placecells = tc_placecells
 
+    bst.unit_ids = tc.unit_ids
+    bst.n_epochs = bst.n_intervals
+
     no = tc_placecells.get_peak_firing_order_ids()
     st.reorder_units_by_ids(no, inplace=True)
 
