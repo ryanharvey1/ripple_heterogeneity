@@ -791,7 +791,8 @@ def load_spikes(basepath,
                 bad_unit=False, # false for not loading bad cells
                 brain_state=[], # restrict spikes to brainstate
                 other_metric=None, # restrict spikes to other_metric
-                other_metric_value=None # restrict spikes to other_metric_value
+                other_metric_value=None, # restrict spikes to other_metric_value
+                support=None # provide time support
                 ):
     """ 
     Load specific cells' spike times
@@ -848,9 +849,15 @@ def load_spikes(basepath,
 
     # get spike train array
     try:
-        st = nel.SpikeTrainArray(timestamps=st, fs=fs_dat)
+        if support is not None:
+            st = nel.SpikeTrainArray(timestamps=st, fs=fs_dat, support=support)
+        else:
+            st = nel.SpikeTrainArray(timestamps=st, fs=fs_dat)
     except: # if only single cell... should prob just skip session
-        st = nel.SpikeTrainArray(timestamps=st[0], fs=fs_dat)
+        if support is not None:
+            st = nel.SpikeTrainArray(timestamps=st[0], fs=fs_dat, support=support)
+        else:
+            st = nel.SpikeTrainArray(timestamps=st[0], fs=fs_dat)
 
     if len(brain_state) > 0:
         # get brain states        
