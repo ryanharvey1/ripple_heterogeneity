@@ -441,9 +441,17 @@ def run(
     ripples = pd.concat([ripples, manipulation_df], ignore_index=True)
     # sort by start time
     ripples.sort_values(by=['start'], inplace=True)
+
     ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
 
+    # Merge intervals that are close or overlapping
+    ripple_epochs = ripple_epochs.merge()
+    ripples = ripples[np.in1d(ripples.start.values, ripple_epochs.starts)]
 
+    # remove ripples that are too short
+    ripples = ripples[ripples.duration > min_rip_dur]
+    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+    
     results = {}
     for dir_epoch_label in trajectories.keys():
         results[dir_epoch_label] = {}
@@ -494,9 +502,6 @@ def run(
         # get ready to decode replay
         # bin data for replay (20ms default)
         bst_placecells = sta_placecells.bin(ds=replay_binsize)[ripple_epochs]
-        # bug patch, adding unit_ids and n_intervals for nel.decoding.decode1D
-        bst_placecells.unit_ids = tc.unit_ids
-        bst_placecells.n_epochs = bst_placecells.n_intervals
 
         # count units per event
         n_active = [bst.n_active for bst in bst_placecells]
@@ -513,6 +518,10 @@ def run(
         n_active = n_active[idx]
         inactive_bin_prop = inactive_bin_prop[idx]
         current_ripples = ripples[idx]
+
+        # bug patch, adding unit_ids and n_intervals for nel.decoding.decode1D
+        bst_placecells.unit_ids = tc.unit_ids
+        bst_placecells.n_epochs = bst_placecells.n_intervals
 
         # decode each ripple event
         posteriors, bdries, mode_pth, mean_pth = nel.decoding.decode1D(
