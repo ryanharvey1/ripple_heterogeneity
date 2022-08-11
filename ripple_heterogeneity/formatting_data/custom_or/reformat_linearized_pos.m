@@ -23,6 +23,11 @@ function run(basepath)
 basename = basenameFromBasepath(basepath);
 load(fullfile(basepath,[basename,'.animal.behavior.mat']))
 
+states = unique(behavior.states);
+states = states(~isnan(states));
+if length(states) == 3
+   return 
+end
 % drop states 2 and 4 down to the level of the other two arms (1&3) so 
 % right and left will be contingous
 idx = behavior.states == 2 | behavior.states == 4;
@@ -48,7 +53,7 @@ load(fullfile(basepath,[basename,'.session.mat']))
 start = [];
 stop = [];
 for ep = 1:length(session.epochs)
-    if ~contains(session.epochs{ep}.environment,'sleep')
+    if contains(session.epochs{ep}.environment,'wmaze')
         start = [start,session.epochs{ep}.startTime];
         stop = [stop,session.epochs{ep}.stopTime];
     break
