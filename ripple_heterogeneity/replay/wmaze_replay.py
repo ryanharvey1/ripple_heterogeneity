@@ -493,7 +493,10 @@ def run(
 
         # get ready to decode replay
         # bin data for replay (20ms default)
-        bst_placecells = sta_placecells[ripple_epochs].bin(ds=replay_binsize)
+        bst_placecells = sta_placecells.bin(ds=replay_binsize)[ripple_epochs]
+        # bug patch, adding unit_ids and n_intervals for nel.decoding.decode1D
+        bst_placecells.unit_ids = tc.unit_ids
+        bst_placecells.n_epochs = bst_placecells.n_intervals
 
         # count units per event
         n_active = [bst.n_active for bst in bst_placecells]
