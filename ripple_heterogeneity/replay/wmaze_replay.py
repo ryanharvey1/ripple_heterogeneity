@@ -334,6 +334,54 @@ def get_features(bst_placecells, posteriors, bdries, mode_pth, pos, dp=3):
     return traj_dist, traj_speed, traj_step, replay_type, position
 
 
+def handle_replay_canidates(basepath, beh_epochs, min_rip_dur):
+    # find canidate replay events
+    ripples = loading.load_ripples_events(basepath)
+    manipulation_df = loading.load_manipulation(
+        basepath, struct_name="optoStim", return_epoch_array=False
+    )
+
+    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+    manip_epochs = nel.EpochArray(
+        np.array([manipulation_df.start, manipulation_df.stop]).T
+    )
+
+    # remove ripples that are in the manipulation epochs
+    _, idx_overlap_manip = functions.overlap_intersect(
+        manip_epochs,
+        ripple_epochs,
+    )
+    ripples = ripples.drop(idx_overlap_manip).reset_index(drop=True)
+
+    # keep ripples that are inside the behavior epochs
+    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+    ripples = ripples[
+        np.in1d(ripples.start.values, ripple_epochs[beh_epochs].starts)
+    ].reset_index(drop=True)
+
+    # combine the ripples and manipulation_df epochs
+    ripples = pd.concat([ripples, manipulation_df], ignore_index=True)
+    # sort by start time
+    ripples.sort_values(by=["start"], inplace=True)
+    ripples = ripples.reset_index(drop=True)
+
+    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+
+    # remove ripples that are too short
+    ripples = ripples[ripples.duration > min_rip_dur].reset_index(drop=True)
+    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+
+    # Merge intervals that are close or overlapping
+    ripple_epochs = ripple_epochs.merge()
+
+    _, x_ind, _ = np.intersect1d(
+        ripples.start.values, ripple_epochs.starts, return_indices=True
+    )
+    ripples = ripples.loc[x_ind].reset_index(drop=True)
+
+    return ripples, ripple_epochs
+
+
 def run(
     basepath,
     max_distance_from_well=20,  # in cm, max distance from well to consider a well traversal
@@ -357,7 +405,7 @@ def run(
     extend_ripples_dur=0,  # extend ripples by this amount (in sec)
     putativeCellType="Pyr",  # cell type to use for putative cells
     brainRegion="CA1",  # brain region to use
-    restrict_ripples_epoch="wmaze"
+    restrict_ripples_epoch="wmaze",
 ):
 
     # load session epoch data
@@ -418,40 +466,8 @@ def run(
     if st_all.n_active < 5:
         return
 
-    # find canidate replay events
-    ripples = loading.load_ripples_events(basepath)
-    manipulation_df = loading.load_manipulation(
-        basepath, struct_name="optoStim", return_epoch_array=False
-    )
+    ripples, ripple_epochs = handle_replay_canidates(basepath, beh_epochs, min_rip_dur)
 
-    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
-    manip_epochs = nel.EpochArray(np.array([manipulation_df.start, manipulation_df.stop]).T)
-
-    # remove ripples that are in the manipulation epochs
-    _, idx_overlap_manip = functions.overlap_intersect(
-        manip_epochs,ripple_epochs,
-    )
-    ripples = ripples.drop(idx_overlap_manip)
-
-    # keep ripples that are inside the behavior epochs
-    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
-    ripples = ripples[np.in1d(ripples.start.values, ripple_epochs[beh_epochs].starts)]
-
-    # combine the ripples and manipulation_df epochs
-    ripples = pd.concat([ripples, manipulation_df], ignore_index=True)
-    # sort by start time
-    ripples.sort_values(by=['start'], inplace=True)
-
-    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
-
-    # Merge intervals that are close or overlapping
-    ripple_epochs = ripple_epochs.merge()
-    ripples = ripples[np.in1d(ripples.start.values, ripple_epochs.starts)]
-
-    # remove ripples that are too short
-    ripples = ripples[ripples.duration > min_rip_dur]
-    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
-    
     results = {}
     for dir_epoch_label in trajectories.keys():
         results[dir_epoch_label] = {}
