@@ -357,10 +357,13 @@ def run(
     extend_ripples_dur=0,  # extend ripples by this amount (in sec)
     putativeCellType="Pyr",  # cell type to use for putative cells
     brainRegion="CA1",  # brain region to use
+    restrict_ripples_epoch="wmaze"
 ):
 
     # load session epoch data
     epoch_df = loading.load_epoch(basepath)
+    epoch_df = epoch_df[epoch_df.environment == restrict_ripples_epoch]
+
     # get session bounds to provide support
     session_bounds = nel.EpochArray(
         [epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[-1]]
@@ -415,26 +418,31 @@ def run(
     if st_all.n_active < 5:
         return
 
-    # here we will only take ripples with high mua,
-    #   plus the bounds of the candidate events will be defined by mua
+    # find canidate replay events
     ripples = loading.load_ripples_events(basepath)
-    if add_opto_stim_induced_ripples:
-        manipulation_df = loading.load_manipulation(
-            basepath, struct_name="optoStim", return_epoch_array=False
-        )
-        ripples = pd.concat([ripples, manipulation_df], ignore_index=True)
-
-    # in this use case, will restict to just long ripples
-    ripples, ripple_epochs = handle_canidate_events(
-        basepath,
-        ripples,
-        expand_canidate_by_mua,
-        min_rip_dur,
-        session_bounds,
-        None,
-        restrict_manipulation,
-        extend_ripples_dur=extend_ripples_dur,
+    manipulation_df = loading.load_manipulation(
+        basepath, struct_name="optoStim", return_epoch_array=False
     )
+
+    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+    manip_epochs = nel.EpochArray(np.array([manipulation_df.start, manipulation_df.stop]).T)
+
+    # remove ripples that are in the manipulation epochs
+    _, idx_overlap_manip = functions.overlap_intersect(
+        manip_epochs,ripple_epochs,
+    )
+    ripples = ripples.drop(idx_overlap_manip)
+
+    # keep ripples that are inside the behavior epochs
+    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+    ripples = ripples[np.in1d(ripples.start.values, ripple_epochs[beh_epochs].starts)]
+
+    # combine the ripples and manipulation_df epochs
+    ripples = pd.concat([ripples, manipulation_df], ignore_index=True)
+    # sort by start time
+    ripples.sort_values(by=['start'], inplace=True)
+    ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+
 
     results = {}
     for dir_epoch_label in trajectories.keys():
