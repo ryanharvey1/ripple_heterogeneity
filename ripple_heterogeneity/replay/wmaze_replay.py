@@ -167,7 +167,9 @@ def get_tuning_curves(
     speed1 = nel.utils.ddt_asa(pos[dir_epoch], smooth=True, sigma=0.1, norm=True)
 
     # find epochs where the animal ran > 4cm/sec
-    run_epochs = nel.utils.get_run_epochs(speed1, v1=speed_thres, v2=speed_thres)
+    run_epochs = nel.utils.get_run_epochs(
+        speed1, v1=speed_thres, v2=speed_thres
+    ).merge()
 
     # restrict spike trains to those epochs during which the animal was running
     st_run = st_all[dir_epoch][run_epochs]
@@ -564,3 +566,7 @@ def run(
         results[dir_epoch_label]["total_units"] = total_units
 
     return results
+
+
+def load_results(save_path):
+    pass
