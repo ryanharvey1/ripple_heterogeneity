@@ -106,11 +106,12 @@ def flip_pos_within_epoch(pos, dir_epoch):
 
     return pos
 
+
 def get_tuning_curves(
     pos, st_all, dir_epoch, speed_thres, ds_50ms, s_binsize, tuning_curve_sigma
 ):
     # compute and smooth speed
-    speed1 = nel.utils.ddt_asa(pos[dir_epoch], smooth=True, sigma=0.1, norm=True)
+    speed1 = nel.utils.ddt_asa(pos, smooth=True, sigma=0.1, norm=True)
 
     # find epochs where the animal ran > 4cm/sec
     run_epochs = nel.utils.get_run_epochs(
@@ -286,6 +287,13 @@ def handle_replay_canidates(basepath, beh_epochs, min_rip_dur):
     manipulation_df = loading.load_manipulation(
         basepath, struct_name="optoStim", return_epoch_array=False
     )
+    closed_loop_idx = manipulation_df.ev_label == "closed_loop"
+    manipulation_df.loc[closed_loop_idx, "start"] = (
+        manipulation_df[closed_loop_idx].start.values - 0.1
+    )
+    manipulation_df.loc[closed_loop_idx, "duration"] = (
+        manipulation_df[closed_loop_idx].duration.values + 0.1
+    )
 
     ripple_epochs = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
     manip_epochs = nel.EpochArray(
@@ -360,7 +368,7 @@ def run(
 
     if epoch_df.shape[0] == 0:
         return None
-        
+
     # get session bounds to provide support
     session_bounds = nel.EpochArray(
         [epoch_df.startTime.iloc[0], epoch_df.stopTime.iloc[-1]]
@@ -603,7 +611,6 @@ def load_results(save_path):
             )
             results[key_]["df"]["total_units"] = float(results[key_]["total_units"])
             results[key_]["df"]["direction"] = key_
-
 
             results[key_]["df"]["basepath"] = basepath
             df = pd.concat([df, results[key_]["df"]], ignore_index=True)
