@@ -227,7 +227,9 @@ def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False):
     x = np.arange(0, spks.shape[0])
     c = np.array(list(itertools.combinations(x, 2)))
     # prepare a pandas dataframe to receive the data
-    times = np.arange(0, binsize * (nbins + 1), binsize) - (nbins * binsize) / 2
+    # times = np.arange(0, binsize * (nbins + 1), binsize) - (nbins * binsize) / 2
+    times = np.linspace(-(nbins*binsize)/2,(nbins*binsize)/2,nbins+1)
+
     crosscorrs = pd.DataFrame(index=times, columns=np.arange(len(c)))
 
     # Now we can iterate over spikes
