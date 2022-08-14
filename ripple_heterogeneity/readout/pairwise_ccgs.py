@@ -45,6 +45,8 @@ def run(
     )
 
     label_df = pd.DataFrame()
+    label_df["deepSuperficial_ref"] = cm.iloc[pairs[:, 0]].deepSuperficial.values
+    label_df["deepSuperficial_target"] = cm.iloc[pairs[:, 1]].deepSuperficial.values
     label_df["ref_UID"] = cm.iloc[pairs[:, 0]].UID.values
     label_df["target_UID"] = cm.iloc[pairs[:, 1]].UID.values
     label_df["ref_region"] = cm.iloc[pairs[:, 0]].brainRegion.values
