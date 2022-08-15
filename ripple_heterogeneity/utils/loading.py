@@ -687,10 +687,13 @@ def load_animal_behavior(basepath):
         df.loc[1:,"acceleration"] = np.diff(df["speed"])
 
     trials = data['behavior']['trials']
-    for t in range(trials.shape[0]):
-        idx = (df.time >= trials[t,0]) & (df.time <= trials[t,1])
-        df.loc[idx,'trials'] = t
-
+    try:
+        for t in range(trials.shape[0]):
+            idx = (df.time >= trials[t,0]) & (df.time <= trials[t,1])
+            df.loc[idx,'trials'] = t
+    except:
+        pass
+    
     epochs = load_epoch(basepath)
     for t in range(epochs.shape[0]):
         idx = (df.time >= epochs.startTime.iloc[t]) & (df.time <= epochs.stopTime.iloc[t])
