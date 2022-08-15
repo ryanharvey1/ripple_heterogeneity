@@ -195,7 +195,7 @@ def compute_AutoCorrs(spks, binsize=0.001, nbins=100):
     autocorrs.loc[0] = 0.0
     return autocorrs
 
-def pairwise_corr(X,method='pearson'):
+def pairwise_corr(X,method='pearson',pairs=None):
     """
     Compute pairwise correlations between all rows of matrix
     Input: 
@@ -205,11 +205,13 @@ def pairwise_corr(X,method='pearson'):
         pval: numpy array pval
         c: numpy array ref and target from which the correlation was computed
     """
-    x = np.arange(0, X.shape[0])
-    c = np.array(list(itertools.combinations(x, 2)))
+    if pairs is None:
+        x = np.arange(0, X.shape[0])
+        pairs = np.array(list(itertools.combinations(x, 2)))
+
     rho = []
     pval = []
-    for i, s in enumerate(c):
+    for i, s in enumerate(pairs):
         if method == 'pearson':
             rho_, pval_ = stats.pearsonr(X[s[0], :], X[s[1], :])
         elif method == 'spearman':
@@ -220,25 +222,38 @@ def pairwise_corr(X,method='pearson'):
             raise ValueError('method must be pearson, spearman or kendall')
         rho.append(rho_)
         pval.append(pval_)
-    return rho, pval, c
+    return rho, pval, pairs
 
-def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False):
+def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False, pairs=None):
+    """
+    Compute pairwise time-lagged correlations between cells
+    Input:
+        spks: list of numpy arrays of shape (n,)
+        binsize: float, size of bins in seconds
+        nbins: int, number of bins
+        return_index: bool, return the index of the cells used for the correlation
+        pairs: list of pairs of cells to compute the correlation
+    Output:
+        crosscorrs: pandas dataframe of shape (t,n pairs)
+    
+    """
     # Get unique combo without repeats
-    x = np.arange(0, spks.shape[0])
-    c = np.array(list(itertools.combinations(x, 2)))
+    if pairs is None:
+        x = np.arange(0, spks.shape[0])
+        pairs = np.array(list(itertools.combinations(x, 2)))
+
     # prepare a pandas dataframe to receive the data
-    # times = np.arange(0, binsize * (nbins + 1), binsize) - (nbins * binsize) / 2
     times = np.linspace(-(nbins*binsize)/2,(nbins*binsize)/2,nbins+1)
 
-    crosscorrs = pd.DataFrame(index=times, columns=np.arange(len(c)))
+    crosscorrs = pd.DataFrame(index=times, columns=np.arange(len(pairs)))
 
     # Now we can iterate over spikes
-    for i, s in enumerate(c):
+    for i, s in enumerate(pairs):
         # Calling the crossCorr function
         crosscorrs[i] = crossCorr(spks[s[0]], spks[s[1]], binsize, nbins)
 
     if return_index:
-        return crosscorrs, c
+        return crosscorrs, pairs
     else:
         return crosscorrs
 
