@@ -112,9 +112,11 @@ def run(
     wake_epochs = nel.EpochArray(state_dict["WAKEstate"])
 
     position_df = loading.load_animal_behavior(basepath)
+    if position_df.x.isna().all():
+        return None
     bad_idx = np.isnan(position_df.x)
     position_df = position_df[~bad_idx]
-
+    
     pos = nel.AnalogSignalArray(
         data=np.array(position_df[["x", "y"]].values.T),
         timestamps=position_df.time.values,
