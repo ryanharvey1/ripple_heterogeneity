@@ -25,7 +25,7 @@ class SpatialMap(object):
         self.speed = nel.utils.ddt_asa(self.pos, smooth=True, sigma=0.1, norm=True)
         self.run_epochs = nel.utils.get_run_epochs(
             self.speed, v1=self.speed_thres, v2=self.speed_thres
-        )
+        ).merge()
 
         if dim == 2:
             self.tc, self.st_run, self.bst_run = self.map_2d()
@@ -68,7 +68,7 @@ class SpatialMap(object):
 
         # bin:
         bst_run = st_run.bin(ds=self.ds_bst)
-        
+
         ext_xmin, ext_xmax = (
             np.floor(self.pos[:, 0].min() / 10) * 10,
             np.ceil(self.pos[:, 0].max() / 10) * 10,
