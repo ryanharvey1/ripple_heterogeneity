@@ -2,7 +2,8 @@
 
 % df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation.csv');
 % df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation_v2_6_10_22.csv');
-df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation_v2_7_15_22.csv');
+% df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation_v2_7_15_22.csv');
+df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\deep_sup_dist_estimation_v2_8_15_22.csv');
 
 basepaths = unique(df.basepath);
 for i = 1:length(unique(df.basepath))
