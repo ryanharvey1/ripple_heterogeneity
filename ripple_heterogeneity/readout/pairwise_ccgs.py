@@ -111,20 +111,6 @@ def run(
     nrem_epochs = nel.EpochArray(state_dict["NREMstate"])
     wake_epochs = nel.EpochArray(state_dict["WAKEstate"])
 
-    # check if there is enough data to do the analysis
-    try:
-        for ep, env_label, ep_label in zip(
-            epochs, epoch_df.environment.values, ["pre", "task", "post"]
-        ):
-            if (ep_label == "pre") | (ep_label == "post"):
-                if st[ripples][nrem_epochs][ep].isempty:
-                    return
-            else:
-                if st[ripples][wake_epochs][ep].isempty:
-                    return
-    except:
-        return
-
     position_df = loading.load_animal_behavior(basepath)
     bad_idx = np.isnan(position_df.x)
     position_df = position_df[~bad_idx]
@@ -135,6 +121,22 @@ def run(
         step=position_df.sr.iloc[0],
         fs=position_df.sr.iloc[0],
     )
+
+    # check if there is enough data to do the analysis
+    try:
+        for ep, env_label, ep_label in zip(
+            epochs, epoch_df.environment.values, ["pre", "task", "post"]
+        ):
+        # we need spiking data for each epoch within nrem and wake
+            if (ep_label == "pre") | (ep_label == "post"):
+                if st[ripples][nrem_epochs][ep].isempty:
+                    return
+            else:
+                # for wake, we also need position data
+                if st[ripples][wake_epochs][ep].isempty | pos[epochs[1]].isempty:
+                    return
+    except:
+        return
 
     # locate pairs of brain regions to include in the analysis
     pairs = find_valid_pairs(st, cm, allowed_pairs)
