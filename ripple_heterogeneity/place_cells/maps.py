@@ -28,9 +28,9 @@ class SpatialMap(object):
         )
 
         if dim == 2:
-            self.map_2d()
+            self.tc, self.st_run, self.bst_run = self.map_2d()
         elif dim == 1:
-            self.map_1d()
+            self.tc, self.st_run, self.bst_run = self.map_1d()
         else:
             raise ValueError("dim must be 1 or 2")
 
@@ -66,27 +66,31 @@ class SpatialMap(object):
         # restrict spike trains to those epochs during which the animal was running
         st_run = self.st[self.run_epochs]
 
-        # smooth and re-bin:
+        # bin:
         bst_run = st_run.bin(ds=self.ds_bst)
-
-        x_max = np.ceil(np.nanmax(self.pos.data[0,:]))
-        x_min = np.floor(np.nanmin(self.pos.data[0,:]))
-        y_max = np.ceil(np.nanmax(self.pos.data[1,:]))
-        y_min = np.floor(np.nanmin(self.pos.data[1,:]))
-
-        n_bins = int((x_max - x_min) / self.s_binsize)
+        
+        ext_xmin, ext_xmax = (
+            np.floor(self.pos[:, 0].min() / 10) * 10,
+            np.ceil(self.pos[:, 0].max() / 10) * 10,
+        )
+        ext_ymin, ext_ymax = (
+            np.floor(self.pos[:, 1].min() / 10) * 10,
+            np.ceil(self.pos[:, 1].max() / 10) * 10,
+        )
+        ext_nx = int((ext_xmax - ext_xmin) / self.s_binsize)
+        ext_ny = int((ext_ymax - ext_ymin) / self.s_binsize)
 
         tc = nel.TuningCurve2D(
             bst=bst_run,
             extern=self.pos[self.run_epochs],
-            n_extern=n_bins,
-            extmin=x_min,
-            extmax=x_max,
-            ext_xmin=x_min,
-            ext_ymin=y_min,
-            ext_xmax=x_max,
-            ext_ymax=y_max,
+            ext_xmin=ext_xmin,
+            ext_ymin=ext_ymin,
+            ext_xmax=ext_xmax,
+            ext_ymax=ext_ymax,
+            ext_ny=ext_ny,
+            ext_nx=ext_nx,
             sigma=self.tuning_curve_sigma,
-            min_duration=0,
+            min_duration=0.1,
+            minbgrate=0,
         )
         return tc, st_run, bst_run
