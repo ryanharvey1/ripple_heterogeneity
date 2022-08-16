@@ -256,6 +256,36 @@ def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False, pair
         return crosscorrs, pairs
     else:
         return crosscorrs
+        
+def pairwise_spatial_corr(X, return_index=False, pairs=None):
+    """
+    Compute pairwise spatial correlations between cells
+    Input:
+        X: numpy array of shape (n_cells, n_space, n_space)
+        return_index: bool, return the index of the cells used for the correlation
+        pairs: list of pairs of cells to compute the correlation
+    Output:
+        spatial_corr: the pearson correlation between the cells in pairs
+        pairs: list of pairs of cells used for the correlation
+    
+    """
+    # Get unique combo without repeats
+    if pairs is None:
+        x = np.arange(0, X.shape[0])
+        pairs = np.array(list(combinations(x, 2)))
+
+    X[np.isnan(X)] = 0
+
+    spatial_corr = []
+    # Now we can iterate over spikes
+    for i, s in enumerate(pairs):
+        # Calling the crossCorr function
+        spatial_corr.append(np.corrcoef(X[s[0],:,:].flatten(),X[s[1],:,:].flatten())[0,1])
+
+    if return_index:
+        return np.array(spatial_corr), pairs
+    else:
+        return np.array(spatial_corr)
 
 def compute_psth(spikes, event, bin_width=0.002, n_bins=100):
 
