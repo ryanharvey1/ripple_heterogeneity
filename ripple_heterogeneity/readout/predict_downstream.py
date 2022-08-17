@@ -58,6 +58,7 @@ def run(
     ev_thres=0.8,  # explained variance threshold for PCA
     min_ripples=10,  # minimum number of ripples per epoch
     n_shuff=1000,  # number of shuffles to do
+    par_type="binary"
 ):
 
     st, cell_metrics = loading.load_spikes(
@@ -114,14 +115,14 @@ def run(
             st[ep].data,
             ripple_epochs[ep].starts,
             ripple_epochs[ep].stops,
-            par_type="binary",
+            par_type=par_type,
         )
         if st_par.shape[1] < min_ripples:
             continue
         # calculate ratio of n deep and n superficial cells
-        deep_sup_ratio = st_par[ca1_deep_idx, :].sum(axis=0) / st_par[
-            ca1_sup_idx, :
-        ].sum(axis=0)
+        deep_sup_ratio = (st_par[ca1_deep_idx, :] > 0).sum(axis=0) / (
+            st_par[ca1_sup_idx, :] > 0
+        ).sum(axis=0)
 
         for region in target_regions:
             if sum(cell_metrics.brainRegion.str.contains(region).values) < min_cells:
