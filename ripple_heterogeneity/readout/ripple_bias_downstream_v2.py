@@ -3,21 +3,12 @@ import pickle
 from ripple_heterogeneity.utils import (
     functions,
     loading,
-    batch_analysis,
     add_new_deep_sup,
 )
-from ripple_heterogeneity.replay import replay_run, influence_of_layer_bias_on_replay
-from ripple_heterogeneity.readout import readout_explained_var
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import nelpy as nel
-import nelpy.plotting as npl
-from matplotlib.ticker import AutoMinorLocator
-from sklearn.cluster import KMeans
 import os
-from scipy import stats
 
 
 def get_ripple_info_df(rip_par_mat, cm):
@@ -85,19 +76,15 @@ def get_ripple_info_df(rip_par_mat, cm):
     return rip_resp_df
 
 
-def run(
+def load_and_format_data(
     basepath,
-    putativeCellType="Pyr",  # neuron type to use for analysis
-    brainRegion="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # regions to include
-    convert_regions={
-        "CA1": "CA1",
-        "PFC": "PFC",
-        "EC1|EC2|EC3|EC4|EC5|MEC": "MEC",
-    },  # value pair to re-label regions
-    ripple_expand=0.150,
-    min_cell_per_ripple=5,
-    min_cell_per_group=5,
+    putativeCellType,
+    brainRegion,
+    convert_regions,
+    ripple_expand,
+    min_cell_per_group,
 ):
+
     st, cm = loading.load_spikes(
         basepath, putativeCellType=putativeCellType, brainRegion=brainRegion
     )
@@ -106,7 +93,7 @@ def run(
     if ((cm.deepSuperficial == "Superficial").sum() < min_cell_per_group) | (
         (cm.deepSuperficial == "Deep").sum() < min_cell_per_group
     ):
-        return None
+        return None, None
 
     for key in convert_regions.keys():
         cm.loc[cm["brainRegion"].str.contains(key), "brainRegion"] = convert_regions[
@@ -123,6 +110,33 @@ def run(
     rip_par_mat = functions.get_participation(
         st.data, ripple_epochs.starts, ripple_epochs.stops, par_type="counts"
     )
+    return rip_par_mat, cm
+
+
+def run(
+    basepath,
+    putativeCellType="Pyr",  # neuron type to use for analysis
+    brainRegion="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # regions to include
+    convert_regions={
+        "CA1": "CA1",
+        "PFC": "PFC",
+        "EC1|EC2|EC3|EC4|EC5|MEC": "MEC",
+    },  # value pair to re-label regions
+    ripple_expand=0.150,
+    min_cell_per_ripple=1,
+    min_cell_per_group=5,
+):
+
+    rip_par_mat, cm = load_and_format_data(
+        basepath,
+        putativeCellType,
+        brainRegion,
+        convert_regions,
+        ripple_expand,
+        min_cell_per_group,
+    )
+    if rip_par_mat is None:
+        return None
 
     rip_resp_df = get_ripple_info_df(rip_par_mat, cm)
 
@@ -140,6 +154,27 @@ def run(
     correlation.append(corr_df["deep_sup_spike_ratio"]["n_spikes_pfc"])
     correlation.append(corr_df["deep_sup_spike_ratio"]["n_spikes_mec"])
 
+    correlation.append(corr_df["n_deep"]["n_pfc"])
+    correlation.append(corr_df["n_deep"]["n_mec"])
+    correlation.append(corr_df["n_deep"]["n_spikes_pfc"])
+    correlation.append(corr_df["n_deep"]["n_spikes_mec"])
+
+    correlation.append(corr_df["n_sup"]["n_pfc"])
+    correlation.append(corr_df["n_sup"]["n_mec"])
+    correlation.append(corr_df["n_sup"]["n_spikes_pfc"])
+    correlation.append(corr_df["n_sup"]["n_spikes_mec"])
+
+    correlation.append(corr_df["n_spikes_deep"]["n_pfc"])
+    correlation.append(corr_df["n_spikes_deep"]["n_mec"])
+    correlation.append(corr_df["n_spikes_deep"]["n_spikes_pfc"])
+    correlation.append(corr_df["n_spikes_deep"]["n_spikes_mec"])
+
+    correlation.append(corr_df["n_spikes_sup"]["n_pfc"])
+    correlation.append(corr_df["n_spikes_sup"]["n_mec"])
+    correlation.append(corr_df["n_spikes_sup"]["n_spikes_pfc"])
+    correlation.append(corr_df["n_spikes_sup"]["n_spikes_mec"])
+
+
     label = (
         "cell_count_n_pfc",
         "cell_count_n_mec",
@@ -149,19 +184,38 @@ def run(
         "spike_count_n_mec",
         "spike_count_n_spikes_pfc",
         "spike_count_n_spikes_mec",
+        "n_deep_n_pfc",
+        "n_deep_n_mec",
+        "n_deep_n_spikes_pfc",
+        "n_deep_n_spikes_mec",
+        "n_sup_n_pfc",
+        "n_sup_n_mec",
+        "n_sup_n_spikes_pfc",
+        "n_sup_n_spikes_mec",
+        "n_spikes_deep_n_pfc",
+        "n_spikes_deep_n_mec",
+        "n_spikes_deep_n_spikes_pfc",
+        "n_spikes_deep_n_spikes_mec",
+        "n_spikes_sup_n_pfc",
+        "n_spikes_sup_n_mec",
+        "n_spikes_sup_n_spikes_pfc",
+        "n_spikes_sup_n_spikes_mec",
     )
-    results = pd.DataFrame(
+    results_df = pd.DataFrame(
         {
             "correlation": correlation,
             "label": label,
         }
     )
-    results["n_deep"] = (cm.deepSuperficial == "Deep").sum()
-    results["n_sup"] = (cm.deepSuperficial == "Superficial").sum()
-    results["n_middle"] = (cm.deepSuperficial == "middle").sum()
-    results["n_pfc"] = (cm.brainRegion == "PFC").sum()
-    results["n_mec"] = (cm.brainRegion == "MEC").sum()
-    results["basepath"] = basepath
+    results_df["n_deep"] = (cm.deepSuperficial == "Deep").sum()
+    results_df["n_sup"] = (cm.deepSuperficial == "Superficial").sum()
+    results_df["n_middle"] = (cm.deepSuperficial == "middle").sum()
+    results_df["n_pfc"] = (cm.brainRegion == "PFC").sum()
+    results_df["n_mec"] = (cm.brainRegion == "MEC").sum()
+    results_df["basepath"] = basepath
+
+    results = {"results_df": results_df, "rip_resp_df": rip_resp_df}
+
     return results
 
 
@@ -176,5 +230,5 @@ def load_results(save_path):
             results = pickle.load(f)
         if results is None:
             continue
-        df = pd.concat([df, results], ignore_index=True)
+        df = pd.concat([df, results["results_df"]], ignore_index=True)
     return df
