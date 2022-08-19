@@ -366,6 +366,9 @@ def run(
     temp_df["n_deep_obs"] = n_deep_obs
     temp_df["n_sup_obs"] = n_sup_obs
     temp_df["n_middle_obs"] = n_middle_obs
+    temp_df["n_deep_sess"] = cell_metrics.deepSuperficial.str.contains("Deep").sum()
+    temp_df["n_sup_sess"] = cell_metrics.deepSuperficial.str.contains("Superficial").sum()
+    temp_df["n_middle_sess"] = cell_metrics.deepSuperficial.str.contains("middle").sum()
     temp_df["pval_deep"] = pval_deep
     temp_df["pval_sup"] = pval_sup
     temp_df["pval_middle"] = pval_middle
