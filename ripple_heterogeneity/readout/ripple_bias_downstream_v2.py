@@ -224,11 +224,13 @@ def load_results(save_path):
     load_results: load results from a directory
     """
     sessions = glob.glob(save_path + os.sep + "*.pkl")
-    df = pd.DataFrame()
+    results_df = pd.DataFrame()
+    rip_resp_df = pd.DataFrame()
     for session in sessions:
         with open(session, "rb") as f:
             results = pickle.load(f)
         if results is None:
             continue
-        df = pd.concat([df, results["results_df"]], ignore_index=True)
-    return df
+        results_df = pd.concat([results_df, results["results_df"]], ignore_index=True)
+        rip_resp_df = pd.concat([rip_resp_df, results["rip_resp_df"]], ignore_index=True)
+    return results_df, rip_resp_df
