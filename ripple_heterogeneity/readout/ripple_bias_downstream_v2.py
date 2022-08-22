@@ -111,12 +111,13 @@ def load_and_format_data(
         basepath, putativeCellType=putativeCellType, brainRegion=brainRegion
     )
     cm = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cm)
-
-
-    if ((cm.deepSuperficial == "Deep") & cm.brainRegion.str.contains("CA1")).sum() < min_cell_per_group:
+    if st.isempty:
         return None, None, None
-    elif ((cm.deepSuperficial == "Superficial") & cm.brainRegion.str.contains("CA1")).sum() < min_cell_per_group:
-        return None, None, None
+
+    # if ((cm.deepSuperficial == "Deep") & cm.brainRegion.str.contains("CA1")).sum() < min_cell_per_group:
+    #     return None, None, None
+    # elif ((cm.deepSuperficial == "Superficial") & cm.brainRegion.str.contains("CA1")).sum() < min_cell_per_group:
+    #     return None, None, None
 
     for key in convert_regions.keys():
         cm.loc[cm["brainRegion"].str.contains(key), "brainRegion"] = convert_regions[
@@ -185,7 +186,10 @@ def run(
     corr_df["n_sup"] = ((cm.deepSuperficial == "Superficial") & (cm.brainRegion == "CA1")).sum()
     corr_df["n_pfc"] = (cm.brainRegion == "PFC").sum()
     corr_df["n_mec"] = (cm.brainRegion == "MEC").sum()
+    corr_df["n_rip"] = rip_par_mat.shape[1]
     corr_df["basepath"] = basepath
+
+    rip_resp_df["n_rip"] = rip_par_mat.shape[1]
 
     results = {"results_df": corr_df, "rip_resp_df": rip_resp_df}
 
@@ -203,6 +207,8 @@ def load_results(save_path):
         with open(session, "rb") as f:
             results = pickle.load(f)
         if results is None:
+            continue
+        if results["results_df"].shape[0] == 0:
             continue
         results_df = pd.concat([results_df, results["results_df"]], ignore_index=True)
         results["rip_resp_df"]["basepath"] = results["results_df"]["basepath"].iloc[0]
