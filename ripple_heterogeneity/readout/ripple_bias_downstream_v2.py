@@ -11,56 +11,77 @@ import nelpy as nel
 import os
 
 
-def get_ripple_info_df(rip_par_mat, cm):
+def get_ripple_info_df(rip_par_mat, cm, ripple_epochs):
 
     n_deep = []
     n_sup = []
-    n_middle = []
     n_pfc = []
     n_mec = []
+
     n_spikes_deep = []
     n_spikes_sup = []
-    n_spikes_middle = []
     n_spikes_pfc = []
     n_spikes_mec = []
 
-    for rip in rip_par_mat.T:
+    pop_rate_deep = []
+    pop_rate_sup = []
+    pop_rate_pfc = []
+    pop_rate_mec = []
+
+    avg_pop_rate_deep = []
+    avg_pop_rate_sup = []
+    avg_pop_rate_pfc = []
+    avg_pop_rate_mec = []
+
+    for rip, duration in zip(rip_par_mat.T, ripple_epochs.lengths):
         n_deep.append((cm.deepSuperficial[rip > 0] == "Deep").sum())
         n_sup.append((cm.deepSuperficial[rip > 0] == "Superficial").sum())
-        n_middle.append((cm.deepSuperficial[rip > 0] == "middle").sum())
         n_pfc.append((cm.brainRegion[rip > 0] == "PFC").sum())
         n_mec.append((cm.brainRegion[rip > 0] == "MEC").sum())
 
         n_spikes_deep.append(rip[cm.deepSuperficial == "Deep"].sum())
         n_spikes_sup.append(rip[cm.deepSuperficial == "Superficial"].sum())
-        n_spikes_middle.append(rip[cm.deepSuperficial == "middle"].sum())
         n_spikes_pfc.append(rip[cm.brainRegion == "PFC"].sum())
         n_spikes_mec.append(rip[cm.brainRegion == "MEC"].sum())
+
+        pop_rate_deep.append(rip[cm.deepSuperficial == "Deep"].sum() / duration)
+        pop_rate_sup.append(rip[cm.deepSuperficial == "Superficial"].sum() / duration)
+        pop_rate_pfc.append(rip[cm.brainRegion == "PFC"].sum() / duration)
+        pop_rate_mec.append(rip[cm.brainRegion == "MEC"].sum() / duration)
+
+        avg_pop_rate_deep.append((rip[cm.deepSuperficial == "Deep"] / duration).mean())
+        avg_pop_rate_sup.append((rip[cm.deepSuperficial == "Superficial"] / duration).mean())
+        avg_pop_rate_pfc.append((rip[cm.deepSuperficial == "PFC"] / duration).mean())
+        avg_pop_rate_mec.append((rip[cm.deepSuperficial == "MEC"] / duration).mean())
 
         rip_resp_df = pd.DataFrame(
             {
                 "n_deep": n_deep,
                 "n_sup": n_sup,
-                "n_middle": n_middle,
                 "n_pfc": n_pfc,
                 "n_mec": n_mec,
                 "n_spikes_deep": n_spikes_deep,
                 "n_spikes_sup": n_spikes_sup,
-                "n_spikes_middle": n_spikes_middle,
                 "n_spikes_pfc": n_spikes_pfc,
                 "n_spikes_mec": n_spikes_mec,
+                "pop_rate_deep": pop_rate_deep,
+                "pop_rate_sup": pop_rate_sup,
+                "pop_rate_pfc": pop_rate_pfc,
+                "pop_rate_mec": pop_rate_mec,
+                'avg_pop_rate_deep':avg_pop_rate_deep,
+                'avg_pop_rate_sup':avg_pop_rate_sup,
+                'avg_pop_rate_pfc':avg_pop_rate_pfc,
+                'avg_pop_rate_mec':avg_pop_rate_mec
             }
         )
     # convert to int16 to save space
     columns = [
         "n_deep",
         "n_sup",
-        "n_middle",
         "n_pfc",
         "n_mec",
         "n_spikes_deep",
         "n_spikes_sup",
-        "n_spikes_middle",
         "n_spikes_pfc",
         "n_spikes_mec",
     ]
@@ -73,6 +94,7 @@ def get_ripple_info_df(rip_par_mat, cm):
     rip_resp_df["deep_sup_cell_count_ratio"] = (
         rip_resp_df.n_deep - rip_resp_df.n_sup
     ) / (rip_resp_df.n_deep + rip_resp_df.n_sup)
+
     return rip_resp_df
 
 
@@ -110,7 +132,7 @@ def load_and_format_data(
     rip_par_mat = functions.get_participation(
         st.data, ripple_epochs.starts, ripple_epochs.stops, par_type="counts"
     )
-    return rip_par_mat, cm
+    return rip_par_mat, cm, ripple_epochs
 
 
 def run(
@@ -127,7 +149,7 @@ def run(
     min_cell_per_group=5,
 ):
 
-    rip_par_mat, cm = load_and_format_data(
+    rip_par_mat, cm, ripple_epochs = load_and_format_data(
         basepath,
         putativeCellType,
         brainRegion,
@@ -138,83 +160,33 @@ def run(
     if rip_par_mat is None:
         return None
 
-    rip_resp_df = get_ripple_info_df(rip_par_mat, cm)
+    rip_resp_df = get_ripple_info_df(rip_par_mat, cm, ripple_epochs)
 
     corr_df = rip_resp_df.query(
         "n_deep>@min_cell_per_ripple & n_sup>@min_cell_per_ripple"
     ).corr()
-    correlation = []
-    correlation.append(corr_df["deep_sup_cell_count_ratio"]["n_pfc"])
-    correlation.append(corr_df["deep_sup_cell_count_ratio"]["n_mec"])
-    correlation.append(corr_df["deep_sup_cell_count_ratio"]["n_spikes_pfc"])
-    correlation.append(corr_df["deep_sup_cell_count_ratio"]["n_spikes_mec"])
 
-    correlation.append(corr_df["deep_sup_spike_ratio"]["n_pfc"])
-    correlation.append(corr_df["deep_sup_spike_ratio"]["n_mec"])
-    correlation.append(corr_df["deep_sup_spike_ratio"]["n_spikes_pfc"])
-    correlation.append(corr_df["deep_sup_spike_ratio"]["n_spikes_mec"])
-
-    correlation.append(corr_df["n_deep"]["n_pfc"])
-    correlation.append(corr_df["n_deep"]["n_mec"])
-    correlation.append(corr_df["n_deep"]["n_spikes_pfc"])
-    correlation.append(corr_df["n_deep"]["n_spikes_mec"])
-
-    correlation.append(corr_df["n_sup"]["n_pfc"])
-    correlation.append(corr_df["n_sup"]["n_mec"])
-    correlation.append(corr_df["n_sup"]["n_spikes_pfc"])
-    correlation.append(corr_df["n_sup"]["n_spikes_mec"])
-
-    correlation.append(corr_df["n_spikes_deep"]["n_pfc"])
-    correlation.append(corr_df["n_spikes_deep"]["n_mec"])
-    correlation.append(corr_df["n_spikes_deep"]["n_spikes_pfc"])
-    correlation.append(corr_df["n_spikes_deep"]["n_spikes_mec"])
-
-    correlation.append(corr_df["n_spikes_sup"]["n_pfc"])
-    correlation.append(corr_df["n_spikes_sup"]["n_mec"])
-    correlation.append(corr_df["n_spikes_sup"]["n_spikes_pfc"])
-    correlation.append(corr_df["n_spikes_sup"]["n_spikes_mec"])
-
-
-    label = (
-        "cell_count_n_pfc",
-        "cell_count_n_mec",
-        "cell_count_n_spikes_pfc",
-        "cell_count_n_spikes_mec",
-        "spike_count_n_pfc",
-        "spike_count_n_mec",
-        "spike_count_n_spikes_pfc",
-        "spike_count_n_spikes_mec",
-        "n_deep_n_pfc",
-        "n_deep_n_mec",
-        "n_deep_n_spikes_pfc",
-        "n_deep_n_spikes_mec",
-        "n_sup_n_pfc",
-        "n_sup_n_mec",
-        "n_sup_n_spikes_pfc",
-        "n_sup_n_spikes_mec",
-        "n_spikes_deep_n_pfc",
-        "n_spikes_deep_n_mec",
-        "n_spikes_deep_n_spikes_pfc",
-        "n_spikes_deep_n_spikes_mec",
-        "n_spikes_sup_n_pfc",
-        "n_spikes_sup_n_mec",
-        "n_spikes_sup_n_spikes_pfc",
-        "n_spikes_sup_n_spikes_mec",
+    # take upper triangle of corr matrix
+    corr_df = (
+        corr_df.where(np.triu(np.ones(corr_df.shape)).astype(np.bool))
+        .stack()
+        .reset_index()
+        .rename(columns={0: "correlation"})
     )
-    results_df = pd.DataFrame(
-        {
-            "correlation": correlation,
-            "label": label,
-        }
-    )
-    results_df["n_deep"] = (cm.deepSuperficial == "Deep").sum()
-    results_df["n_sup"] = (cm.deepSuperficial == "Superficial").sum()
-    results_df["n_middle"] = (cm.deepSuperficial == "middle").sum()
-    results_df["n_pfc"] = (cm.brainRegion == "PFC").sum()
-    results_df["n_mec"] = (cm.brainRegion == "MEC").sum()
-    results_df["basepath"] = basepath
+    # remove diag
+    corr_df = corr_df.drop(corr_df[corr_df.level_0 == corr_df.level_1].index)
 
-    results = {"results_df": results_df, "rip_resp_df": rip_resp_df}
+    # re-label comparisons
+    corr_df["label"] = corr_df.level_0 + "_" + corr_df.level_1
+    corr_df = corr_df.drop(['level_0', 'level_1'], axis=1)
+
+    corr_df["n_deep"] = (cm.deepSuperficial == "Deep").sum()
+    corr_df["n_sup"] = (cm.deepSuperficial == "Superficial").sum()
+    corr_df["n_pfc"] = (cm.brainRegion == "PFC").sum()
+    corr_df["n_mec"] = (cm.brainRegion == "MEC").sum()
+    corr_df["basepath"] = basepath
+
+    results = {"results_df": corr_df, "rip_resp_df": rip_resp_df}
 
     return results
 
@@ -232,5 +204,8 @@ def load_results(save_path):
         if results is None:
             continue
         results_df = pd.concat([results_df, results["results_df"]], ignore_index=True)
-        rip_resp_df = pd.concat([rip_resp_df, results["rip_resp_df"]], ignore_index=True)
+        results["rip_resp_df"]["basepath"] = results["results_df"]["basepath"].iloc[0]
+        rip_resp_df = pd.concat(
+            [rip_resp_df, results["rip_resp_df"]], ignore_index=True
+        )
     return results_df, rip_resp_df
