@@ -34,23 +34,23 @@ def get_ripple_info_df(rip_par_mat, cm, ripple_epochs):
     avg_pop_rate_mec = []
 
     for rip, duration in zip(rip_par_mat.T, ripple_epochs.lengths):
-        n_deep.append((cm.deepSuperficial[rip > 0] == "Deep").sum())
-        n_sup.append((cm.deepSuperficial[rip > 0] == "Superficial").sum())
+        n_deep.append(((cm.deepSuperficial[rip > 0] == "Deep") & (cm.brainRegion[rip > 0] == "CA1")).sum())
+        n_sup.append(((cm.deepSuperficial[rip > 0] == "Superficial") & (cm.brainRegion[rip > 0] == "CA1")).sum())
         n_pfc.append((cm.brainRegion[rip > 0] == "PFC").sum())
         n_mec.append((cm.brainRegion[rip > 0] == "MEC").sum())
 
-        n_spikes_deep.append(rip[cm.deepSuperficial == "Deep"].sum())
-        n_spikes_sup.append(rip[cm.deepSuperficial == "Superficial"].sum())
+        n_spikes_deep.append(rip[(cm.deepSuperficial == "Deep") & (cm.brainRegion == "CA1")].sum())
+        n_spikes_sup.append(rip[(cm.deepSuperficial == "Superficial") & (cm.brainRegion == "CA1")].sum())
         n_spikes_pfc.append(rip[cm.brainRegion == "PFC"].sum())
         n_spikes_mec.append(rip[cm.brainRegion == "MEC"].sum())
 
-        pop_rate_deep.append(rip[cm.deepSuperficial == "Deep"].sum() / duration)
-        pop_rate_sup.append(rip[cm.deepSuperficial == "Superficial"].sum() / duration)
+        pop_rate_deep.append(rip[(cm.deepSuperficial == "Deep") & (cm.brainRegion == "CA1")].sum() / duration)
+        pop_rate_sup.append(rip[(cm.deepSuperficial == "Superficial") & (cm.brainRegion == "CA1")].sum() / duration)
         pop_rate_pfc.append(rip[cm.brainRegion == "PFC"].sum() / duration)
         pop_rate_mec.append(rip[cm.brainRegion == "MEC"].sum() / duration)
 
-        avg_pop_rate_deep.append((rip[cm.deepSuperficial == "Deep"] / duration).mean())
-        avg_pop_rate_sup.append((rip[cm.deepSuperficial == "Superficial"] / duration).mean())
+        avg_pop_rate_deep.append((rip[(cm.deepSuperficial == "Deep") & (cm.brainRegion == "CA1")] / duration).mean())
+        avg_pop_rate_sup.append((rip[(cm.deepSuperficial == "Superficial") & (cm.brainRegion == "CA1")] / duration).mean())
         avg_pop_rate_pfc.append((rip[cm.brainRegion == "PFC"] / duration).mean())
         avg_pop_rate_mec.append((rip[cm.brainRegion == "MEC"] / duration).mean())
 
@@ -112,9 +112,10 @@ def load_and_format_data(
     )
     cm = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cm)
 
-    if ((cm.deepSuperficial == "Superficial").sum() < min_cell_per_group) | (
-        (cm.deepSuperficial == "Deep").sum() < min_cell_per_group
-    ):
+
+    if ((cm.deepSuperficial == "Deep") & cm.brainRegion.str.contains("CA1")).sum() < min_cell_per_group:
+        return None, None, None
+    elif ((cm.deepSuperficial == "Superficial") & cm.brainRegion.str.contains("CA1")).sum() < min_cell_per_group:
         return None, None, None
 
     for key in convert_regions.keys():
@@ -180,8 +181,8 @@ def run(
     corr_df["label"] = corr_df.level_0 + "_" + corr_df.level_1
     corr_df = corr_df.drop(['level_0', 'level_1'], axis=1)
 
-    corr_df["n_deep"] = (cm.deepSuperficial == "Deep").sum()
-    corr_df["n_sup"] = (cm.deepSuperficial == "Superficial").sum()
+    corr_df["n_deep"] = ((cm.deepSuperficial == "Deep") & (cm.brainRegion == "CA1")).sum()
+    corr_df["n_sup"] = ((cm.deepSuperficial == "Superficial") & (cm.brainRegion == "CA1")).sum()
     corr_df["n_pfc"] = (cm.brainRegion == "PFC").sum()
     corr_df["n_mec"] = (cm.brainRegion == "MEC").sum()
     corr_df["basepath"] = basepath
