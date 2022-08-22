@@ -51,8 +51,8 @@ def get_ripple_info_df(rip_par_mat, cm, ripple_epochs):
 
         avg_pop_rate_deep.append((rip[cm.deepSuperficial == "Deep"] / duration).mean())
         avg_pop_rate_sup.append((rip[cm.deepSuperficial == "Superficial"] / duration).mean())
-        avg_pop_rate_pfc.append((rip[cm.deepSuperficial == "PFC"] / duration).mean())
-        avg_pop_rate_mec.append((rip[cm.deepSuperficial == "MEC"] / duration).mean())
+        avg_pop_rate_pfc.append((rip[cm.brainRegion == "PFC"] / duration).mean())
+        avg_pop_rate_mec.append((rip[cm.brainRegion == "MEC"] / duration).mean())
 
     rip_resp_df = pd.DataFrame(
         {
