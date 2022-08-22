@@ -115,7 +115,7 @@ def load_and_format_data(
     if ((cm.deepSuperficial == "Superficial").sum() < min_cell_per_group) | (
         (cm.deepSuperficial == "Deep").sum() < min_cell_per_group
     ):
-        return None, None
+        return None, None, None
 
     for key in convert_regions.keys():
         cm.loc[cm["brainRegion"].str.contains(key), "brainRegion"] = convert_regions[
