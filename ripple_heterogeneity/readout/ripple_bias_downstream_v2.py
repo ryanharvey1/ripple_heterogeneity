@@ -54,26 +54,26 @@ def get_ripple_info_df(rip_par_mat, cm, ripple_epochs):
         avg_pop_rate_pfc.append((rip[cm.deepSuperficial == "PFC"] / duration).mean())
         avg_pop_rate_mec.append((rip[cm.deepSuperficial == "MEC"] / duration).mean())
 
-        rip_resp_df = pd.DataFrame(
-            {
-                "n_deep": n_deep,
-                "n_sup": n_sup,
-                "n_pfc": n_pfc,
-                "n_mec": n_mec,
-                "n_spikes_deep": n_spikes_deep,
-                "n_spikes_sup": n_spikes_sup,
-                "n_spikes_pfc": n_spikes_pfc,
-                "n_spikes_mec": n_spikes_mec,
-                "pop_rate_deep": pop_rate_deep,
-                "pop_rate_sup": pop_rate_sup,
-                "pop_rate_pfc": pop_rate_pfc,
-                "pop_rate_mec": pop_rate_mec,
-                'avg_pop_rate_deep':avg_pop_rate_deep,
-                'avg_pop_rate_sup':avg_pop_rate_sup,
-                'avg_pop_rate_pfc':avg_pop_rate_pfc,
-                'avg_pop_rate_mec':avg_pop_rate_mec
-            }
-        )
+    rip_resp_df = pd.DataFrame(
+        {
+            "n_deep": n_deep,
+            "n_sup": n_sup,
+            "n_pfc": n_pfc,
+            "n_mec": n_mec,
+            "n_spikes_deep": n_spikes_deep,
+            "n_spikes_sup": n_spikes_sup,
+            "n_spikes_pfc": n_spikes_pfc,
+            "n_spikes_mec": n_spikes_mec,
+            "pop_rate_deep": pop_rate_deep,
+            "pop_rate_sup": pop_rate_sup,
+            "pop_rate_pfc": pop_rate_pfc,
+            "pop_rate_mec": pop_rate_mec,
+            'avg_pop_rate_deep':avg_pop_rate_deep,
+            'avg_pop_rate_sup':avg_pop_rate_sup,
+            'avg_pop_rate_pfc':avg_pop_rate_pfc,
+            'avg_pop_rate_mec':avg_pop_rate_mec
+        }
+    )
     # convert to int16 to save space
     columns = [
         "n_deep",
