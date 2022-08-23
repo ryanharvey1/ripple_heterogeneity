@@ -134,7 +134,7 @@ def load_and_format_data(
     rip_par_mat = functions.get_participation(
         st.data, ripple_epochs.starts, ripple_epochs.stops, par_type="counts"
     )
-    return rip_par_mat, cm, ripple_epochs
+    return rip_par_mat, cm, ripple_epochs, ripples_df
 
 
 def run(
@@ -151,7 +151,7 @@ def run(
     min_cell_per_group=5,
 ):
 
-    rip_par_mat, cm, ripple_epochs = load_and_format_data(
+    rip_par_mat, cm, ripple_epochs, ripples_df = load_and_format_data(
         basepath,
         putativeCellType,
         brainRegion,
@@ -190,6 +190,9 @@ def run(
     corr_df["basepath"] = basepath
 
     rip_resp_df["n_rip"] = rip_par_mat.shape[1]
+
+    rip_resp_df = pd.concat([rip_resp_df,ripples_df[["start","stop","peaks"]]],axis=1)
+    rip_resp_df["ripple_index"] = np.arange(0,ripples_df.shape[0])
 
     results = {"results_df": corr_df, "rip_resp_df": rip_resp_df}
 
