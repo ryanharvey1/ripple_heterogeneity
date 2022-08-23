@@ -112,7 +112,7 @@ def load_and_format_data(
     )
     cm = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cm)
     if st.isempty:
-        return None, None, None
+        return None, None, None, None
 
     # if ((cm.deepSuperficial == "Deep") & cm.brainRegion.str.contains("CA1")).sum() < min_cell_per_group:
     #     return None, None, None
