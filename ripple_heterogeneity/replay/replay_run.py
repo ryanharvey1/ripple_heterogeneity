@@ -444,6 +444,8 @@ def handle_canidate_events(
     if restrict_manipulation:
         ripple_epochs = ripple_epochs[~manipulation_epochs]
 
+    ripple_epochs = ripple_epochs.merge()
+    
     # reassign ripple epochs to ripples dataframe
     ripples = pd.DataFrame()
     ripples["start"] = ripple_epochs.starts
