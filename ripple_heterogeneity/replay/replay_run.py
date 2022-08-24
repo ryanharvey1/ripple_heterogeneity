@@ -22,7 +22,9 @@ def decode_and_score(bst, tc, pos):
     posteriors, lengths, mode_pth, mean_pth = nel.decoding.decode1D(
         bst, tc, xmin=np.nanmin(pos.data), xmax=np.nanmax(pos.data)
     )
-    actual_pos = pos(bst.bin_centers)
+
+    actual_pos = np.interp(bst.bin_centers, pos.abscissa_vals, pos.data[0])
+
     bad_idx = np.isnan(actual_pos) | np.isnan(mode_pth)
     actual_pos = actual_pos[~bad_idx]
     mode_pth = mode_pth[~bad_idx]
@@ -307,7 +309,7 @@ def handle_behavior(
     # make position array
     pos = nel.AnalogSignalArray(
         data=np.array(beh_df.linearized),
-        timestamps=beh_df.time,
+        timestamps=beh_df.time.values,
         fs=fs,
     )
     # only include linear track
@@ -316,8 +318,8 @@ def handle_behavior(
     if restrict_manipulation:
         pos = pos[~manipulation_epochs]
 
-    # make min pos 0
-    pos.data = pos.data - np.nanmin(pos.data)
+    # make min pos 1
+    pos._data = (pos.data - np.nanmin(pos.data)) + 1
 
     # get outbound and inbound epochs
     (outbound_epochs, inbound_epochs) = functions.get_linear_track_lap_epochs(
@@ -349,17 +351,18 @@ def get_tuning_curves(
     # smooth and re-bin:
     bst_run = st_run.bin(ds=ds_50ms)
 
-    x_max = np.ceil(np.nanmax(pos[dir_epoch].data))
-    x_min = np.floor(np.nanmin(pos[dir_epoch].data))
-
-    n_bins = int((x_max - x_min) / s_binsize)
+    ext_xmin, ext_xmax = (
+        np.floor(pos[dir_epoch].min() / 10) * 10,
+        np.ceil(pos[dir_epoch].max()),
+    )
+    n_bins = int((ext_xmax - ext_xmin) / s_binsize)
 
     tc = nel.TuningCurve1D(
         bst=bst_run,
         extern=pos[dir_epoch][run_epochs],
         n_extern=n_bins,
-        extmin=x_min,
-        extmax=x_max,
+        extmin=ext_xmin,
+        extmax=ext_xmax,
         sigma=tuning_curve_sigma,
         min_duration=0,
     )
@@ -596,8 +599,9 @@ def run_all(
         )
         if tc.isempty:
             continue
+
         # access decoding accuracy on behavioral time scale
-        bst_run_beh = sta_placecells[dir_epoch].bin(ds=ds_beh_decode)
+        bst_run_beh = sta_placecells.bin(ds=ds_beh_decode)[dir_epoch]
         decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(
             bst_run_beh, tc, pos[dir_epoch], n_shuffles=behav_shuff
         )
@@ -606,7 +610,7 @@ def run_all(
 
         # get ready to decode replay
         # bin data for replay (20ms default)
-        bst_placecells = sta_placecells[ripple_epochs].bin(ds=replay_binsize)
+        bst_placecells = sta_placecells.bin(ds=replay_binsize)[ripple_epochs]
 
         # count units per event
         n_active = [bst.n_active for bst in bst_placecells]
