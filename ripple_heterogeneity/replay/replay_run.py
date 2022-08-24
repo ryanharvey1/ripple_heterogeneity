@@ -748,7 +748,7 @@ def main(df, save_path, parallel=True):
             main_loop(basepath, save_path)
 
 
-def load_results(save_path, pre_task_post=False):
+def load_results(save_path, pre_task_post=False, verbose=False):
     """
     load_results: load results from a directory
 
@@ -758,6 +758,8 @@ def load_results(save_path, pre_task_post=False):
     sessions = glob.glob(save_path + os.sep + "*.pkl")
     df = pd.DataFrame()
     for session in sessions:
+        if verbose:
+            print(session)
         with open(session, "rb") as f:
             results = pickle.load(f)
         if results is None:
