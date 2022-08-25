@@ -632,6 +632,9 @@ def run_all(
         n_active = n_active[idx]
         inactive_bin_prop = inactive_bin_prop[idx]
 
+        if bst_placecells.isempy:
+            continue
+        
         current_ripples = pd.DataFrame()
         current_ripples["start"] = bst_placecells.support.data[:,0]
         current_ripples["stop"] = bst_placecells.support.data[:,1]
