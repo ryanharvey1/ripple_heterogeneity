@@ -6,7 +6,7 @@ import pandas as pd
 from ripple_heterogeneity.assembly import assembly_reactivation, find_sig_assembly
 from ripple_heterogeneity.utils import add_new_deep_sup
 import warnings
-
+import logging
 
 def run(
     basepath,
@@ -183,6 +183,9 @@ def load_reactivation(results):
     """
     Loads reactivation data from results in pickle file.
     """
+    
+    # suppress root warnings unless severity level ERROR
+    logging.getLogger().setLevel(logging.ERROR)
 
     def get_strength_matrix(analog_signal):
         """
