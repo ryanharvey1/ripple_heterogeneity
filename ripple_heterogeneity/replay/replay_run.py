@@ -631,7 +631,12 @@ def run_all(
         # restrict to instances with >= 5 active units
         n_active = n_active[idx]
         inactive_bin_prop = inactive_bin_prop[idx]
-        current_ripples = ripples[idx]
+
+        current_ripples = pd.DataFrame()
+        current_ripples["start"] = bst_placecells.support.data[:,0]
+        current_ripples["stop"] = bst_placecells.support.data[:,1]
+        current_ripples["duration"] = current_ripples["stop"] - current_ripples["start"]
+        
 
         # decode each ripple event
         posteriors, bdries, mode_pth, mean_pth = nel.decoding.decode1D(
