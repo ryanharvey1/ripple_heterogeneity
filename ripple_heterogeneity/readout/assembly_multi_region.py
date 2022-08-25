@@ -385,10 +385,11 @@ def load_results(save_path, verbose=False):
             continue
 
         prop_df_, assembly_df_ = compile_results_df(results)
-        df_strength_ = load_reactivation(results)
-
         prop_df = pd.concat([prop_df, prop_df_], ignore_index=True)
         assembly_df = pd.concat([assembly_df, assembly_df_], ignore_index=True)
-        df_strength = pd.concat([df_strength, df_strength_], ignore_index=True)
+
+        if results["assembly_act_pre"] is not None:
+            df_strength_ = load_reactivation(results)
+            df_strength = pd.concat([df_strength, df_strength_], ignore_index=True)
 
     return prop_df, assembly_df, df_strength
