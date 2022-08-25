@@ -97,10 +97,10 @@ class AssemblyReact(object):
         epoch_df = loading.load_epoch(self.basepath)
         epoch_df = compress_repeated_epochs.main(epoch_df, epoch_name="sleep")
         self.epochs = nel.EpochArray(
-            [np.array([epoch_df.startTime, epoch_df.stopTime]).T],
-            label=epoch_df.environment.values,
+            [np.array([epoch_df.startTime, epoch_df.stopTime]).T]
         )
-
+        self.epoch_df = epoch_df
+        
     def load_data(self):
         """
         loads data (spikes,ripples,epochs) from the session folder
