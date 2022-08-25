@@ -21,6 +21,8 @@ def run(
     """
     Gets the pre and post assembly strengths
     """
+    logging.getLogger().setLevel(logging.ERROR)
+
     # initialize session
     m1 = assembly_reactivation.AssemblyReact(
         basepath,
@@ -43,32 +45,50 @@ def run(
     # restrict to pre/task/post epochs
     try:
         m1.restrict_epochs_to_pre_task_post()
+        no_pre_task_post = False
     except:
         print("No pre/task/post epochs found")
-        return None
+        no_pre_task_post = True
+
     # get weights for task outside ripples
     # % (TODO: use more robust method to locate epochs than index)
     if verbose:
         print("Getting weights...")
-    m1.get_weights(m1.epochs[1][~m1.ripples])
+        
+    # if no pre task post, take longest task
+    if no_pre_task_post:
+        epoch_df = m1.epoch_df.reset_index()
+        epoch_df = epoch_df.query("environment != 'sleep'")
+        epoch_df["duration"] = epoch_df.stopTime.values - epoch_df.startTime.values
+        idx = int(epoch_df.sort_values("duration",ascending=False).index[0])
+        m1.get_weights(m1.epochs[idx][~m1.ripples])
+    else:
+        m1.get_weights(m1.epochs[1][~m1.ripples])
 
     if len(m1.patterns) == 0:
         print("No patterns found")
         return None
 
     # get assembly activity
-    if verbose:
-        print("Getting assembly activity...")
-    assembly_act_pre = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[0]])
-    assembly_act_task = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[1]])
-    assembly_act_post = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[2]])
-    results = {
-        "assembly_act_pre": assembly_act_pre,
-        "assembly_act_task": assembly_act_task,
-        "assembly_act_post": assembly_act_post,
-        "react": m1,
-    }
-
+    if not no_pre_task_post:
+        if verbose:
+            print("Getting assembly activity...")
+        assembly_act_pre = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[0]])
+        assembly_act_task = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[1]])
+        assembly_act_post = m1.get_assembly_act(epoch=m1.ripples[m1.epochs[2]])
+        results = {
+            "assembly_act_pre": assembly_act_pre,
+            "assembly_act_task": assembly_act_task,
+            "assembly_act_post": assembly_act_post,
+            "react": m1,
+        }
+    else:
+        results = {
+            "assembly_act_pre": None,
+            "assembly_act_task": m1.get_assembly_act(epoch=m1.ripples[m1.epochs[1]]),
+            "assembly_act_post": None,
+            "react": m1,
+        }
     return results
 
 
@@ -183,7 +203,7 @@ def load_reactivation(results):
     """
     Loads reactivation data from results in pickle file.
     """
-    
+
     # suppress root warnings unless severity level ERROR
     logging.getLogger().setLevel(logging.ERROR)
 
