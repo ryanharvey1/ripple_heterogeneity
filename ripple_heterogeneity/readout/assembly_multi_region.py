@@ -60,8 +60,8 @@ def run(
         epoch_df = m1.epoch_df.reset_index()
         epoch_df = epoch_df.query("environment != 'sleep'")
         epoch_df["duration"] = epoch_df.stopTime.values - epoch_df.startTime.values
-        idx = int(epoch_df.sort_values("duration",ascending=False).index[0])
-        m1.get_weights(m1.epochs[idx][~m1.ripples])
+        task_idx = int(epoch_df.sort_values("duration",ascending=False).index[0])
+        m1.get_weights(m1.epochs[task_idx][~m1.ripples])
     else:
         m1.get_weights(m1.epochs[1][~m1.ripples])
 
@@ -85,7 +85,7 @@ def run(
     else:
         results = {
             "assembly_act_pre": None,
-            "assembly_act_task": m1.get_assembly_act(epoch=m1.ripples[m1.epochs[1]]),
+            "assembly_act_task": m1.get_assembly_act(epoch=m1.ripples[m1.epochs[task_idx]]),
             "assembly_act_post": None,
             "react": m1,
         }
