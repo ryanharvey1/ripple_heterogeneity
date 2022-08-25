@@ -13,8 +13,11 @@ import copy
 import warnings
 from ripple_heterogeneity.replay import score
 from scipy import ndimage
+import logging
 
 warnings.filterwarnings("ignore")
+
+logging.getLogger().setLevel(logging.ERROR)
 
 
 def decode_and_score(bst, tc, pos):
@@ -318,9 +321,6 @@ def handle_behavior(
     if restrict_manipulation:
         pos = pos[~manipulation_epochs]
 
-    # make min pos 1
-    pos._data = (pos.data - np.nanmin(pos.data)) + 1
-
     # get outbound and inbound epochs
     (outbound_epochs, inbound_epochs) = functions.get_linear_track_lap_epochs(
         pos.abscissa_vals, pos.data[0], newLapThreshold=20
@@ -332,6 +332,9 @@ def handle_behavior(
     # flip x coord of outbound
     if not inbound_epochs.isempty:
         pos = flip_pos_within_epoch(pos, inbound_epochs)
+
+    # make min pos 1
+    pos._data = (pos.data - np.nanmin(pos.data)) + 1
 
     return pos, outbound_epochs, inbound_epochs
 
@@ -352,7 +355,7 @@ def get_tuning_curves(
     bst_run = st_run.bin(ds=ds_50ms)
 
     ext_xmin, ext_xmax = (
-        np.floor(pos[dir_epoch].min() / 10) * 10,
+        np.floor(pos[dir_epoch].min()),
         np.ceil(pos[dir_epoch].max()),
     )
     n_bins = int((ext_xmax - ext_xmin) / s_binsize)
