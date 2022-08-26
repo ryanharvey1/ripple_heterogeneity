@@ -329,11 +329,14 @@ def handle_behavior(
         outbound_epochs = find_good_laps(pos, outbound_epochs)
         inbound_epochs = find_good_laps(pos, inbound_epochs)
 
+    # make min pos 2 
+    pos._data = (pos.data - np.nanmin(pos.data)) + 2
+
     # flip x coord of outbound
     if not inbound_epochs.isempty:
         pos = flip_pos_within_epoch(pos, inbound_epochs)
 
-    # make min pos 1
+    # make min pos 2 again as fliping can offset
     pos._data = (pos.data - np.nanmin(pos.data)) + 2
 
     return pos, outbound_epochs, inbound_epochs
