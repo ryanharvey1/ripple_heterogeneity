@@ -775,7 +775,8 @@ def load_results(save_path, pre_task_post=False, verbose=False):
             results = pickle.load(f)
         if results is None:
             continue
-
+        if (results["outbound_epochs"] == {}) & (results["outbound_epochs"] == {}):
+            continue
         try:
             basepath = results["outbound_epochs"]["session"]
             epoch_df = loading.load_epoch(basepath)
