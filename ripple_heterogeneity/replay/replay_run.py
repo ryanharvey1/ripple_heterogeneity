@@ -334,7 +334,7 @@ def handle_behavior(
         pos = flip_pos_within_epoch(pos, inbound_epochs)
 
     # make min pos 1
-    pos._data = (pos.data - np.nanmin(pos.data)) + 1
+    pos._data = (pos.data - np.nanmin(pos.data)) + 2
 
     return pos, outbound_epochs, inbound_epochs
 
@@ -355,7 +355,7 @@ def get_tuning_curves(
     bst_run = st_run.bin(ds=ds_50ms)
 
     ext_xmin, ext_xmax = (
-        np.floor(pos[dir_epoch].min()),
+        np.floor(pos[dir_epoch].min() / 10) * 10,
         np.ceil(pos[dir_epoch].max()),
     )
     n_bins = int((ext_xmax - ext_xmin) / s_binsize)
