@@ -2,7 +2,7 @@ import glob
 import itertools
 import os
 import pickle
-
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 from ripple_heterogeneity.readout import assembly_multi_region
@@ -28,6 +28,13 @@ def get_pairs(curr_assem):
         pairs[:, 0]
     ].values
     label_df["deepSuperficial_tar"] = curr_assem.deepSuperficial.iloc[
+        pairs[:, 1]
+    ].values
+
+    label_df["is_member_sig_ref"] = current_assembly.is_member_sig.iloc[
+        pairs[:, 0]
+    ].values
+    label_df["is_member_sig_tar"] = current_assembly.is_member_sig.iloc[
         pairs[:, 1]
     ].values
 
@@ -78,6 +85,15 @@ def get_pairs(curr_assem):
     label_df.loc[idx, "deepSuperficial_tar"] = label_df.loc[idx, "deepSuperficial_ref"]
     label_df.loc[idx, "deepSuperficial_ref"] = deepSuperficial_tar
 
+    is_member_sig_tar = label_df.loc[idx, "is_member_sig_tar"]
+    label_df.loc[idx, "is_member_sig_tar"] = label_df.loc[idx, "is_member_sig_ref"]
+    label_df.loc[idx, "is_member_sig_ref"] = is_member_sig_tar
+
+    # discard middle cells
+    label_df = label_df[
+        (label_df.brainRegion_ref == "CA1")
+        & (label_df.deepSuperficial_ref.str.contains("Deep|Superficial"))
+    ]
     return label_df
 
 
@@ -139,7 +155,7 @@ def load_results(save_path, verbose=False):
     ccgs = pd.DataFrame()
     label_df = pd.DataFrame()
 
-    for session in sessions:
+    for session in tqdm(sessions):
         if verbose:
             print(session)
         with open(session, "rb") as f:
