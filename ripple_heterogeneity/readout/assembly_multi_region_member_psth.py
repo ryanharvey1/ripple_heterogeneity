@@ -49,6 +49,17 @@ def get_pairs(curr_assem):
     # remove within region comparisons
     label_df = label_df.query("brainRegion_ref != brainRegion_tar")
 
+    # make sure comparisons are cross region
+    idx = (
+        ((label_df.brainRegion_ref == "CA1") & (label_df.brainRegion_tar == "MEC"))
+        | ((label_df.brainRegion_ref == "MEC") & (label_df.brainRegion_tar == "CA1"))
+    ) | (
+        ((label_df.brainRegion_ref == "CA1") & (label_df.brainRegion_tar == "PFC"))
+        | ((label_df.brainRegion_ref == "PFC") & (label_df.brainRegion_tar == "CA1"))
+    )
+
+    label_df = label_df[idx]
+
     # put cortex always as target
     idx = label_df.brainRegion_tar.str.contains("CA1")
     idx_tar = label_df.loc[idx, "idx_tar"].values
@@ -120,13 +131,14 @@ def run(basepath, binsize=0.005, nbins=200):
 
     return results
 
-def load_results(save_path,verbose=False):
+
+def load_results(save_path, verbose=False):
 
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
     ccgs = pd.DataFrame()
     label_df = pd.DataFrame()
-    
+
     for session in sessions:
         if verbose:
             print(session)
