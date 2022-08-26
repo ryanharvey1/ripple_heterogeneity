@@ -31,10 +31,10 @@ def get_pairs(curr_assem):
         pairs[:, 1]
     ].values
 
-    label_df["is_member_sig_ref"] = current_assembly.is_member_sig.iloc[
+    label_df["is_member_sig_ref"] = curr_assem.is_member_sig.iloc[
         pairs[:, 0]
     ].values
-    label_df["is_member_sig_tar"] = current_assembly.is_member_sig.iloc[
+    label_df["is_member_sig_tar"] = curr_assem.is_member_sig.iloc[
         pairs[:, 1]
     ].values
 
