@@ -9,6 +9,7 @@ from sklearn.decomposition import PCA
 from scipy import stats
 import numpy as np
 import numpy.matlib
+from numba import jit
 
 __author__ = "Vítor Lopes dos Santos"
 __version__ = "2019.1"
@@ -223,25 +224,22 @@ def runPatterns(
 
     return patterns, significance, zactmat
 
-
+@jit(nopython=True)
 def computeAssemblyActivity(patterns, zactmat, zerodiag=True):
 
     if len(patterns) == 0:
         print("WARNING !")
         print("    no assembly detecded!")
-        assemblyAct = []
-        return assemblyAct
+        return None
 
     nassemblies = len(patterns)
-    nbins = np.size(zactmat, 1)
+    nbins = zactmat.shape[1]
 
     assemblyAct = np.zeros((nassemblies, nbins))
     for (assemblyi, pattern) in enumerate(patterns):
         projMat = np.outer(pattern, pattern)
         projMat -= zerodiag * np.diag(np.diag(projMat))
         for bini in range(nbins):
-            assemblyAct[assemblyi, bini] = np.dot(
-                np.dot(zactmat[:, bini], projMat), zactmat[:, bini]
-            )
+            assemblyAct[assemblyi, bini] = (zactmat[:, bini] @ projMat) @ zactmat[:, bini]
 
     return assemblyAct
