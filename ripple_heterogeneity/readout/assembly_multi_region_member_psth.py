@@ -101,7 +101,9 @@ def run(basepath, binsize=0.005, nbins=200):
 
     with open(basepath, "rb") as f:
         results = pickle.load(f)
-
+    if results is None:
+        return None
+        
     prop_df, assembly_df = assembly_multi_region.compile_results_df(results)
     m1 = results["react"]
     # restrict to pre/task/post epochs
