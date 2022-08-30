@@ -712,31 +712,12 @@ def load_epoch(basepath):
         return pd.DataFrame()
 
     # load file
-    data = sio.loadmat(filename)
+    data = sio.loadmat(filename,simplify_cells=True)
 
-    name = []
-    environment = []
-    df_temp = pd.DataFrame()
-    df_save = pd.DataFrame()
-    for epoch in data['session']['epochs'][0][0][0]:
-        if len(epoch[0]) == 0:
-            continue
-        dt = epoch[0].dtype
-        for dn in dt.names:
-            try:
-                df_temp[dn] = epoch[0][0][dn][0]
-            except:
-                df_temp[dn] = ""
-        df_save = pd.concat([df_save,df_temp],ignore_index=True)
-        name.append(epoch[0]['name'][0][0])
-        try:
-            environment.append(epoch[0]['environment'][0][0])
-        except:
-            environment.append('unknown')
-    df_save['name'] = name
-    df_save['environment'] = environment
-
-    return df_save
+    try:
+        return pd.DataFrame(data["session"]["epochs"])
+    except:
+        return pd.DataFrame([data["session"]["epochs"]])
     
 def load_brain_regions(basepath):
     """
