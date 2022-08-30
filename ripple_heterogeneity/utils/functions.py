@@ -14,6 +14,8 @@ from scipy import stats
 from ripple_heterogeneity.assembly import find_sig_assembly
 from itertools import combinations
 from scipy import signal
+from ripple_heterogeneity.utils import compress_repeated_epochs
+
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -1104,6 +1106,45 @@ def find_epoch_pattern(env, pattern):
             return dummy, np.arange(i, i + len(pattern))
     return None, None
 
+def find_env_paradigm_pre_task_post(epoch_df,env="sleep",paradigm="memory"):
+    """ 
+    find_env_paradigm_pre_task_post: use env and paradigm to find pre task post 
+    Made because: FujisawaS data has Spontaneous alternation task & Working memory task
+        both flanked by sleep. We want to locate the working memory task pre/task/post
+    ex.
+
+    >> epoch_df
+        name	startTime	stopTime	environment	behavioralParadigm	            notes
+    0	EE.042	0.0	        995.9384	sleep	    NaN	                            NaN	
+    1	EE.045	995.9384	3336.3928	tmaze	    Spontaneous alternation task	NaN	
+    2	EE.046	3336.3928	5722.444	sleep	    NaN	                            NaN		
+    3	EE.049	5722.444	7511.244	tmaze	    Working memory task	            NaN	
+    4	EE.050	7511.244	9387.644	sleep	    NaN	                            NaN
+
+    >> idx = find_env_paradigm_pre_task_post(epoch_df)   
+    >> idx 
+    array([False, False,  True,  True,  True])
+
+    """ 
+    # compress back to back sleep epochs
+    epoch_df_ = compress_repeated_epochs.main(epoch_df, epoch_name="sleep")
+    # make col with env and paradigm
+    epoch_df_["sleep_ind"] = epoch_df_.environment +"_"+ epoch_df_.behavioralParadigm.astype(str)
+    # locate env and paradigm of choice with this col
+    epoch_df_["sleep_ind"] = epoch_df_["sleep_ind"].str.contains(env+"|"+paradigm)
+    # the pattern we are looking for is all True 
+
+    # https://stackoverflow.com/questions/48710783/pandas-find-and-index-rows-that-match-row-sequence-pattern
+    pat = np.asarray([True,True,True])
+    N = len(pat)
+    idx = (epoch_df_['sleep_ind'].rolling(window=N , min_periods=N)
+                            .apply(lambda x: (x==pat).all())
+                            .mask(lambda x: x == 0) 
+                            .bfill(limit=N-1)
+                            .fillna(0)
+                            .astype(bool)
+                ).values
+    return idx
 
 def get_rank_order(
     st,
