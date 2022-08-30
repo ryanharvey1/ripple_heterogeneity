@@ -4,9 +4,11 @@ import pickle
 import numpy as np
 import pandas as pd
 from ripple_heterogeneity.assembly import assembly_reactivation, find_sig_assembly
-from ripple_heterogeneity.utils import add_new_deep_sup
+from ripple_heterogeneity.utils import add_new_deep_sup, functions
 import warnings
 import logging
+import nelpy as nel
+
 
 def run(
     basepath,
@@ -43,24 +45,37 @@ def run(
         return None
 
     # restrict to pre/task/post epochs
-    try:
-        m1.restrict_epochs_to_pre_task_post()
-        no_pre_task_post = False
-    except:
-        print("No pre/task/post epochs found")
-        no_pre_task_post = True
+    if "FujisawaS" in basepath:
+        idx = functions.find_env_paradigm_pre_task_post(m1.epoch_df)
+        if len(idx) == 1:
+            print("No pre/task/post epochs found")
+            no_pre_task_post = True
+        else:
+            m1.epoch_df = m1.epoch_df[idx]
+            # convert to epoch array and add to object
+            m1.epochs = nel.EpochArray(
+                [np.array([m1.epoch_df.startTime, m1.epoch_df.stopTime]).T]
+            )
+            no_pre_task_post = False
+    else:
+        try:
+            m1.restrict_epochs_to_pre_task_post()
+            no_pre_task_post = False
+        except:
+            print("No pre/task/post epochs found")
+            no_pre_task_post = True
 
     # get weights for task outside ripples
     # % (TODO: use more robust method to locate epochs than index)
     if verbose:
         print("Getting weights...")
-        
+
     # if no pre task post, take longest task
     if no_pre_task_post:
         epoch_df = m1.epoch_df.reset_index()
         epoch_df = epoch_df.query("environment != 'sleep'")
         epoch_df["duration"] = epoch_df.stopTime.values - epoch_df.startTime.values
-        task_idx = int(epoch_df.sort_values("duration",ascending=False).index[0])
+        task_idx = int(epoch_df.sort_values("duration", ascending=False).index[0])
         m1.get_weights(m1.epochs[task_idx][~m1.ripples])
     else:
         m1.get_weights(m1.epochs[1][~m1.ripples])
@@ -85,7 +100,9 @@ def run(
     else:
         results = {
             "assembly_act_pre": None,
-            "assembly_act_task": m1.get_assembly_act(epoch=m1.ripples[m1.epochs[task_idx]]),
+            "assembly_act_task": m1.get_assembly_act(
+                epoch=m1.ripples[m1.epochs[task_idx]]
+            ),
             "assembly_act_post": None,
             "react": m1,
         }
