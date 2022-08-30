@@ -14,7 +14,7 @@ from scipy import stats
 from ripple_heterogeneity.assembly import find_sig_assembly
 from itertools import combinations
 from scipy import signal
-from ripple_heterogeneity.utils import compress_repeated_epochs
+from ripple_heterogeneity.utils import compress_repeated_epochs as comp_rep_ep
 
 
 def set_plotting_defaults():
@@ -1138,7 +1138,7 @@ def find_env_paradigm_pre_task_post(epoch_df, env="sleep", paradigm="memory"):
 
     """
     # compress back to back sleep epochs
-    epoch_df_ = compress_repeated_epochs.main(epoch_df, epoch_name="sleep")
+    epoch_df_ = comp_rep_ep.main(epoch_df, epoch_name="sleep")
     # make col with env and paradigm
     epoch_df_["sleep_ind"] = (
         epoch_df_.environment + "_" + epoch_df_.behavioralParadigm.astype(str)
