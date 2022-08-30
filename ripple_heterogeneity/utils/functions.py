@@ -97,7 +97,7 @@ def linearize_position(x, y):
     use PCA (a dimensionality reduction technique) to find
     the direction of maximal variance in our position data,
     and we use this as our new 1D linear track axis.
-    
+
     Input:
         x: numpy array of shape (n,1)
         y: numpy array of shape (n,1)
@@ -197,10 +197,11 @@ def compute_AutoCorrs(spks, binsize=0.001, nbins=100):
     autocorrs.loc[0] = 0.0
     return autocorrs
 
-def pairwise_corr(X,method='pearson',pairs=None):
+
+def pairwise_corr(X, method="pearson", pairs=None):
     """
     Compute pairwise correlations between all rows of matrix
-    Input: 
+    Input:
         X: numpy array of shape (n,p)
     Output:
         corr: numpy array rho
@@ -214,17 +215,18 @@ def pairwise_corr(X,method='pearson',pairs=None):
     rho = []
     pval = []
     for i, s in enumerate(pairs):
-        if method == 'pearson':
+        if method == "pearson":
             rho_, pval_ = stats.pearsonr(X[s[0], :], X[s[1], :])
-        elif method == 'spearman':
+        elif method == "spearman":
             rho_, pval_ = stats.spearmanr(X[s[0], :], X[s[1], :])
-        elif method == 'kendall':
+        elif method == "kendall":
             rho_, pval_ = stats.kendalltau(X[s[0], :], X[s[1], :])
         else:
-            raise ValueError('method must be pearson, spearman or kendall')
+            raise ValueError("method must be pearson, spearman or kendall")
         rho.append(rho_)
         pval.append(pval_)
     return rho, pval, pairs
+
 
 def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False, pairs=None):
     """
@@ -237,7 +239,7 @@ def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False, pair
         pairs: list of pairs of cells to compute the correlation
     Output:
         crosscorrs: pandas dataframe of shape (t,n pairs)
-    
+
     """
     # Get unique combo without repeats
     if pairs is None:
@@ -245,7 +247,7 @@ def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False, pair
         pairs = np.array(list(itertools.combinations(x, 2)))
 
     # prepare a pandas dataframe to receive the data
-    times = np.linspace(-(nbins*binsize)/2,(nbins*binsize)/2,nbins+1)
+    times = np.linspace(-(nbins * binsize) / 2, (nbins * binsize) / 2, nbins + 1)
 
     crosscorrs = pd.DataFrame(index=times, columns=np.arange(len(pairs)))
 
@@ -258,7 +260,8 @@ def pairwise_cross_corr(spks, binsize=0.001, nbins=100, return_index=False, pair
         return crosscorrs, pairs
     else:
         return crosscorrs
-        
+
+
 def pairwise_spatial_corr(X, return_index=False, pairs=None):
     """
     Compute pairwise spatial correlations between cells
@@ -269,7 +272,7 @@ def pairwise_spatial_corr(X, return_index=False, pairs=None):
     Output:
         spatial_corr: the pearson correlation between the cells in pairs
         pairs: list of pairs of cells used for the correlation
-    
+
     """
     # Get unique combo without repeats
     if pairs is None:
@@ -282,22 +285,26 @@ def pairwise_spatial_corr(X, return_index=False, pairs=None):
     # Now we can iterate over spikes
     for i, s in enumerate(pairs):
         # Calling the crossCorr function
-        spatial_corr.append(np.corrcoef(X[s[0],:,:].flatten(),X[s[1],:,:].flatten())[0,1])
+        spatial_corr.append(
+            np.corrcoef(X[s[0], :, :].flatten(), X[s[1], :, :].flatten())[0, 1]
+        )
 
     if return_index:
         return np.array(spatial_corr), pairs
     else:
         return np.array(spatial_corr)
 
+
 def compute_psth(spikes, event, bin_width=0.002, n_bins=100):
 
     # times = np.arange(0, bin_width * (n_bins + 1), bin_width) - (n_bins * bin_width) / 2
-    times = np.linspace(-(n_bins*bin_width)/2,(n_bins*bin_width)/2,n_bins+1)
+    times = np.linspace(-(n_bins * bin_width) / 2, (n_bins * bin_width) / 2, n_bins + 1)
     ccg = pd.DataFrame(index=times, columns=np.arange(len(spikes)))
     # Now we can iterate over spikes
     for i, s in enumerate(spikes):
         ccg[i] = crossCorr(event, s, bin_width, n_bins)
     return ccg
+
 
 def compute_cross_correlogram(X, dt=1, window=0.5):
     """
@@ -326,6 +333,7 @@ def compute_cross_correlogram(X, dt=1, window=0.5):
         return crosscorrs
     else:
         return crosscorrs[(crosscorrs.index >= -window) & (crosscorrs.index <= window)]
+
 
 def BurstIndex_Royer_2012(autocorrs):
     # calc burst index from royer 2012
@@ -416,13 +424,13 @@ def compress_repeated_epochs(epoch_df):
         temp_dict = {}
         for item in epoch_df.keys():
             temp_dict[item] = epoch_df[match == m][item].iloc[0]
-            
+
         temp_dict["startTime"] = epoch_df[match == m].startTime.min()
         temp_dict["stopTime"] = epoch_df[match == m].stopTime.max()
 
         temp_df = pd.DataFrame.from_dict(temp_dict, orient="index").T
 
-        results = pd.concat([results,temp_df], ignore_index=True)
+        results = pd.concat([results, temp_df], ignore_index=True)
     return results
 
 
@@ -466,7 +474,9 @@ def find_sig_assemblies(patterns):
         is_member: a list of booleans indicating whether each unit is a significant member of an assembly
     """
 
-    print("functions.find_sig_assemblies: is deprecated, use find_sig_assembly.main instead")
+    print(
+        "functions.find_sig_assemblies: is deprecated, use find_sig_assembly.main instead"
+    )
     patterns, is_member_sig, keep_assembly, is_member = find_sig_assembly.main(patterns)
     return patterns, is_member_sig, keep_assembly, is_member
 
@@ -526,8 +536,8 @@ def get_participation(st, event_starts, event_stops, par_type="binary"):
 
     # loop over units and bin spikes into epochs
     for i, s in enumerate(st):
-        idx1 = np.searchsorted(s, event_starts, 'right')
-        idx2 = np.searchsorted(s, event_stops, 'left')
+        idx1 = np.searchsorted(s, event_starts, "right")
+        idx2 = np.searchsorted(s, event_stops, "left")
         unit_mat[i, :] = idx2 - idx1
 
     if par_type == "counts":
@@ -1106,45 +1116,51 @@ def find_epoch_pattern(env, pattern):
             return dummy, np.arange(i, i + len(pattern))
     return None, None
 
-def find_env_paradigm_pre_task_post(epoch_df,env="sleep",paradigm="memory"):
-    """ 
-    find_env_paradigm_pre_task_post: use env and paradigm to find pre task post 
+
+def find_env_paradigm_pre_task_post(epoch_df, env="sleep", paradigm="memory"):
+    """
+    find_env_paradigm_pre_task_post: use env and paradigm to find pre task post
     Made because: FujisawaS data has Spontaneous alternation task & Working memory task
         both flanked by sleep. We want to locate the working memory task pre/task/post
     ex.
 
     >> epoch_df
         name	startTime	stopTime	environment	behavioralParadigm	            notes
-    0	EE.042	0.0	        995.9384	sleep	    NaN	                            NaN	
-    1	EE.045	995.9384	3336.3928	tmaze	    Spontaneous alternation task	NaN	
-    2	EE.046	3336.3928	5722.444	sleep	    NaN	                            NaN		
-    3	EE.049	5722.444	7511.244	tmaze	    Working memory task	            NaN	
+    0	EE.042	0.0	        995.9384	sleep	    NaN	                            NaN
+    1	EE.045	995.9384	3336.3928	tmaze	    Spontaneous alternation task	NaN
+    2	EE.046	3336.3928	5722.444	sleep	    NaN	                            NaN
+    3	EE.049	5722.444	7511.244	tmaze	    Working memory task	            NaN
     4	EE.050	7511.244	9387.644	sleep	    NaN	                            NaN
 
-    >> idx = find_env_paradigm_pre_task_post(epoch_df)   
-    >> idx 
+    >> idx = find_env_paradigm_pre_task_post(epoch_df)
+    >> idx
     array([False, False,  True,  True,  True])
 
-    """ 
+    """
     # compress back to back sleep epochs
     epoch_df_ = compress_repeated_epochs.main(epoch_df, epoch_name="sleep")
     # make col with env and paradigm
-    epoch_df_["sleep_ind"] = epoch_df_.environment +"_"+ epoch_df_.behavioralParadigm.astype(str)
+    epoch_df_["sleep_ind"] = (
+        epoch_df_.environment + "_" + epoch_df_.behavioralParadigm.astype(str)
+    )
     # locate env and paradigm of choice with this col
-    epoch_df_["sleep_ind"] = epoch_df_["sleep_ind"].str.contains(env+"|"+paradigm)
-    # the pattern we are looking for is all True 
+    epoch_df_["sleep_ind"] = epoch_df_["sleep_ind"].str.contains(env + "|" + paradigm)
+    # the pattern we are looking for is all True
 
     # https://stackoverflow.com/questions/48710783/pandas-find-and-index-rows-that-match-row-sequence-pattern
-    pat = np.asarray([True,True,True])
+    pat = np.asarray([True, True, True])
     N = len(pat)
-    idx = (epoch_df_['sleep_ind'].rolling(window=N , min_periods=N)
-                            .apply(lambda x: (x==pat).all())
-                            .mask(lambda x: x == 0) 
-                            .bfill(limit=N-1)
-                            .fillna(0)
-                            .astype(bool)
-                ).values
+    idx = (
+        epoch_df_["sleep_ind"]
+        .rolling(window=N, min_periods=N)
+        .apply(lambda x: (x == pat).all())
+        .mask(lambda x: x == 0)
+        .bfill(limit=N - 1)
+        .fillna(0)
+        .astype(bool)
+    ).values
     return idx
+
 
 def get_rank_order(
     st,
@@ -1291,7 +1307,8 @@ def get_rank_order(
 
     return np.nanmedian(rank_order, axis=1), rank_order
 
-def overlap_intersect(epoch,interval,return_indices=True):
+
+def overlap_intersect(epoch, interval, return_indices=True):
     """
     Returns the epochs with overlap with interval
     Input:
@@ -1300,17 +1317,19 @@ def overlap_intersect(epoch,interval,return_indices=True):
         interval: nelpy.IntervalArray
             The interval to check for overlap
         return_indices: bool
-            If True, returns the indices of the epochs (interval) that overlap    
+            If True, returns the indices of the epochs (interval) that overlap
     Output:
         epoch: nelpy.EpochArray
             The epochs with overlap with interval
     """
     new_intervals = []
     indices = []
-    for epa in (epoch):
+    for epa in epoch:
         if any((interval.starts < epa.stop) & (interval.stops > epa.start)):
             new_intervals.append([epa.start, epa.stop])
-            cand_ep_idx = np.where((interval.starts < epa.stop) & (interval.stops > epa.start))
+            cand_ep_idx = np.where(
+                (interval.starts < epa.stop) & (interval.stops > epa.start)
+            )
             indices.append(cand_ep_idx[0][0])
     out = type(epoch)(new_intervals)
     out._domain = epoch.domain
@@ -1318,11 +1337,13 @@ def overlap_intersect(epoch,interval,return_indices=True):
         return out, indices
     return out
 
+
 def get_velocity(position, time=None):
     if time is None:
         time = np.arange(position.shape[0])
     return np.gradient(position, time, axis=0)
 
+
 def get_speed(position, time=None):
     velocity = get_velocity(position, time=time)
-    return np.sqrt(np.sum(velocity ** 2, axis=1))
+    return np.sqrt(np.sum(velocity**2, axis=1))
