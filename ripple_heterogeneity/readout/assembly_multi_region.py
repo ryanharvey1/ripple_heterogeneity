@@ -15,6 +15,7 @@ def run(
     regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",
     putativeCellType="Pyr",
     weight_dt=0.1,  # dt in seconds for binning st to get weights for each assembly
+    z_mat_dt=0.03, # dt in seconds for binning st to get activation strength
     verbose=False,  # print out progress
     rip_expand=0.05,  # expand the ripple region by this amount (not used)
     rip_exp_start=0.05,  # ripple expansion start, in seconds, how much to expand ripples
@@ -31,6 +32,7 @@ def run(
         brainRegion=regions,
         putativeCellType=putativeCellType,
         weight_dt=weight_dt,
+        z_mat_dt=z_mat_dt
     )
 
     # load data
