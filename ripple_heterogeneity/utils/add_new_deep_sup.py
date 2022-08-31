@@ -49,6 +49,9 @@ def add_new_deep_sup_class(df, layer_dist=30):
         "deepSuperficial",
     ] = "middle"
     df_out.loc[df_out.deepSuperficialDistance >= sup, "deepSuperficial"] = "Superficial"
+    
+    # make sure these are ca1
+    df_out.loc[~df_out.brainRegion.str.contains("CA1"),"deepSuperficial"] = "unknown"
 
     return df_out
 
@@ -67,16 +70,15 @@ def deep_sup_from_deepSuperficialDistance(cell_metrics, layer_dist=30):
     deep = -layer_dist
     middle = [-layer_dist, layer_dist]
     sup = layer_dist
-    cell_metrics.loc[
-        cell_metrics.deepSuperficialDistance <= deep, "deepSuperficial"
-    ] = "Deep"
+    cell_metrics.loc[cell_metrics.deepSuperficialDistance <= deep, "deepSuperficial"] = "Deep"
     cell_metrics.loc[
         (cell_metrics.deepSuperficialDistance > middle[0])
         & (cell_metrics.deepSuperficialDistance < middle[1]),
         "deepSuperficial",
     ] = "middle"
-    cell_metrics.loc[
-        cell_metrics.deepSuperficialDistance >= sup, "deepSuperficial"
-    ] = "Superficial"
+    cell_metrics.loc[cell_metrics.deepSuperficialDistance >= sup, "deepSuperficial"] = "Superficial"
+
+    # make sure these are ca1
+    cell_metrics.loc[~cell_metrics.brainRegion.str.contains("CA1"),"deepSuperficial"] = "unknown"
 
     return cell_metrics
