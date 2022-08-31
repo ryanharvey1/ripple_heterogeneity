@@ -121,23 +121,21 @@ def compile_results_df(results):
     assembly_df["assembly_n"] = (
         (np.ones_like(patterns).T * np.arange(patterns.shape[0])).T.astype(int).ravel()
     )
-    assembly_df["UID"] = np.tile(
-        results.get("react").cell_metrics.UID.values, patterns.shape[0]
-    )
+
+    cm = results.get("react").cell_metrics
+    cm = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cm)
+
+    assembly_df["UID"] = np.tile(cm.UID.values, patterns.shape[0])
     assembly_df["putativeCellType"] = np.tile(
-        results.get("react").cell_metrics.putativeCellType.values, patterns.shape[0]
+        cm.putativeCellType.values, patterns.shape[0]
     )
-    assembly_df["brainRegion"] = np.tile(
-        results.get("react").cell_metrics.brainRegion.values, patterns.shape[0]
-    )
+    assembly_df["brainRegion"] = np.tile(cm.brainRegion.values, patterns.shape[0])
     assembly_df["deepSuperficial"] = np.tile(
-        results.get("react").cell_metrics.deepSuperficial.values, patterns.shape[0]
+        cm.deepSuperficial.values, patterns.shape[0]
     )
     assembly_df["deepSuperficialDistance"] = np.tile(
-        results.get("react").cell_metrics.deepSuperficialDistance.values,
-        patterns.shape[0],
+        cm.deepSuperficialDistance.values, patterns.shape[0]
     )
-    assembly_df = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(assembly_df)
 
     deep_mec = []
     deep_pfc = []
@@ -147,6 +145,12 @@ def compile_results_df(results):
     n_sup = []
     n_mec = []
     n_pfc = []
+
+    # make sure non ca1 is unknown deep/sup
+    assembly_df.loc[
+        ~assembly_df.brainRegion.str.contains("CA1"), "deepSuperficial"
+    ] = "unknown"
+
     for n in assembly_df.assembly_n.unique():
         temp_assembly_df = assembly_df[
             (assembly_df.assembly_n == n) & (assembly_df.is_member_sig)
@@ -154,9 +158,9 @@ def compile_results_df(results):
         n_deep.append(np.sum(temp_assembly_df.deepSuperficial == "Deep"))
         n_sup.append(np.sum(temp_assembly_df.deepSuperficial == "Superficial"))
         n_mec.append(
-            np.sum(temp_assembly_df.deepSuperficial == "EC1|EC2|EC3|EC4|EC5|MEC")
+            np.sum(temp_assembly_df.brainRegion.str.contains("EC1|EC2|EC3|EC4|EC5|MEC"))
         )
-        n_pfc.append(np.sum(temp_assembly_df.deepSuperficial == "PFC"))
+        n_pfc.append(np.sum(temp_assembly_df.brainRegion == "PFC"))
 
         deep_mec.append(
             any(temp_assembly_df.brainRegion.str.contains("EC1|EC2|EC3|EC4|EC5|MEC"))
@@ -192,24 +196,13 @@ def compile_results_df(results):
 
     prop_df["labels"] = ["Superficial PFC", "Superficial MEC", "Deep PFC", "Deep MEC"]
 
-    results.get(
-        "react"
-    ).cell_metrics = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(
-        results.get("react").cell_metrics
-    )
+    # make sure non ca1 is unknown deep/sup
+    cm.loc[~cm.brainRegion.str.contains("CA1"), "deepSuperficial"] = "unknown"
 
-    prop_df["n_deep"] = sum(results.get("react").cell_metrics.deepSuperficial == "Deep")
-    prop_df["n_sup"] = sum(
-        results.get("react").cell_metrics.deepSuperficial == "Superficial"
-    )
-    prop_df["n_mec"] = sum(
-        results.get("react").cell_metrics.brainRegion.str.contains(
-            "EC1|EC2|EC3|EC4|EC5|MEC"
-        )
-    )
-    prop_df["n_pfc"] = sum(
-        results.get("react").cell_metrics.brainRegion.str.contains("PFC")
-    )
+    prop_df["n_deep"] = sum(cm.deepSuperficial == "Deep")
+    prop_df["n_sup"] = sum(cm.deepSuperficial == "Superficial")
+    prop_df["n_mec"] = sum(cm.brainRegion.str.contains("EC1|EC2|EC3|EC4|EC5|MEC"))
+    prop_df["n_pfc"] = sum(cm.brainRegion.str.contains("PFC"))
     prop_df["n_assemblies"] = len(assembly_df.assembly_n.unique())
     prop_df["basepath"] = results.get("react").basepath
 
@@ -277,25 +270,21 @@ def load_reactivation(results):
             .T.astype(int)
             .ravel()
         )
-        assembly_df["UID"] = np.tile(
-            results.get("react").cell_metrics.UID.values, patterns.shape[0]
-        )
+        cm = results.get("react").cell_metrics
+        cm = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(cm)
+
+        assembly_df["UID"] = np.tile(cm.UID.values, patterns.shape[0])
         assembly_df["putativeCellType"] = np.tile(
-            results.get("react").cell_metrics.putativeCellType.values, patterns.shape[0]
+            cm.putativeCellType.values, patterns.shape[0]
         )
-        assembly_df["brainRegion"] = np.tile(
-            results.get("react").cell_metrics.brainRegion.values, patterns.shape[0]
-        )
+        assembly_df["brainRegion"] = np.tile(cm.brainRegion.values, patterns.shape[0])
         assembly_df["deepSuperficial"] = np.tile(
-            results.get("react").cell_metrics.deepSuperficial.values, patterns.shape[0]
+            cm.deepSuperficial.values, patterns.shape[0]
         )
         assembly_df["deepSuperficialDistance"] = np.tile(
-            results.get("react").cell_metrics.deepSuperficialDistance.values,
-            patterns.shape[0],
+            cm.deepSuperficialDistance.values, patterns.shape[0]
         )
-        assembly_df = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(
-            assembly_df
-        )
+
         return assembly_df
 
     def get_assembly_cross_members(assembly_df):
