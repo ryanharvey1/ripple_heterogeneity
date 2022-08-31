@@ -119,11 +119,11 @@ class AssemblyReact(object):
         epoch_df = compress_repeated_epochs.main(epoch_df)
         # restrict to pre task post epochs
         idx = functions.find_pre_task_post(epoch_df.environment)
-        epoch_df = epoch_df[idx[0]]
+        self.epoch_df = epoch_df[idx[0]]
         # convert to epoch array and add to object
         self.epochs = nel.EpochArray(
-            [np.array([epoch_df.startTime, epoch_df.stopTime]).T],
-            label=epoch_df.environment.values,
+            [np.array([self.epoch_df.startTime, self.epoch_df.stopTime]).T],
+            label="session_epochs",
         )
 
     def restrict_to_epoch(self, epoch):
