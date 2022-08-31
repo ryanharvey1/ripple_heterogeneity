@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from ripple_heterogeneity.readout import assembly_multi_region
 from ripple_heterogeneity.utils import functions, loading
-from ripple_heterogenetiy.place_cells import maps
+from ripple_heterogeneity.place_cells import maps
 import nelpy as nel
 
 def get_pairs(curr_assem):
@@ -94,37 +94,37 @@ def get_pairs(curr_assem):
     return label_df
 
 
-def run(basepath, binsize=0.005, nbins=200):
+def run(basepath):
 
     with open(basepath, "rb") as f:
         results = pickle.load(f)
     if results is None:
         return None
 
+    # pull in previous results from assembly multi region analysis
     prop_df, assembly_df = assembly_multi_region.compile_results_df(results)
     m1 = results["react"]
-    # restrict to pre/task/post epochs
-    try:
-        m1.restrict_epochs_to_pre_task_post()
-        no_pre_task_post = False
-    except:
-        print("No pre/task/post epochs found")
-        no_pre_task_post = True
 
-    if no_pre_task_post:
+    # if there is only single epoch, that must by task
+    if m1.epoch_df.name.shape[0] == 1:
+        task_idx = 0
+    # if there are not exactly 3 epochs, find the longest task
+    elif m1.epoch_df.name.shape[0] != 3:
         epoch_df = m1.epoch_df.reset_index()
         epoch_df = epoch_df.query("environment != 'sleep'")
         epoch_df["duration"] = epoch_df.stopTime.values - epoch_df.startTime.values
         task_idx = int(epoch_df.sort_values("duration", ascending=False).index[0])
+    # if there is exactly 3 epochs, the center will be the task
     else:
         task_idx = 1
-
-    # ccgs = pd.DataFrame()
-    label_df = pd.DataFrame()
 
     # load position
     position_df = loading.load_animal_behavior(results['react'].basepath)
     position_df_no_nan = position_df.query("not x.isnull() & not y.isnull()")
+
+    # if there is no position, skip session
+    if position_df_no_nan.shape[0] == 0:
+        return None
 
     # put position into position array
     pos = nel.PositionArray(
@@ -132,7 +132,10 @@ def run(basepath, binsize=0.005, nbins=200):
         timestamps=position_df_no_nan.timestamps.values,
     )
 
+    # calculate tuning curves
     tc = maps.SpatialMap(pos[m1.epochs[task_idx]], m1.st[m1.epochs[task_idx]], dim=2)
+
+    label_df = pd.DataFrame()
 
     for assembly_n in assembly_df.assembly_n.unique():
         curr_assem = assembly_df.query("assembly_n == @assembly_n")
@@ -141,16 +144,10 @@ def run(basepath, binsize=0.005, nbins=200):
 
         label_df_["assembly_n"] = assembly_n
 
-        pairwise_spatial_corr(
-            tc.ratemaps, return_index=False, pairs=label_df_[["idx_ref", "idx_tar"]].values
+        spatial_corr = functions.pairwise_spatial_corr(
+            tc.tc.ratemap, return_index=False, pairs=label_df_[["idx_ref", "idx_tar"]].values
         )
-        # ccgs_ = functions.pairwise_cross_corr(
-        #     spks,
-        #     binsize=binsize,
-        #     nbins=nbins,
-        #     pairs=label_df_[["idx_ref", "idx_tar"]].values,
-        # )
-        # ccgs = pd.concat([ccgs, ccgs_], axis=1, ignore_index=True)
+        label_df_["spatial_corr"] = spatial_corr
         label_df = pd.concat([label_df, label_df_], ignore_index=True)
 
     label_df["basepath"] = m1.basepath
@@ -176,4 +173,4 @@ def load_results(save_path, verbose=False):
 
         label_df = pd.concat([label_df, results["label_df"]], ignore_index=True)
 
-    return ccgs, label_df
+    return label_df
