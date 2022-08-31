@@ -132,10 +132,15 @@ def run(basepath):
         timestamps=position_df_no_nan.timestamps.values,
     )
 
+    if pos[m1.epochs[task_idx]].isempty:
+        return None
+
     # calculate tuning curves
     tc = maps.SpatialMap(pos[m1.epochs[task_idx]], m1.st[m1.epochs[task_idx]], dim=2)
 
     label_df = pd.DataFrame()
+
+    current_st = m1.st[m1.epochs[task_idx]]
 
     for assembly_n in assembly_df.assembly_n.unique():
         curr_assem = assembly_df.query("assembly_n == @assembly_n")
@@ -148,6 +153,19 @@ def run(basepath):
             tc.tc.ratemap, return_index=False, pairs=label_df_[["idx_ref", "idx_tar"]].values
         )
         label_df_["spatial_corr"] = spatial_corr
+
+        label_df_["spatial_info_ref"] = tc.tc.spatial_information()[label_df_.idx_ref]
+        label_df_["spatial_info_tar"] = tc.tc.spatial_information()[label_df_.idx_tar]
+
+        label_df_["spatial_sparsity_ref"] = tc.tc.spatial_sparsity()[label_df_.idx_ref]
+        label_df_["spatial_sparsity_tar"] = tc.tc.spatial_sparsity()[label_df_.idx_tar]
+
+        label_df_["peak_rate_ref"] = tc.tc.ratemap.max(axis=1).max(axis=1)[label_df_.idx_ref]
+        label_df_["peak_rate_tar"] = tc.tc.ratemap.max(axis=1).max(axis=1)[label_df_.idx_tar]
+
+        label_df_["n_spikes_ref"] = current_st.n_events[label_df_.idx_ref]
+        label_df_["n_spikes_tar"] = current_st.n_events[label_df_.idx_tar]
+        
         label_df = pd.concat([label_df, label_df_], ignore_index=True)
 
     label_df["basepath"] = m1.basepath
@@ -171,6 +189,6 @@ def load_results(save_path, verbose=False):
         if results is None:
             continue
 
-        label_df = pd.concat([label_df, results["label_df"]], ignore_index=True)
+        label_df = pd.concat([label_df, results], ignore_index=True)
 
     return label_df
