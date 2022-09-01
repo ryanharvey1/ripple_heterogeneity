@@ -78,6 +78,8 @@ def run(
     task_idx = locate_task_epoch(m1, env)
 
     m1.get_weights(m1.epochs[task_idx])
+    if len(m1.patterns) == 0:
+        return None
     _, assembly_df = assembly_multi_region.compile_results_df({"react": m1})
 
     counts_df = (
@@ -108,6 +110,7 @@ def run(
     n_extern = int((ext_xmax - ext_xmin) / s_binsize)
 
     label_df = pd.DataFrame()
+    tc = pd.DataFrame()
 
     direction_label = ["outbound_epochs", "inbound_epochs"]
 
@@ -159,5 +162,27 @@ def run(
 
     return results
 
-def load_results():
-    pass
+def load_results(save_path, verbose=False):
+    """
+    load_results: load results from a pickle file
+    """
+    print("Loading results...")
+
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+
+    tc = []
+    label_df = pd.DataFrame()
+
+    for session in sessions:
+        if verbose:
+            print(session)
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+        if results is None:
+            continue
+
+        tc.append(results["tc"])
+        results["label_df"]["basepath"] = results["react"].basepath
+        label_df = pd.concat([label_df, results["label_df"]], ignore_index=True)
+
+    return tc, label_df
