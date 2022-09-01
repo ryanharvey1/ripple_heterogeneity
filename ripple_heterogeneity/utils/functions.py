@@ -279,14 +279,15 @@ def pairwise_spatial_corr(X, return_index=False, pairs=None):
         x = np.arange(0, X.shape[0])
         pairs = np.array(list(combinations(x, 2)))
 
-    X[np.isnan(X)] = 0
-
     spatial_corr = []
     # Now we can iterate over spikes
     for i, s in enumerate(pairs):
         # Calling the crossCorr function
+        x1 = X[s[0], :, :].flatten()
+        x2 = X[s[1], :, :].flatten()
+        bad_idx = np.isnan(x1) | np.isnan(x1)
         spatial_corr.append(
-            np.corrcoef(X[s[0], :, :].flatten(), X[s[1], :, :].flatten())[0, 1]
+            np.corrcoef(x1[~bad_idx], x2[~bad_idx])[0, 1]
         )
 
     if return_index:
