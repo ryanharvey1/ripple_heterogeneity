@@ -9,6 +9,7 @@ from ripple_heterogeneity.readout import assembly_multi_region
 from ripple_heterogeneity.utils import functions, loading
 from ripple_heterogeneity.place_cells import maps
 import nelpy as nel
+import copy
 
 def get_pairs(curr_assem):
     x = np.arange(0, curr_assem.shape[0])
@@ -142,6 +143,10 @@ def run(basepath):
 
     current_st = m1.st[m1.epochs[task_idx]]
 
+    # deep copy ratemap and nan low occ
+    ratemap = copy.deepcopy(tc.tc.ratemap)
+    ratemap[:,tc.tc.occupancy < 0.1] = np.nan
+
     for assembly_n in assembly_df.assembly_n.unique():
         curr_assem = assembly_df.query("assembly_n == @assembly_n")
 
@@ -150,7 +155,7 @@ def run(basepath):
         label_df_["assembly_n"] = assembly_n
 
         spatial_corr = functions.pairwise_spatial_corr(
-            tc.tc.ratemap, return_index=False, pairs=label_df_[["idx_ref", "idx_tar"]].values
+            ratemap, return_index=False, pairs=label_df_[["idx_ref", "idx_tar"]].values
         )
         label_df_["spatial_corr"] = spatial_corr
 
@@ -169,8 +174,6 @@ def run(basepath):
         label_df = pd.concat([label_df, label_df_], ignore_index=True)
 
     label_df["basepath"] = m1.basepath
-
-    # results = {"ccgs": ccgs, "label_df": label_df}
 
     return label_df
 
