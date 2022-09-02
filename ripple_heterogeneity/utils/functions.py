@@ -1045,6 +1045,36 @@ def get_linear_track_lap_epochs(
     return outbound_epochs, inbound_epochs
 
 
+def find_good_lap_epochs(pos, dir_epoch, thres=0.5, binsize=6, min_laps=10):
+    """
+    find_good_laps: finds good laps in behavior data
+        Made to find good laps in nelpy array for replay analysis
+    input:
+        pos: nelpy analog array with single dim
+        dir_epoch: epoch to find good lap
+        thres: occupancy threshold for good lap
+        binsize: size of bins to calculate occupancy
+    output:
+        good_laps: epoch array of good laps
+    """
+    # make bin edges to calc occupancy
+    x_edges = np.arange(np.nanmin(pos.data[0]), np.nanmax(pos.data[0]), binsize)
+    # initialize occupancy matrix (position x time)
+    occ = np.zeros([len(x_edges) - 1, dir_epoch.n_intervals])
+    # iterate through laps
+    for i, ep in enumerate(dir_epoch):
+        # bin position per lap
+        occ[:, i], _ = np.histogram(pos[ep].data[0], bins=x_edges)
+    # calc percent occupancy over position bins per lap and find good laps
+    good_laps = np.where(~((np.sum(occ == 0, axis=0) / occ.shape[0]) > thres))[0]
+    # if no good laps, return empty epoch
+    if (len(good_laps) == 0) | (len(good_laps) < min_laps):
+        dir_epoch = nel.EpochArray()
+    else:
+        dir_epoch = dir_epoch[good_laps]
+    return dir_epoch
+
+
 def find_pre_task_post(env, pre_post_label="sleep"):
     """
     given list of environment, finds first contigous epochs that meet pre/task/post
