@@ -51,15 +51,16 @@ def get_pos(basepath, m1, task_idx):
 
 def run(
     basepath,
-    regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",
-    putativeCellType="Pyr",
+    regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC", # brain regions to load
+    putativeCellType="Pyr", # type of cells to load (can be multi ex. Pyr|Int)
     weight_dt=0.1,  # dt in seconds for binning st to get weights for each assembly
     z_mat_dt=0.03,  # dt in seconds for binning st to get activation strength
     verbose=False,  # print out progress
-    env="linear",
-    s_binsize=3,
-    sigma=3,
-    speed_thres=4,
+    env="linear", # enviroment you want to look at (current should only be linear)
+    s_binsize=3, # spatial bin size
+    smooth_sigma=3, # smoothing sigma in cm
+    smooth_window=10, # smoothing window in cm
+    speed_thres=4, # speed threshold for ratemap in cm/sec
 ):
 
     m1 = assembly_reactivation.AssemblyReact(
@@ -95,7 +96,7 @@ def run(
     if len(m1.patterns) == 0:
         return None
 
-    _, assembly_df = assembly_multi_region.compile_results_df({"react": m1})
+    _, assembly_df, keep_assembly = assembly_multi_region.compile_results_df({"react": m1})
 
     # check if any sig members
     if not assembly_df.is_member_sig.any():
@@ -119,6 +120,7 @@ def run(
     )
 
     assembly_act_task = m1.get_assembly_act(epoch=m1.epochs[task_idx])
+    assembly_act_task._data = assembly_act_task.data[keep_assembly]
 
     pos, outbound_epochs, inbound_epochs = get_pos(basepath, m1, task_idx)
     if pos is None:
@@ -161,7 +163,7 @@ def run(
         )
 
         # smooth
-        tc_ = tc_.rolling(window=5, win_type="gaussian", center=True).mean(std=sigma)
+        tc_ = tc_.rolling(window=smooth_window,win_type='gaussian',center=True,min_periods=1).mean(std=smooth_sigma)
 
         # store tuning curves
         tc = pd.concat([tc, tc_], axis=1, ignore_index=True)
