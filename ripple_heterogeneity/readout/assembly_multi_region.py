@@ -208,7 +208,7 @@ def compile_results_df(results):
     prop_df["n_assemblies"] = len(assembly_df.assembly_n.unique())
     prop_df["basepath"] = results.get("react").basepath
 
-    return prop_df, assembly_df
+    return prop_df, assembly_df, keep_assembly
 
 
 def load_reactivation(results):
@@ -392,7 +392,7 @@ def load_results(save_path, verbose=False):
         if results is None:
             continue
 
-        prop_df_, assembly_df_ = compile_results_df(results)
+        prop_df_, assembly_df_, keep_assembly_ = compile_results_df(results)
         prop_df = pd.concat([prop_df, prop_df_], ignore_index=True)
         assembly_df = pd.concat([assembly_df, assembly_df_], ignore_index=True)
 
