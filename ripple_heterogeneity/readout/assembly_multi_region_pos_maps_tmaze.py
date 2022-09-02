@@ -19,7 +19,8 @@ def locate_task_epoch(m1, env):
     epoch_df.sort_values("duration", ascending=False, inplace=True)
     return int(epoch_df[epoch_df.environment.str.contains(env)].index[0])
 
-def dissociate_laps_by_states(states, dir_epoch, states_of_interest=[1,2]):
+
+def dissociate_laps_by_states(states, dir_epoch, states_of_interest=[1, 2]):
     # unique_states = np.unique(states.data[~np.isnan(states.data)])
     lap_id = []
     for ep in dir_epoch:
@@ -28,6 +29,7 @@ def dissociate_laps_by_states(states, dir_epoch, states_of_interest=[1,2]):
             state_count.append(np.nansum(states[ep].data == us))
         lap_id.append(states_of_interest[np.argmax(state_count)])
     return np.array(lap_id).astype(int)
+
 
 def get_pos(basepath, m1, task_idx):
     position_df = loading.load_animal_behavior(basepath)
@@ -45,8 +47,10 @@ def get_pos(basepath, m1, task_idx):
 
     pos = pos[m1.epochs[task_idx]]
 
-    states = nel.AnalogSignalArray(data=position_df_no_nan["states"].values.T,
-        timestamps=position_df_no_nan.timestamps.values)
+    states = nel.AnalogSignalArray(
+        data=position_df_no_nan["states"].values.T,
+        timestamps=position_df_no_nan.timestamps.values,
+    )
     states = states[m1.epochs[task_idx]]
 
     # get outbound and inbound epochs
@@ -60,12 +64,14 @@ def get_pos(basepath, m1, task_idx):
         raise TypeError("inbound_epochs should be empty for tmaze")
 
     # locate laps with the majority in state 1 or 2
-    lap_id = dissociate_laps_by_states(states, outbound_epochs, states_of_interest=[1,2])
+    lap_id = dissociate_laps_by_states(
+        states, outbound_epochs, states_of_interest=[1, 2]
+    )
 
-    right_epochs = nel.EpochArray(data=outbound_epochs.data[lap_id==1,:])
-    left_epochs = nel.EpochArray(data=outbound_epochs.data[lap_id==2,:])
+    right_epochs = nel.EpochArray(data=outbound_epochs.data[lap_id == 1, :])
+    left_epochs = nel.EpochArray(data=outbound_epochs.data[lap_id == 2, :])
 
-    return pos, right_epochs, left_epochs
+    return pos, right_epochs, left_epochs, states
 
 
 def run(
@@ -145,7 +151,7 @@ def run(
     assembly_act_task = m1.get_assembly_act(epoch=m1.epochs[task_idx])
     assembly_act_task._data = assembly_act_task.data[keep_assembly]
 
-    pos, right_epochs, left_epochs = get_pos(basepath, m1, task_idx)
+    pos, right_epochs, left_epochs, states = get_pos(basepath, m1, task_idx)
     if pos is None:
         return
 
@@ -206,6 +212,11 @@ def run(
         "label_df": label_df,
         "assembly_act_task": assembly_act_task,
         "react": m1,
+        "pos": pos,
+        "right_epochs": right_epochs,
+        "left_epochs": left_epochs,
+        "states": states,
+        "task_epoch": m1.epochs[task_idx],
     }
 
     return results
