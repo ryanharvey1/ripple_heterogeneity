@@ -30,6 +30,9 @@ def get_pos(basepath, m1, task_idx):
     position_df = loading.load_animal_behavior(basepath)
     position_df_no_nan = position_df.query("not x.isnull() & not y.isnull()")
 
+    if position_df_no_nan.shape[0] == 0:
+        return None, None, None
+
     pos = nel.PositionArray(
         data=position_df_no_nan["linearized"].values.T,
         timestamps=position_df_no_nan.timestamps.values,
@@ -71,16 +74,32 @@ def run(
     # check if no cells were found
     if m1.cell_metrics.shape[0] == 0:
         return None
+    # check for any ca1 cells
+    if not m1.cell_metrics.brainRegion.str.contains("CA1").any():
+        return None
 
-    # find longest xx session
+    # check for any cortex cells
+    if not m1.cell_metrics.brainRegion.str.contains("PFC|EC1|EC2|EC3|EC4|EC5|MEC").any():
+        return None
+
+    # check if any env
     if not m1.epoch_df.environment.str.contains(env).any():
         return None
+
+    # find longest xx session
     task_idx = locate_task_epoch(m1, env)
 
     m1.get_weights(m1.epochs[task_idx])
+
+    # check if any assemblies
     if len(m1.patterns) == 0:
         return None
+
     _, assembly_df = assembly_multi_region.compile_results_df({"react": m1})
+
+    # check if any sig members
+    if not assembly_df.is_member_sig.any():
+        return None
 
     counts_df = (
         assembly_df.groupby(["assembly_n", "is_member_sig"])
@@ -102,6 +121,8 @@ def run(
     assembly_act_task = m1.get_assembly_act(epoch=m1.epochs[task_idx])
 
     pos, outbound_epochs, inbound_epochs = get_pos(basepath, m1, task_idx)
+    if pos is None:
+        return
 
     ext_xmin, ext_xmax = (
         np.floor(pos.data[0].min() / 10) * 10,
@@ -149,7 +170,7 @@ def run(
         label_df_ = pd.DataFrame()
         label_df_["assembly_n"] = np.arange(assembly_act_task.n_signals).astype(int)
         label_df_["direction_label"] = direction_label[dir_epoch_i]
-        label_df_.merge(counts_df.query("is_member_sig"))
+        label_df_ = label_df_.merge(counts_df.query("is_member_sig"))
 
         label_df = pd.concat([label_df, label_df_], ignore_index=True)
 
