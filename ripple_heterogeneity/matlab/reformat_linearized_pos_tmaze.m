@@ -1,6 +1,6 @@
 % df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 % df = df(contains(df.basepath,'OR'),:);
-df.basepath = {'Z:\Data\AYAold\AYA10\day12'};
+df.basepath = {'Z:\Data\FujisawaS\EE\EE0622fm'};
 
 % visual of current edges (states) for linearized pos
 %    ___ ___
@@ -57,10 +57,21 @@ load(fullfile(basepath,[basename,'.session.mat']))
 start = [];
 stop = [];
 for ep = 1:length(session.epochs)
-    if contains(session.epochs{ep}.environment,'tmaze')
-        start = [start,session.epochs{ep}.startTime];
-        stop = [stop,session.epochs{ep}.stopTime];
-        break
+    if contains(session.epochs{ep}.environment,'tmaze') ||...
+            contains(session.epochs{ep}.environment,'Mwheel') ||...
+            contains(session.epochs{ep}.environment,'Tmaze')
+        
+        start = session.epochs{ep}.startTime;
+        stop = session.epochs{ep}.stopTime;
+        
+        [idx,~,~] = InIntervals(behavior.timestamps,...
+            [start,stop]);
+        
+        if ~any(idx)
+            continue
+        else
+            break
+        end
     end
 end
 [idx,~,~] = InIntervals(behavior.timestamps,...
