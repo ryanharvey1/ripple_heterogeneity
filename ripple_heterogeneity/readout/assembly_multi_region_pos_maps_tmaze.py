@@ -36,7 +36,13 @@ def get_pos(basepath, m1, task_idx):
     position_df_no_nan = position_df.query("not x.isnull() & not y.isnull()")
 
     if position_df_no_nan.shape[0] == 0:
-        return None, None, None
+        return None, None, None, None
+
+    if "linearized" not in position_df_no_nan.columns:
+        return None, None, None, None
+
+    if "states" not in position_df_no_nan.columns:
+        return None, None, None, None
 
     pos = nel.PositionArray(
         data=position_df_no_nan["linearized"].values.T,
