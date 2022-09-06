@@ -25,7 +25,9 @@ TODO:
 class NodePicker:
     """Interactive creation of track graph by looking at video frames."""
 
-    def __init__(self, ax=None, basepath=None, node_color="#177ee6", node_size=100):
+    def __init__(
+        self, ax=None, basepath=None, node_color="#177ee6", node_size=100, epoch=None
+    ):
         if ax is None:
             ax = plt.gca()
         self.ax = ax
@@ -36,6 +38,10 @@ class NodePicker:
         self._nodes_plot = ax.scatter([], [], zorder=5, s=node_size, color=node_color)
         self.edges = [[]]
         self.basepath = basepath
+        self.epoch = epoch
+
+        if self.epoch is not None:
+            self.epoch = int(self.epoch)
 
         ax.set_title(
             "Left click to place node.\nRight click to remove node."
@@ -133,7 +139,15 @@ class NodePicker:
     def format_and_save(self):
 
         behave_df = load_animal_behavior(self.basepath)
-        na_idx = np.isnan(behave_df.x)
+
+        if self.epoch is not None:
+            epochs = load_epoch(self.basepath)
+            na_idx = np.isnan(behave_df.x) | (
+                (behave_df.time < epochs.iloc[self.epoch].startTime)
+                & (behave_df.time > epochs.iloc[self.epoch].stopTime)
+            )
+        else:
+            na_idx = np.isnan(behave_df.x)
 
         print("running hmm...")
         track_graph = make_track_graph(self.node_positions, self.edges)
@@ -192,11 +206,36 @@ def load_animal_behavior(basepath):
     return df
 
 
-def run(basepath):
+def load_epoch(basepath):
+    """
+    Loads epoch info from cell explorer basename.session and stores in df
+    """
+    try:
+        filename = glob.glob(os.path.join(basepath, "*.session.mat"))[0]
+    except:
+        warnings.warn("file does not exist")
+        return pd.DataFrame()
+    data = loadmat(filename, simplify_cells=True)
+    try:
+        return pd.DataFrame(data["session"]["epochs"])
+    except:
+        return pd.DataFrame([data["session"]["epochs"]])
+
+
+def run(basepath, epoch=None):
     print("here is the file,", basepath)
     fig, ax = plt.subplots(figsize=(5, 5))
 
     behave_df = load_animal_behavior(basepath)
+
+    if epoch is not None:
+        epochs = load_epoch(basepath)
+
+        behave_df = behave_df[
+            behave_df["time"].between(
+                epochs.iloc[epoch].startTime, epochs.iloc[epoch].stopTime
+            )
+        ]
 
     ax.scatter(behave_df.x, behave_df.y, color="white", s=0.5, alpha=0.5)
     ax.axis("equal")
@@ -206,10 +245,14 @@ def run(basepath):
     ax.set_ylabel("y (cm)")
     ax.set_xlabel("x (cm)")
 
-    picker = NodePicker(ax=ax, basepath=basepath)
+    picker = NodePicker(ax=ax, basepath=basepath, epoch=epoch)
 
     plt.show(block=True)
 
 
 if __name__ == "__main__":
-    run(sys.argv[1])
+    print(len(sys.argv))
+    if len(sys.argv) == 2:
+        run(sys.argv[1])
+    elif len(sys.argv) == 3:
+        run(sys.argv[1], epoch=int(sys.argv[2]))
