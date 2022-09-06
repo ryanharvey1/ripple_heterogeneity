@@ -106,7 +106,7 @@ def plot_all_replay(
             norm = plt.Normalize()
             colors = plt.get_cmap(cmap)(norm(color_scale_vector))
             for i, series_ids in enumerate(st_cut.series_ids):
-                npl.rasterplot(st_cut[:, series_ids], color=colors[i, :],
+                npl.rasterplot(st_cut[:, int(series_ids)], color=colors[i, :],
                                vertstack=True, ax=axRaster, lh=raster_lh, lw=raster_lw)
         else:
             npl.rasterplot(st_cut, vertstack=True, ax=axRaster,
