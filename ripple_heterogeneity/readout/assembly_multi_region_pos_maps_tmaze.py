@@ -11,7 +11,9 @@ import nelpy as nel
 import glob
 import pickle
 import pynapple as nap
+import logging
 
+logging.getLogger().setLevel(logging.ERROR)
 
 def locate_task_epoch(m1, env):
     epoch_df = m1.epoch_df.reset_index(drop=True).copy()
@@ -79,12 +81,19 @@ def get_pos(basepath, m1, task_idx):
 
     return pos, right_epochs, left_epochs, states, position_df_no_nan
 
+def find_closest_position_index(position_df_no_nan,xy):
+    idx = np.argmin(
+        np.abs(
+            position_df_no_nan.x - xy[0] + position_df_no_nan.y - xy[1]
+        )
+    )
+    return idx
 
 def run(
     basepath,
     regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # brain regions to load
     putativeCellType="Pyr",  # type of cells to load (can be multi ex. Pyr|Int)
-    weight_dt=0.1,  # dt in seconds for binning st to get weights for each assembly
+    weight_dt=0.05,  # dt in seconds for binning st to get weights for each assembly
     z_mat_dt=0.03,  # dt in seconds for binning st to get activation strength
     verbose=False,  # print out progress
     env="Mwheel|Tmaze|tmaze",  # enviroment you want to look at (current should only be linear)
@@ -135,7 +144,14 @@ def run(
         return None
 
     # find longest xx session
-    task_idx = locate_task_epoch(m1, env)
+    # task_idx = locate_task_epoch(m1, env)
+    position_df = loading.load_animal_behavior(basepath)
+    task_idx = int(
+        np.where(
+            m1.epoch_df.name
+            == position_df[~position_df.linearized.isnull()].epochs.unique()[0]
+        )[0][0]
+    )
 
     m1.get_weights(m1.epochs[task_idx])
 
@@ -177,8 +193,20 @@ def run(
     if pos is None:
         return
 
-    # TODO: locate key locations in linear coords
+    # locate key locations in linear coords
+    # restrict to particular state when locating closed position
+    # TODO: fix the hard coded values
+    idx = find_closest_position_index(position_df_no_nan.query("states==0"),start_pos)
+    x_start = np.interp(position_df_no_nan.query("states==0").iloc[idx].time,pos.abscissa_vals,pos.data[0])
 
+    idx = find_closest_position_index(position_df_no_nan.query("states==0"),decision_pos)
+    x_decision = np.interp(position_df_no_nan.query("states==0").iloc[idx].time,pos.abscissa_vals,pos.data[0])
+
+    idx = find_closest_position_index(position_df_no_nan.query("states==1"),reward_left_pos)
+    x_reward_left = np.interp(position_df_no_nan.query("states==1").iloc[idx].time,pos.abscissa_vals,pos.data[0])
+
+    idx = find_closest_position_index(position_df_no_nan.query("states==2"),reward_right_pos)
+    x_reward_right = np.interp(position_df_no_nan.query("states==2").iloc[idx].time,pos.abscissa_vals,pos.data[0])
 
     ext_xmin, ext_xmax = (
         np.floor(pos.data[0].min() / 10) * 10,
@@ -231,6 +259,11 @@ def run(
         label_df_ = label_df_.merge(counts_df.query("is_member_sig"))
 
         label_df = pd.concat([label_df, label_df_], ignore_index=True)
+
+    label_df["x_start"] = x_start
+    label_df["x_decision"] = x_decision
+    label_df["x_reward_left"] = x_reward_left
+    label_df["x_reward_right"] = x_reward_right
 
     results = {
         "tc": tc,
