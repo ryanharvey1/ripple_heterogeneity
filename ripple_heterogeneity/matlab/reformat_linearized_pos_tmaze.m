@@ -1,7 +1,17 @@
 % df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 % df = df(contains(df.basepath,'OR'),:);
-df.basepath = {'Z:\Data\FujisawaS\EE\EE0622fm'};
-
+% df.basepath = {'Z:\Data\FujisawaS\EE\EE0622fm'};
+% df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\tmaze_sessions.csv');
+opts = delimitedTextImportOptions("NumVariables", 1);
+opts.DataLines = [2, Inf];
+opts.Delimiter = ",";
+opts.VariableNames = "basepath";
+opts.VariableTypes = "string";
+opts.ExtraColumnsRule = "ignore";
+opts.EmptyLineRule = "read";
+opts = setvaropts(opts, "basepath", "WhitespaceRule", "preserve");
+opts = setvaropts(opts, "basepath", "EmptyFieldRule", "auto");
+df = readtable("Z:\home\ryanh\projects\ripple_heterogeneity\tmaze_sessions.csv", opts);
 % visual of current edges (states) for linearized pos
 %    ___ ___
 %   | 2 | 1 |
@@ -27,6 +37,9 @@ function run(basepath)
 basename = basenameFromBasepath(basepath);
 load(fullfile(basepath,[basename,'.animal.behavior.mat']))
 
+if ~isfield(behavior,'states')
+    return
+end
 states = unique(behavior.states);
 states = states(~isnan(states));
 if length(states) == 3
