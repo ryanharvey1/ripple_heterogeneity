@@ -79,6 +79,11 @@ def get_pos(basepath, m1, task_idx):
     right_epochs = nel.EpochArray(data=outbound_epochs.data[lap_id == 1, :])
     left_epochs = nel.EpochArray(data=outbound_epochs.data[lap_id == 2, :])
 
+    position_df_no_nan = position_df_no_nan[
+        position_df_no_nan["time"].between(
+            m1.epoch_df.iloc[task_idx].startTime, m1.epoch_df.iloc[task_idx].stopTime
+        )
+    ]
     return pos, right_epochs, left_epochs, states, position_df_no_nan
 
 def find_closest_position_index(position_df_no_nan,xy):
@@ -196,6 +201,7 @@ def run(
     # locate key locations in linear coords
     # restrict to particular state when locating closed position
     # TODO: fix the hard coded values
+
     idx = find_closest_position_index(position_df_no_nan.query("states==0"),start_pos)
     x_start = np.interp(position_df_no_nan.query("states==0").iloc[idx].time,pos.abscissa_vals,pos.data[0])
 
