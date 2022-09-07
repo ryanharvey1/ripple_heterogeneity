@@ -77,7 +77,7 @@ def get_pos(basepath, m1, task_idx):
     right_epochs = nel.EpochArray(data=outbound_epochs.data[lap_id == 1, :])
     left_epochs = nel.EpochArray(data=outbound_epochs.data[lap_id == 2, :])
 
-    return pos, right_epochs, left_epochs, states
+    return pos, right_epochs, left_epochs, states, position_df_no_nan
 
 
 def run(
@@ -93,6 +93,20 @@ def run(
     smooth_window=10,  # smoothing window in cm
     speed_thres=4,  # speed threshold for ratemap in cm/sec
 ):
+
+    # locate and load linearization file to get key maze locations
+    linearization_file = os.path.join(basepath, "linearization_nodes_edges.pkl")
+    # if this file doesn't exist, skip
+    if not os.path.exists(linearization_file):
+        return None
+    with open(linearization_file, "rb") as f:
+        nodes_and_edges = pickle.load(f)
+
+    # locate key points (TODO: fix the hard coded values)
+    start_pos = nodes_and_edges["node_positions"][0]
+    decision_pos = nodes_and_edges["node_positions"][1]
+    reward_left_pos = nodes_and_edges["node_positions"][3]
+    reward_right_pos = nodes_and_edges["node_positions"][5]
 
     m1 = assembly_reactivation.AssemblyReact(
         basepath,
@@ -157,9 +171,14 @@ def run(
     assembly_act_task = m1.get_assembly_act(epoch=m1.epochs[task_idx])
     assembly_act_task._data = assembly_act_task.data[keep_assembly]
 
-    pos, right_epochs, left_epochs, states = get_pos(basepath, m1, task_idx)
+    pos, right_epochs, left_epochs, states, position_df_no_nan = get_pos(
+        basepath, m1, task_idx
+    )
     if pos is None:
         return
+
+    # TODO: locate key locations in linear coords
+
 
     ext_xmin, ext_xmax = (
         np.floor(pos.data[0].min() / 10) * 10,
