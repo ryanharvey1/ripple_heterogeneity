@@ -55,7 +55,7 @@ class AssemblyReact(object):
         basepath,
         brainRegion="CA1",
         putativeCellType="Pyramidal Cell",
-        weight_dt=0.01,
+        weight_dt=0.025,
         z_mat_dt=0.002,
     ):
         self.basepath = basepath
@@ -196,7 +196,7 @@ def get_pre_post_assembly_strengths(basepath):
     Gets the pre and post assembly strengths
     """
     # initialize session
-    m1 = AssemblyReact(basepath, weight_dt=0.02)
+    m1 = AssemblyReact(basepath, weight_dt=0.025)
     # load data
     m1.load_data()
     # check if no cells were found
