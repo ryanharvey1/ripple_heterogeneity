@@ -180,6 +180,7 @@ def run(
     # get cross region assemblies
     assem_labels = []
     assembly_act = []
+    abscissa_vals = []
     m1 = {}
     for cross_region in cross_regions:
         for deepSuperficial in ["Deep", "Superficial"]:
@@ -194,7 +195,9 @@ def run(
             )
             if assembly_act_ is None:
                 continue
+
             assembly_act.append(assembly_act_.data)
+            abscissa_vals.append(assembly_act_.abscissa_vals)
             assem_labels.append(
                 [deepSuperficial + "_" + cross_region[1]] * assembly_act_.n_signals
             )
@@ -202,7 +205,7 @@ def run(
 
     assembly_act = nel.AnalogSignalArray(
         data=np.vstack(assembly_act),
-        timestamps=assembly_act_.abscissa_vals,
+        timestamps=abscissa_vals[0],
     )
     assem_labels = np.hstack(assem_labels)
 
