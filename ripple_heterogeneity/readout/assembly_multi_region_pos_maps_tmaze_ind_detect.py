@@ -203,6 +203,9 @@ def run(
             )
             m1[deepSuperficial + "_" + cross_region[1]] = m1_
 
+    if len(assembly_act) == 0:
+        return None
+
     assembly_act = nel.AnalogSignalArray(
         data=np.vstack(assembly_act),
         timestamps=abscissa_vals[0],
@@ -213,7 +216,7 @@ def run(
         basepath, epochs, epoch_df, task_idx
     )
     if pos is None:
-        return
+        return None
 
     # locate key locations in linear coords
     # restrict to particular state when locating closed position
@@ -310,6 +313,7 @@ def run(
     label_df["x_decision"] = x_decision
     label_df["x_reward_left"] = x_reward_left
     label_df["x_reward_right"] = x_reward_right
+    label_df["basepath"] = basepath
 
     results = {
         "tc": tc,
@@ -346,7 +350,6 @@ def load_results(save_path, verbose=False):
             continue
 
         tc.append(results["tc"])
-        results["label_df"]["basepath"] = results["react"].basepath
         label_df = pd.concat([label_df, results["label_df"]], ignore_index=True)
 
     return tc, label_df
