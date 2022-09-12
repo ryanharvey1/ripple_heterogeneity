@@ -53,7 +53,7 @@ def run(
     basepath,
     regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # brain regions to load
     putativeCellType="Pyr",  # type of cells to load (can be multi ex. Pyr|Int)
-    weight_dt=0.1,  # dt in seconds for binning st to get weights for each assembly
+    weight_dt=0.05,  # dt in seconds for binning st to get weights for each assembly
     z_mat_dt=0.03,  # dt in seconds for binning st to get activation strength
     verbose=False,  # print out progress
     env="linear",  # enviroment you want to look at (current should only be linear)
