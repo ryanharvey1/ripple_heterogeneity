@@ -22,7 +22,9 @@ def locate_task_epoch(epoch_df, env):
 
 def get_pos(basepath, epochs, epoch_df, task_idx):
     position_df = loading.load_animal_behavior(basepath)
-    position_df_no_nan = position_df.query("not x.isnull() & not y.isnull()")
+    position_df_no_nan = position_df.query(
+        "not x.isnull() & not y.isnull() & not linearized.isnull()"
+    )
 
     if position_df_no_nan.shape[0] == 0:
         return None, None, None, None
@@ -88,7 +90,7 @@ def get_cross_region_assemblies(
     m1.get_weights(epoch=epoch)
     if len(m1.patterns) == 0:
         return None, None
-        
+
     assembly_act = m1.get_assembly_act(epoch=epoch)
     return m1, assembly_act
 
@@ -119,7 +121,7 @@ def run(
     # task_idx = locate_task_epoch(m1, env)
     # position_df = loading.load_animal_behavior(basepath)
     # task_idx = int(np.where(epoch_df.name == position_df[~position_df.linearized.isnull()].epochs.unique()[0])[0][0])
-    
+
     # find longest xx session
     task_idx = locate_task_epoch(epoch_df, env)
 
