@@ -1,13 +1,10 @@
 from ripple_heterogeneity.utils import (
     functions,
     loading,
-    batch_analysis,
     add_new_deep_sup,
-    custom_plots,
     compress_repeated_epochs
 )
-from ripple_heterogeneity.assembly import assembly_reactivation,find_sig_assembly
-from ripple_heterogeneity.readout import assembly_multi_region
+from ripple_heterogeneity.assembly import assembly_reactivation
 import pandas as pd
 import numpy as np
 import nelpy as nel
@@ -164,7 +161,6 @@ def load_results(save_path,verbose=False):
 
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
-    # tc = []
     label_df = pd.DataFrame()
 
     for session in sessions:
@@ -175,6 +171,5 @@ def load_results(save_path,verbose=False):
         if results is None:
             continue
 
-        # tc.append(results["tc"])
         label_df = pd.concat([label_df, results["label_df"]], ignore_index=True)
     return label_df
