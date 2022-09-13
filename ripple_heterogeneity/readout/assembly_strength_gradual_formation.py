@@ -149,6 +149,7 @@ def run(
     results = {
         "label_df": label_df,
         "assembly_act_task": assembly_act,
+        "m1":m1
         }
 
     return results
