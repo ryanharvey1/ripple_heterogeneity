@@ -16,6 +16,7 @@ from sklearn.linear_model import LinearRegression
 import glob
 import pickle
 import logging
+import random
 
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -58,7 +59,7 @@ def get_cross_region_assemblies(
     m1.get_weights(epoch=epoch)
     if len(m1.patterns) == 0:
         return None, None
-        
+
     assembly_act = m1.get_assembly_act(epoch=epoch)
     return m1, assembly_act
 
@@ -74,6 +75,13 @@ def find_slope_over_time(assembly_act):
     reg = LinearRegression().fit(X, y)
     return reg.coef_.flatten()
 
+def find_slope_over_time_shuffle(assembly_act):
+    random_order = random.sample(range(len(assembly_act.abscissa_vals)), len(assembly_act.abscissa_vals))
+    X = assembly_act.abscissa_vals[random_order].reshape(-1, 1)
+    y = assembly_act.data.T
+    reg = LinearRegression().fit(X, y)
+    return reg.coef_.flatten()
+
 def run(
     basepath,
     regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # brain regions to load
@@ -81,6 +89,7 @@ def run(
     putativeCellType="Pyr",  # type of cells to load (can be multi ex. Pyr|Int)
     weight_dt=0.05,  # dt in seconds for binning st to get weights for each assembly
     z_mat_dt=60,
+    shuffles=500
 ):
 
     epoch_df = loading.load_epoch(basepath)
@@ -126,9 +135,17 @@ def run(
 
     slopes = find_slope_over_time(assembly_act)
 
+    slopes_shuff = []
+    for _ in range(shuffles):
+        slopes_shuff.append(find_slope_over_time_shuffle(assembly_act))
+
+    sig_event_idx, pvals = functions.get_significant_events(slopes, np.vstack(slopes_shuff), q=95, tail="both")
+
+
     label_df = pd.DataFrame()
     label_df["assembly_n"] = np.arange(assembly_act.n_signals).astype(int)
     label_df["slopes"] = slopes
+    label_df["pvals"] = pvals
     label_df["cross_region_label"] = assem_labels
     label_df["basepath"] = basepath
 
