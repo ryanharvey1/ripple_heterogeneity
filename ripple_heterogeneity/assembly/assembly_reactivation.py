@@ -9,7 +9,9 @@ import pickle
 from scipy import stats
 from ripple_heterogeneity.utils import functions, loading, compress_repeated_epochs
 from ripple_heterogeneity.assembly import assembly
+import logging
 
+logging.getLogger().setLevel(logging.ERROR)
 
 class AssemblyReact(object):
     """
