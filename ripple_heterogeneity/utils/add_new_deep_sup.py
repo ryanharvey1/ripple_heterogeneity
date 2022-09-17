@@ -21,12 +21,11 @@ def add_new_deep_sup_class(df, layer_dist=30):
         cell_metrics = cell_metrics_[cell_metrics_.basepath == basepath]
 
         for uid in df.UID.unique():
-            deepSuperficialDistance = cell_metrics[
-                cell_metrics.UID == uid
-            ].deepSuperficialDistance
-            df.loc[df.UID == uid, "deepSuperficialDistance"] = np.tile(
-                deepSuperficialDistance, sum(df.UID == uid)
-            )
+            deepSuperficialDistance = cell_metrics[cell_metrics.UID == uid].deepSuperficialDistance
+            df.loc[df.UID == uid, "deepSuperficialDistance"] = np.tile(deepSuperficialDistance, sum(df.UID == uid))
+
+            brainRegion = cell_metrics[cell_metrics.UID == uid].brainRegion
+            df.loc[df.UID == uid, "brainRegion"] = np.tile(brainRegion, sum(df.UID == uid))
         return df
 
     cell_metrics = loading.load_all_cell_metrics(df.basepath.unique())
