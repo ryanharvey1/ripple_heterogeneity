@@ -41,8 +41,13 @@ summary(data)
 
 
 ```{r}
-data$y_trans <- log(data$rho+1)
+# data$y_trans <- log(data$rho+1)
 
+data$y_trans <- log(data$rho+2)
+
+mdl_boxcox <- boxcox(y_trans ~ layer_label, data=data, lambda = seq(-5, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+data$y_trans <- data$y_trans^max_lambda
 
 m1 = lmer(y_trans ~ layer_label + (1 | animal_id/basepath), data = data,REML=FALSE)
 summary(m1)
