@@ -1,0 +1,96 @@
+---
+title: "Untitled"
+author: "ryan"
+date: '2022-09-16'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+```
+
+```{r}
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/ripple_participation_91622.csv")
+
+data$basepath = factor(data$basepath)
+data$animal = factor(data$animal)
+data$deepSuperficial = factor(data$deepSuperficial)
+# data$epoch  = factor(data$epoch)
+# data$epoch_i  = factor(data$epoch_i)
+data$UID  = factor(data$UID)
+
+# summary(data)
+```
+
+```{r}
+
+data$y_trans <- data$ripple_particip_WAKEepisode+1
+
+mdl_boxcox <- boxcox(y_trans ~ deepSuperficial, data=data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+data$y_trans <- data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal/basepath), data = data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(ripple_particip_WAKEepisode ~ deepSuperficial , data = data)
+
+```
+
+```{r}
+data$y_trans <- data$ripple_FRall_WAKEepisode+1
+
+mdl_boxcox <- boxcox(y_trans ~ deepSuperficial, data=data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+data$y_trans <- data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal/basepath), data = data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(ripple_FRall_WAKEepisode ~ deepSuperficial , data = data)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
