@@ -1,0 +1,97 @@
+---
+title: "Untitled"
+author: "ryan"
+date: '2022-09-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+```
+
+```{r}
+data <- read.csv('Z:/home/ryanh/projects/ripple_heterogeneity/place_cell_infos.csv')
+
+data <- data[data$deepSuperficial == 'Superficial' | data$deepSuperficial == 'Deep',]
+
+data$basepath = factor(data$basepath)
+data$animal = factor(data$animal)
+data$deepSuperficial = factor(data$deepSuperficial)
+# data$label = factor(data$label)
+# data$membership = factor(data$membership)
+# data$assembly_id <- factor(as.character(data$assembly_id))
+
+summary(data)
+
+```
+
+```{r}
+
+mdl_boxcox <- boxcox(spatial_infos ~ deepSuperficial, data=data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$spatial_infos^max_lambda
+
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal/basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ deepSuperficial, data = data)
+
+```
+
+```{r}
+
+data$y_trans <- data$peak_rate + 1
+mdl_boxcox <- boxcox(y_trans ~ deepSuperficial, data=data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal/basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ deepSuperficial, data = data)
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
