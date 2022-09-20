@@ -1,6 +1,6 @@
-df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
-df = df(contains(df.basepath,'OR'),:);
-
+% df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
+% df = df(contains(df.basepath,'OR'),:);
+df.basepath = {pwd}
 % visual of current edges (states) for linearized pos
 %
 %   |   |   |
