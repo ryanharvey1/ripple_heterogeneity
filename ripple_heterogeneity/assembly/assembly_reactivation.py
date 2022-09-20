@@ -162,7 +162,10 @@ class AssemblyReact(object):
         else:
             bst = self.st.bin(ds=self.weight_dt).data
 
-        self.patterns, _, _ = assembly.runPatterns(bst)
+        if (bst == 0).all():
+            self.patterns = []
+        else:
+            self.patterns, _, _ = assembly.runPatterns(bst)
 
     def get_assembly_act(self, epoch=None):
         if epoch is not None:
