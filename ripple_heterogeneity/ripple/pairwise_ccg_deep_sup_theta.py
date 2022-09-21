@@ -6,10 +6,11 @@ import pickle
 import nelpy as nel
 import multiprocessing
 from joblib import Parallel, delayed
-from ripple_heterogeneity.utils import functions,loading,add_new_deep_sup
+from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
 import logging
 
 logging.getLogger().setLevel(logging.ERROR)
+
 
 def load_data(basepath):
     """
@@ -34,12 +35,15 @@ def load_data(basepath):
     ripples = loading.load_ripples_events(basepath)
     ripples = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
 
+    theta_cycles = loading.load_theta_cycles(basepath)
+    theta_cycles = nel.EpochArray(np.array([theta_cycles.start, theta_cycles.stop]).T)
+
     # get brain states
     state_dict = loading.load_SleepState_states(basepath)
     theta_epochs = nel.EpochArray(state_dict["THETA"])
     wake_epochs = nel.EpochArray(state_dict["WAKEstate"])
 
-    return st, cell_metrics, ripples, theta_epochs, wake_epochs
+    return st, cell_metrics, ripples, theta_epochs, wake_epochs, theta_cycles
 
 
 def main(basepath, states, bst_ds=0.120, ccg_nbins=100, ccg_binsize=0.01):
@@ -54,21 +58,27 @@ def main(basepath, states, bst_ds=0.120, ccg_nbins=100, ccg_binsize=0.01):
         results: dictionary, contains ccgs, ccg_id_df, rho, pval, corr_c
     """
     # load data
-    st, cell_metrics, ripples, theta_epochs, wake_epochs = load_data(basepath)
+    st, cell_metrics, ripples, theta_epochs, wake_epochs, theta_cycles = load_data(
+        basepath
+    )
 
     if st is None:
         return None
 
-    unit_mat = st[theta_epochs[wake_epochs]].bin(ds=bst_ds)
+    # unit_mat = st[theta_epochs[wake_epochs]].bin(ds=bst_ds)
+    wake_theta_epochs = theta_cycles[wake_epochs]
 
     unit_mat = functions.get_participation(
-        st.data, ripples.starts, ripples.stops, par_type="counts"
+        st.data, wake_theta_epochs.starts, wake_theta_epochs.stops, par_type="counts"
     )
     rho, pval, corr_c = functions.pairwise_corr(unit_mat)
 
     # get ccg
     ccgs, c = functions.pairwise_cross_corr(
-        st[theta_epochs[wake_epochs]].data, nbins=ccg_nbins, binsize=ccg_binsize, return_index=True
+        st[theta_epochs[wake_epochs]].data,
+        nbins=ccg_nbins,
+        binsize=ccg_binsize,
+        return_index=True,
     )
 
     # add id
