@@ -100,6 +100,39 @@ def loadLFP(basepath, n_channels=90, channel=64, frequency=1250.0, precision='in
                 timestep = np.load(lfp_ts_path).reshape(-1)
             return data,timestep # nts.TsdFrame(timestep, data, time_units = 's')
 
+class LoadLfp(object):
+    def __init__(
+        self,
+        basepath,
+        channels
+    ):
+        self.basepath = basepath
+        self.channels = channels
+        self.get_xml_data()
+        self.load_lfp()
+
+    def get_xml_data(self):
+        nChannels, fs, fs_dat, shank_to_channel = loadXML(self.basepath)
+        self.nChannels = nChannels
+        self.fs = fs
+        self.fs_dat = fs_dat
+        self.shank_to_channel = shank_to_channel
+
+    def load_lfp(self):
+        lfp, timestep = loadLFP(
+            self.basepath,
+            n_channels=self.nChannels,
+            channel=self.channels,
+            frequency=self.fs,
+            ext="lfp",
+        )
+        self.lfp = nel.AnalogSignalArray(
+            data=lfp.T,
+            timestamps=timestep,
+            fs=self.fs,
+            support=nel.EpochArray(np.array([min(timestep), max(timestep)])),
+        )
+
 def load_position(basepath,fs=39.0625):
     if not os.path.exists(basepath):
         print("The path "+basepath+" doesn't exist; Exiting ...")
@@ -445,6 +478,21 @@ def load_ripples_events(basepath):
     except:
         pass
 
+    return df
+
+def load_theta_cycles(basepath):
+    """
+    load theta cycles calculated from auto_theta_cycles.m
+    """
+    filename = glob.glob(os.path.join(basepath,'*.thetacycles.events.mat'))[0]
+    data = sio.loadmat(filename,simplify_cells=True)
+    df = pd.DataFrame()
+    df['start'] = data["thetacycles"]["timestamps"][:,0]
+    df['stop'] = data["thetacycles"]["timestamps"][:,1]
+    df['duration'] = data["thetacycles"]["duration"]
+    df['center'] = data["thetacycles"]["center"]
+    df['trough'] = data["thetacycles"]["peaks"]
+    df['theta_channel'] = data["thetacycles"]["detectorinfo"]["theta_channel"]
     return df
 
 def load_barrage_events(basepath):
