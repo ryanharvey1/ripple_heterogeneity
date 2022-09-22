@@ -44,6 +44,8 @@ def run(basepath):
     results["deepSuperficial"] = cell_metrics.deepSuperficial.values
     results["deepSuperficialDistance"] = cell_metrics.deepSuperficialDistance.values
     results["basepath"] = basepath
+    
+    return results
 
 def load_results(save_path,verbose=False):
     """
