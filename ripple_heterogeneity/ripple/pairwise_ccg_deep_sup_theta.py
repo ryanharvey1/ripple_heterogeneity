@@ -29,21 +29,25 @@ def load_data(basepath):
     )
     # need at least 2 cells to do pairwise CCG
     if cell_metrics.shape[0] < 2:
-        return None, None, None, None, None
+        return None, None, None, None,
 
     cell_metrics = add_new_deep_sup.add_new_deep_sup_class(cell_metrics)
-    ripples = loading.load_ripples_events(basepath)
-    ripples = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
+    # ripples = loading.load_ripples_events(basepath)
+    # ripples = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
 
-    theta_cycles = loading.load_theta_cycles(basepath)
+    try:
+        theta_cycles = loading.load_theta_cycles(basepath)
+    except:
+        return None, None, None, None, None
     theta_cycles = nel.EpochArray(np.array([theta_cycles.start, theta_cycles.stop]).T)
+    # theta_cycles = None
 
     # get brain states
     state_dict = loading.load_SleepState_states(basepath)
     theta_epochs = nel.EpochArray(state_dict["THETA"])
     wake_epochs = nel.EpochArray(state_dict["WAKEstate"])
 
-    return st, cell_metrics, ripples, theta_epochs, wake_epochs, theta_cycles
+    return st, cell_metrics, theta_epochs, theta_cycles, wake_epochs
 
 
 def main(basepath, states, bst_ds=0.120, ccg_nbins=100, ccg_binsize=0.01):
@@ -58,14 +62,14 @@ def main(basepath, states, bst_ds=0.120, ccg_nbins=100, ccg_binsize=0.01):
         results: dictionary, contains ccgs, ccg_id_df, rho, pval, corr_c
     """
     # load data
-    st, cell_metrics, ripples, theta_epochs, wake_epochs, theta_cycles = load_data(
+    st, cell_metrics, theta_epochs, theta_cycles, wake_epochs = load_data(
         basepath
     )
 
     if st is None:
         return None
 
-    # unit_mat = st[theta_epochs[wake_epochs]].bin(ds=bst_ds)
+    # unit_mat = st[theta_epochs[wake_epochs]].bin(ds=bst_ds).data
     wake_theta_epochs = theta_cycles[wake_epochs]
 
     unit_mat = functions.get_participation(
@@ -154,7 +158,7 @@ def run(df, save_path, parallel=True, states=None):
             session_loop(basepath, save_path, states)
 
 
-def load_results(save_path):
+def load_results(save_path,verbose=False):
     """
     Loads results from save_path.
     Inputs:
@@ -168,6 +172,8 @@ def load_results(save_path):
     ccg_id_df = pd.DataFrame()
 
     for session in sessions:
+        if verbose:
+            print(session)
         with open(session, "rb") as f:
             results = pickle.load(f)
         if results is None:
