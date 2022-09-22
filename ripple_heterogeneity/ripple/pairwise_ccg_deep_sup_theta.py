@@ -29,7 +29,7 @@ def load_data(basepath):
     )
     # need at least 2 cells to do pairwise CCG
     if cell_metrics.shape[0] < 2:
-        return None, None, None, None,
+        return None, None, None, None, None
 
     cell_metrics = add_new_deep_sup.add_new_deep_sup_class(cell_metrics)
     # ripples = loading.load_ripples_events(basepath)
