@@ -9,22 +9,116 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
 ```
 
-## Including Plots
+```{r}
+data <- read.csv('Z:/home/ryanh/projects/ripple_heterogeneity/intrinsic_firing.csv')
 
-You can also embed plots, for example:
+data <- data[data$deepSuperficial == 'Superficial' | data$deepSuperficial == 'Deep',]
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+data$basepath = factor(data$basepath)
+data$animal = factor(data$animal)
+data$deepSuperficial = factor(data$deepSuperficial)
+# data$label = factor(data$label)
+# data$membership = factor(data$membership)
+# data$assembly_id <- factor(as.character(data$assembly_id))
+
+summary(data)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+data$y_trans <- data$burstIndex_Mizuseki2012 + 1
+mdl_boxcox <- boxcox(y_trans ~ deepSuperficial, data=data, lambda = seq(-10, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal/basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ deepSuperficial, data = data)
+
+```
+
+
+
+```{r}
+data$y_trans <- data$firingRate + 1
+mdl_boxcox <- boxcox(y_trans ~ deepSuperficial, data=data, lambda = seq(-10, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal/basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ deepSuperficial, data = data)
+
+```
+
+
+```{r}
+data$y_trans <- data$cv2 + 1
+mdl_boxcox <- boxcox(y_trans ~ deepSuperficial, data=data, lambda = seq(-10, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal/basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ deepSuperficial, data = data)
+
+```
+
+
+```{r}
+data$y_trans <- data$firingRateISI + 1
+mdl_boxcox <- boxcox(y_trans ~ deepSuperficial, data=data, lambda = seq(-10, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+data$y_trans <- data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ deepSuperficial + (1 | animal/basepath), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+plot(y_trans ~ deepSuperficial, data = data)
+
+```
+
