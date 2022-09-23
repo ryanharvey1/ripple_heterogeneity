@@ -280,12 +280,13 @@ def load_cell_metrics(basepath,only_metrics=False):
     # add column for bad label tag 
     # have dedicated var as this tag is important   
     try:
+        df['bad_unit'] = [False]*df.shape[0]
         bad_units = data['cell_metrics']['tags'][0][0]['Bad'][0][0][0]
         df['bad_unit'] = [False]*df.shape[0]
         for uid in bad_units:
             df.loc[df.UID == uid,'bad_unit'] = True
     except:
-        df['bad_unit'] = [False]*df.shape[0]  
+        pass
 
     # load in tag
     try:
