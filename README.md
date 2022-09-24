@@ -1,6 +1,6 @@
 # ripple_heterogeneity
 
-Analyses to accompany "Hippocampal cellular diversity support flexible mnemonic demands".
+Analyses to accompany "Hippocampo-cortical circuits for selective memory encoding, routing, and replay".
 
 
 Installation
