@@ -1,8 +1,8 @@
 
 df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 
-df = df(contains(df.basepath,'ec016'),:)
-xml_file = 'Z:\Data\Kenji\ec016.100_121\ec016.100_121.xml'
+df = df(contains(df.basepath,'i01_maze'),:)
+xml_file = 'Z:\Data\Kenji\i01_maze01_MS.001_003\i01_maze01_MS.001_003.xml'
 
 for i = 1:length(df.basepath)
     basepath = df.basepath{i};
@@ -35,7 +35,7 @@ end
 %%
 df = readtable('Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv');
 
-df = df(contains(df.basepath,'ec016'),:);
+df = df(contains(df.basepath,'Kenji'),:);
 
 for i = 1:length(df.basepath)
     basepath = df.basepath{i};
