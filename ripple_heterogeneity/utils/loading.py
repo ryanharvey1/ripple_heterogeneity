@@ -821,7 +821,7 @@ def load_basic_data(basepath):
 def load_spikes(basepath,
                 putativeCellType=[], # restrict spikes to putativeCellType
                 brainRegion=[], # restrict spikes to brainRegion
-                bad_unit=False, # false for not loading bad cells
+                remove_bad_unit=True, # true for not loading bad cells (tagged in CE)
                 brain_state=[], # restrict spikes to brainstate
                 other_metric=None, # restrict spikes to other_metric
                 other_metric_value=None, # restrict spikes to other_metric_value
@@ -876,9 +876,11 @@ def load_spikes(basepath,
         cell_metrics = cell_metrics[restrict_idx]
         st = st[restrict_idx]
 
-    restrict_idx = cell_metrics.bad_unit.values==bad_unit
-    cell_metrics = cell_metrics[restrict_idx]
-    st = st[restrict_idx]
+    if remove_bad_unit:
+        # bad units will be tagged true, so only keep false values
+        restrict_idx = cell_metrics.bad_unit.values == False
+        cell_metrics = cell_metrics[restrict_idx]
+        st = st[restrict_idx]
 
     # get spike train array
     try:
