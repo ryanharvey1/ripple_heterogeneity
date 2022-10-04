@@ -44,7 +44,7 @@ class SpatialMap(object):
         min_duration=0.1,
         minbgrate=0,
         place_field_thres=0.2,
-        place_field_min_size=15,
+        place_field_min_size=50,
         place_field_min_peak=3,
         place_field_sigma=2,
     ):
@@ -153,7 +153,7 @@ class SpatialMap(object):
                 map_fields = fields.map_stats2(
                     ratemap_,
                     threshold=self.place_field_thres,
-                    min_size=self.place_field_min_size,
+                    min_size=self.place_field_min_size/self.s_binsize,
                     min_peak=self.place_field_min_peak,
                     sigma=self.place_field_sigma,
                 )
@@ -169,7 +169,7 @@ class SpatialMap(object):
                     ratemap_,
                     min_firing_rate=self.place_field_min_peak,
                     thresh=self.place_field_thres,
-                    min_size=self.place_field_min_size,
+                    min_size=(self.place_field_min_size/self.s_binsize)*2,
                     sigma=self.place_field_sigma,
                 )
                 # field coords of fields using contours
