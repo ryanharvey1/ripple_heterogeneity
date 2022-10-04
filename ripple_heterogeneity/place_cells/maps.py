@@ -2,6 +2,9 @@ import numpy as np
 import nelpy as nel
 import copy
 import scipy
+from ripple_heterogeneity.place_cells import fields
+from skimage import measure
+from scipy.spatial.distance import pdist
 
 
 class SpatialMap(object):
@@ -18,6 +21,10 @@ class SpatialMap(object):
         tuning_curve_sigma: sigma for the tuning curve (float)
         min_duration: minimum duration for a tuning curve (float)
         minbgrate: min firing rate for tuning curve, will set to this if lower (float)
+        place_field_thres: percent of continuous region of peak firing rate (float)
+        place_field_min_size: min size of place field (cm) (float)
+        place_field_min_peak: min peak rate of place field (float)
+        place_field_sigma: extra smoothing sigma to apply before field detection (float)
     attributes:
         tc: tuning curves (nelpy.TuningCurve)
         st_run: spike train restricted to running epochs (nelpy.SpikeTrain)
@@ -36,6 +43,10 @@ class SpatialMap(object):
         tuning_curve_sigma=3,
         min_duration=0.1,
         minbgrate=0,
+        place_field_thres=0.2,
+        place_field_min_size=15,
+        place_field_min_peak=3,
+        place_field_sigma=2,
     ):
         self.pos = pos
         self.st = st
@@ -47,17 +58,25 @@ class SpatialMap(object):
         self.tuning_curve_sigma = tuning_curve_sigma
         self.min_duration = min_duration
         self.minbgrate = minbgrate
+        self.place_field_thres = place_field_thres
+        self.place_field_min_size = place_field_min_size
+        self.place_field_min_peak = place_field_min_peak
+        self.place_field_sigma = place_field_sigma
+        # get speed and running epochs
         self.speed = nel.utils.ddt_asa(self.pos, smooth=True, sigma=0.1, norm=True)
         self.run_epochs = nel.utils.get_run_epochs(
             self.speed, v1=self.speed_thres, v2=self.speed_thres
         ).merge()
-
+        # calculate maps, 1d or 2d
         if dim == 2:
             self.tc, self.st_run, self.bst_run = self.map_2d()
         elif dim == 1:
             self.tc, self.st_run, self.bst_run = self.map_1d()
         else:
             raise ValueError("dim must be 1 or 2")
+
+        # find place fields. Currently only collects metrics from peak field
+        self.find_fields()
 
     def map_1d(self):
 
@@ -122,6 +141,55 @@ class SpatialMap(object):
             minbgrate=self.minbgrate,
         )
         return tc, st_run, bst_run
+
+    def find_fields(self):
+
+        field_width = []
+        peak_rate = []
+        mask = []
+
+        if self.dim == 1:
+            for ratemap_ in self.tc.ratemap:
+                map_fields = fields.map_stats2(
+                    ratemap_,
+                    threshold=self.place_field_thres,
+                    min_size=self.place_field_min_size,
+                    min_peak=self.place_field_min_peak,
+                    sigma=self.place_field_sigma,
+                )
+                field_width.append(
+                    map_fields["sizes"].max() * len(ratemap_) * self.s_binsize
+                )
+                peak_rate.append(map_fields["peaks"].max())
+                mask.append(map_fields["fields"])
+
+        if self.dim == 2:
+            for ratemap_ in self.tc.ratemap:
+                peaks = fields.compute_2d_place_fields(
+                    ratemap_,
+                    min_firing_rate=self.place_field_min_peak,
+                    thresh=self.place_field_thres,
+                    min_size=self.place_field_min_size,
+                    sigma=self.place_field_sigma,
+                )
+                # field coords of fields using contours
+                bc = measure.find_contours(
+                    peaks, 0, fully_connected="low", positive_orientation="low"
+                )
+                if len(bc) == 0:
+                    field_width.append(np.nan)
+                    peak_rate.append(np.nan)
+                    mask.append(peaks)
+                else:
+                    field_width.append(
+                        np.max(pdist(bc[0], "euclidean")) * self.s_binsize
+                    )
+                    peak_rate.append(ratemap_[peaks == 1].max())
+                    mask.append(peaks)
+
+        self.tc.field_width = np.array(field_width)
+        self.tc.field_peak_rate = np.array(peak_rate)
+        self.tc.field_mask = np.array(mask)
 
 
 class TuningCurve2DContinuous:
