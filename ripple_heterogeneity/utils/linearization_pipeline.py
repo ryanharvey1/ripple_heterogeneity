@@ -180,7 +180,7 @@ class NodePicker:
         data["behavior"]["position"]["projected_x"] = behave_df.projected_x_position.values
         data["behavior"]["position"]["projected_y"] = behave_df.projected_y_position.values
 
-        savemat(filename, data)
+        savemat(filename, data,long_field_names=True)
 
         self.save_nodes_edges()
         self.disconnect()
@@ -210,11 +210,8 @@ def load_epoch(basepath):
     """
     Loads epoch info from cell explorer basename.session and stores in df
     """
-    try:
-        filename = glob.glob(os.path.join(basepath, "*.session.mat"))[0]
-    except:
-        warnings.warn("file does not exist")
-        return pd.DataFrame()
+    filename = glob.glob(os.path.join(basepath, "*.session.mat"))[0]
+
     data = loadmat(filename, simplify_cells=True)
     try:
         return pd.DataFrame(data["session"]["epochs"])
