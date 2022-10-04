@@ -6,13 +6,11 @@ from skimage.morphology import reconstruction
 from skimage import measure
 
 from math import sqrt
-from skimage import data
 from skimage.feature import blob_dog, blob_log, blob_doh
 import matplotlib.pyplot as plt
 
 from scipy.ndimage.filters import gaussian_filter, maximum_filter
-from scipy.ndimage import label
-
+from scipy.ndimage import label, gaussian_filter1d
 
 def detect_firing_fields(
     image_gray,
@@ -441,6 +439,7 @@ def map_pass_to_unit_circle(
     pdmd = r * np.cos(w_pdmd)
     return r, theta, pdcd, pdmd
 
+
 def consecutive(array, stepsize):
     """Splits array when distance between neighbouring points is further than the stepsize.
     Parameters
@@ -454,7 +453,10 @@ def consecutive(array, stepsize):
 
     return np.split(array, np.where(np.diff(array) > stepsize)[0] + 1)
 
-def find_fields_1d(tuning, hz_thresh=5, min_length=1, max_length=20, max_mean_firing=10):
+
+def find_fields_1d(
+    tuning, hz_thresh=5, min_length=1, max_length=20, max_mean_firing=10
+):
     """Finds the location of maximum spiking.
     Parameters
     ----------
@@ -506,8 +508,39 @@ def find_fields_1d(tuning, hz_thresh=5, min_length=1, max_length=20, max_mean_fi
                 continue
     return with_fields
 
-def compute_2d_place_fields(firing_rate, min_firing_rate=1, thresh=0.2,
-                            min_size=100, sigma=None):
+
+def compute_linear_place_fields(
+    firing_rate, min_window_size=5, min_firing_rate=1.0, thresh=0.5
+):
+    """Find consecutive bins where all are >= 50% of local max firing rate and
+    the local max in > 1 Hz
+    Parameters
+    ----------
+    firing_rate: array-like(dtype=float)
+    min_window_size: int
+    min_firing_rate: float
+    thresh: float
+    Returns
+    -------
+    np.ndarray(dtype=bool)
+    """
+
+    is_place_field = np.zeros(len(firing_rate), dtype="bool")
+    for start in range(len(firing_rate) - min_window_size):
+        for fin in range(start + min_window_size, len(firing_rate)):
+            window = firing_rate[start:fin]
+            mm = max(window)
+            if mm > min_firing_rate and all(window > thresh * mm):
+                is_place_field[start:fin] = True
+            else:
+                break
+
+    return is_place_field
+
+
+def compute_2d_place_fields(
+    firing_rate, min_firing_rate=1, thresh=0.2, min_size=100, sigma=None
+):
     """Compute place fields
     Parameters
     ----------
@@ -524,15 +557,16 @@ def compute_2d_place_fields(firing_rate, min_firing_rate=1, thresh=0.2,
         Each receptive field is labeled with a unique integer
     """
     if sigma is not None:
-        firing_rate = gaussian_filter(firing_rate,sigma)
+        firing_rate = gaussian_filter(firing_rate, sigma)
 
     local_maxima_inds = firing_rate == maximum_filter(firing_rate, 3)
     receptive_fields = np.zeros(firing_rate.shape, dtype=int)
     n_receptive_fields = 0
     firing_rate = firing_rate.copy()
     for local_max in np.flipud(np.sort(firing_rate[local_maxima_inds])):
-        labeled_image, num_labels = label(firing_rate > max(local_max * thresh,
-                                                            min_firing_rate))
+        labeled_image, num_labels = label(
+            firing_rate > max(local_max * thresh, min_firing_rate)
+        )
         if not num_labels:  # nothing above min_firing_thresh
             return receptive_fields
         for i in range(1, num_labels + 1):
@@ -545,3 +579,88 @@ def compute_2d_place_fields(firing_rate, min_firing_rate=1, thresh=0.2,
                 firing_rate[image_label] = 0
 
     return receptive_fields
+
+
+def find_field(firing_rate, threshold):
+    """Copied FMAToolbox
+    Parameters
+    ----------
+    firing_rate: np.ndarray
+    threshold: float
+    Returns
+    -------
+    """
+    mm = np.max(firing_rate)
+
+    labeled_image, num_labels = label(firing_rate > threshold)
+    for i in range(1, num_labels + 1):
+        image_label = labeled_image == i
+        if mm in firing_rate[image_label]:
+            return image_label, image_label
+
+
+def find_field2(firing_rate, thresh):
+    """Only works for 1D
+    Parameters
+    ----------
+    firing_rate: np.array
+    thresh: float
+    Returns
+    -------
+    """
+    firing_rate = np.array(firing_rate)
+    imm = np.argmax(firing_rate)
+    mm = np.max(firing_rate)
+    # TODO: make more efficient by using argmax instead of where()[0]
+    first = np.where(np.diff(firing_rate[:imm]) < 0)[0]
+    if len(first) == 0:
+        first = 0
+    else:
+        first = first[-1] + 2
+
+    last = np.where(np.diff(firing_rate[imm:]) > 0)[0]
+
+    if len(last) == 0:
+        last = len(firing_rate)
+    else:
+        last = last[0] + imm + 1
+    field_buffer = np.zeros(firing_rate.shape, dtype="bool")
+    field_buffer[first:last] = True
+    field = field_buffer & (firing_rate > thresh * mm)
+
+    return field_buffer, field
+
+
+def map_stats2(firing_rate, threshold=0.1, min_size=5, min_peak=1.0, sigma=None):
+    """
+    :param firing_rate: array
+    :param threshold: float
+    :param min_size: int
+    :param min_peak: float
+    :return:
+    """
+    if sigma is not None:
+        firing_rate = gaussian_filter1d(firing_rate, sigma)
+
+    firing_rate = firing_rate.copy()
+    firing_rate = firing_rate - np.min(firing_rate)
+    out = dict(sizes=list(), peaks=list(), means=list())
+    out["fields"] = np.zeros(firing_rate.shape)
+    field_counter = 1
+    while True:
+        peak = np.max(firing_rate)
+        if peak < min_peak:
+            break
+        field_buffer, field = find_field(firing_rate, threshold)
+        field_size = np.sum(field)
+        if field_size > min_size and (
+            np.max(firing_rate[field]) > (2 * np.min(firing_rate[field_buffer]))
+        ):
+            out["fields"][field] = field_counter
+            out["sizes"].append(float(field_size) / len(firing_rate))
+            out["peaks"].append(peak)
+            out["means"].append(np.mean(firing_rate[field]))
+            field_counter += 1
+        firing_rate[field_buffer] = 0
+
+    return out
