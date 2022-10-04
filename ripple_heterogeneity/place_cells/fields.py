@@ -507,7 +507,7 @@ def find_fields_1d(tuning, hz_thresh=5, min_length=1, max_length=20, max_mean_fi
     return with_fields
 
 def compute_2d_place_fields(firing_rate, min_firing_rate=1, thresh=0.2,
-                            min_size=100):
+                            min_size=100, sigma=None):
     """Compute place fields
     Parameters
     ----------
@@ -523,6 +523,8 @@ def compute_2d_place_fields(firing_rate, min_firing_rate=1, thresh=0.2,
     receptive_fields: np.ndarray(NxN, dtype=int)
         Each receptive field is labeled with a unique integer
     """
+    if sigma is not None:
+        firing_rate = gaussian_filter(firing_rate,sigma)
 
     local_maxima_inds = firing_rate == maximum_filter(firing_rate, 3)
     receptive_fields = np.zeros(firing_rate.shape, dtype=int)
