@@ -14,7 +14,7 @@ class SpatialMap(object):
     """
     SpatialMap: make a spatial map tuning curve
     args:
-        pos: position data (nelpy.AnalogSignal)
+        pos: position data (nelpy.AnalogSignal or nel.PositionArray)
         st: spike train data (nelpy.SpikeTrain)
         dim: dimension of the map (1 or 2)
         dir_epoch: epochs of the running direction, for linear data (nelpy.Epoch)
@@ -159,6 +159,7 @@ class SpatialMap(object):
                     ratemap_,
                     threshold=self.place_field_thres,
                     min_size=self.place_field_min_size / self.s_binsize,
+                    max_size=self.place_field_max_size / self.s_binsize,
                     min_peak=self.place_field_min_peak,
                     sigma=self.place_field_sigma,
                 )
