@@ -556,6 +556,9 @@ def compute_2d_place_fields(
     receptive_fields: np.ndarray(NxN, dtype=int)
         Each receptive field is labeled with a unique integer
     """
+
+    firing_rate_orig = firing_rate.copy()
+
     if sigma is not None:
         firing_rate = gaussian_filter(firing_rate, sigma)
 
@@ -578,6 +581,8 @@ def compute_2d_place_fields(
                 receptive_fields[image_label] = n_receptive_fields
                 firing_rate[image_label] = 0
 
+    if n_receptive_fields > 0:        
+        receptive_fields = sort_fields_by_rate(firing_rate_orig, receptive_fields, func=np.max)
     return receptive_fields
 
 
