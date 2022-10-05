@@ -590,7 +590,7 @@ def compute_2d_place_fields(
                 firing_rate[image_label] = 0
 
     receptive_fields = remove_fields_by_area(
-        receptive_fields, int(min_size), maximum_field_area=int(max_size)
+        receptive_fields, int(min_size), maximum_field_area=max_size
     )
     # if n_receptive_fields > 0:
     #     receptive_fields = sort_fields_by_rate(firing_rate_orig, receptive_fields, func=np.max)
@@ -647,7 +647,7 @@ def find_field2(firing_rate, thresh):
     return field_buffer, field
 
 
-def map_stats2(firing_rate, threshold=0.1, min_size=5, min_peak=1.0, sigma=None):
+def map_stats2(firing_rate, threshold=0.1, min_size=5, max_size=None, min_peak=1.0, sigma=None):
     """
     :param firing_rate: array
     :param threshold: float
@@ -657,6 +657,9 @@ def map_stats2(firing_rate, threshold=0.1, min_size=5, min_peak=1.0, sigma=None)
     """
     if sigma is not None:
         firing_rate = gaussian_filter1d(firing_rate, sigma)
+
+    if max_size is None:
+        max_size = len(firing_rate)
 
     firing_rate = firing_rate.copy()
     firing_rate = firing_rate - np.min(firing_rate)
@@ -669,7 +672,7 @@ def map_stats2(firing_rate, threshold=0.1, min_size=5, min_peak=1.0, sigma=None)
             break
         field_buffer, field = find_field(firing_rate, threshold)
         field_size = np.sum(field)
-        if field_size > min_size and (
+        if (field_size > min_size) and (field_size < max_size) and (
             np.max(firing_rate[field]) > (2 * np.min(firing_rate[field_buffer]))
         ):
             out["fields"][field] = field_counter
