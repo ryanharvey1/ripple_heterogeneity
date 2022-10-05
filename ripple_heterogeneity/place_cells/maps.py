@@ -32,6 +32,19 @@ class SpatialMap(object):
         tc: tuning curves (nelpy.TuningCurve)
         st_run: spike train restricted to running epochs (nelpy.SpikeTrain)
         bst_run: binned spike train restricted to running epochs (nelpy.binnedSpikeTrain)
+
+    Note:
+        Place field detector (.find_fields()) is sensitive to many parameters.
+        For 2D, it is highly recommended to have good environmental sampling.
+        In brief testing with 300cm linear track, optimal 1D parameters were:
+            place_field_min_size=15
+            place_field_max_size=None
+            place_field_min_peak=3
+            place_field_sigma=None
+            place_field_thres=.33
+
+    TODO: place field detector currently collects field width and peak rate for peak place field
+            In the future, these should be stored for all sub fields
     """
 
     def __init__(
@@ -152,7 +165,8 @@ class SpatialMap(object):
         field_width = []
         peak_rate = []
         mask = []
-
+        if self.place_field_max_size is None:
+            self.place_field_max_size = self.tc.n_bins * self.s_binsize
         if self.dim == 1:
             for ratemap_ in self.tc.ratemap:
                 map_fields = fields.map_stats2(
