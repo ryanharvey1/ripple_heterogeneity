@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from scipy.ndimage.filters import gaussian_filter, maximum_filter
 from scipy.ndimage import label, gaussian_filter1d
 
+
 def detect_firing_fields(
     image_gray,
     max_sigma=30,
@@ -109,7 +110,7 @@ def sort_fields_by_rate(rate_map, fields, func=None):
     return sorted_fields
 
 
-def remove_fields_by_area(fields, minimum_field_area):
+def remove_fields_by_area(fields, minimum_field_area, maximum_field_area=None):
     """Sets fields below minimum area to zero, measured as the number of bins in a field.
     Parameters
     ----------
@@ -125,6 +126,8 @@ def remove_fields_by_area(fields, minimum_field_area):
     if not isinstance(minimum_field_area, (int, np.integer)):
         raise ValueError("'minimum_field_area' should be int")
 
+    if maximum_field_area is None:
+        maximum_field_area = len(fields.flatten())
     ## variant
     # fields_areas = scipy.ndimage.measurements.sum(
     #     np.ones_like(fields), fields, index=np.arange(fields.max() + 1))
@@ -134,7 +137,7 @@ def remove_fields_by_area(fields, minimum_field_area):
     labels, counts = np.unique(fields, return_counts=True)
     for (lab, count) in zip(labels, counts):
         if lab != 0:
-            if count < minimum_field_area:
+            if (count < minimum_field_area) | (count > maximum_field_area):
                 fields[fields == lab] = 0
     return fields
 
@@ -539,7 +542,7 @@ def compute_linear_place_fields(
 
 
 def compute_2d_place_fields(
-    firing_rate, min_firing_rate=1, thresh=0.2, min_size=100, sigma=None
+    firing_rate, min_firing_rate=1, thresh=0.2, min_size=100, max_size=200, sigma=None
 ):
     """Compute place fields
     Parameters
@@ -581,8 +584,11 @@ def compute_2d_place_fields(
                 receptive_fields[image_label] = n_receptive_fields
                 firing_rate[image_label] = 0
 
-    if n_receptive_fields > 0:        
-        receptive_fields = sort_fields_by_rate(firing_rate_orig, receptive_fields, func=np.max)
+    receptive_fields = remove_fields_by_area(
+        receptive_fields, int(min_size), maximum_field_area=int(max_size)
+    )
+    # if n_receptive_fields > 0:
+    #     receptive_fields = sort_fields_by_rate(firing_rate_orig, receptive_fields, func=np.max)
     return receptive_fields
 
 
