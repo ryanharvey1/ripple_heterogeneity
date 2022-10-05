@@ -542,7 +542,12 @@ def compute_linear_place_fields(
 
 
 def compute_2d_place_fields(
-    firing_rate, min_firing_rate=1, thresh=0.2, min_size=100, max_size=200, sigma=None
+    firing_rate,
+    min_firing_rate=1,
+    thresh=0.2,
+    min_size=100,
+    max_size=200,
+    sigma=None,
 ):
     """Compute place fields
     Parameters
