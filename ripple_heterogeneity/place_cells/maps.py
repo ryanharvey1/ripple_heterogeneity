@@ -5,7 +5,9 @@ import scipy
 from ripple_heterogeneity.place_cells import fields
 from skimage import measure
 from scipy.spatial.distance import pdist
+import logging
 
+logging.getLogger().setLevel(logging.ERROR)
 
 class SpatialMap(object):
     """
@@ -44,7 +46,7 @@ class SpatialMap(object):
         min_duration=0.1,
         minbgrate=0,
         place_field_thres=0.2,
-        place_field_min_size=50,
+        place_field_min_size=100,
         place_field_min_peak=3,
         place_field_sigma=2,
     ):
@@ -76,7 +78,7 @@ class SpatialMap(object):
             raise ValueError("dim must be 1 or 2")
 
         # find place fields. Currently only collects metrics from peak field
-        self.find_fields()
+        # self.find_fields()
 
     def map_1d(self):
 
@@ -184,7 +186,8 @@ class SpatialMap(object):
                     field_width.append(
                         np.max(pdist(bc[0], "euclidean")) * self.s_binsize
                     )
-                    peak_rate.append(ratemap_[peaks == 1].max())
+                    field_ids = np.unique(peaks)
+                    peak_rate.append(ratemap_[peaks == np.min(field_ids[field_ids > 0])].max())
                     mask.append(peaks)
 
         self.tc.field_width = np.array(field_width)
