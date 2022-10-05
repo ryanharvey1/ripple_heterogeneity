@@ -47,6 +47,7 @@ class SpatialMap(object):
         minbgrate=0,
         place_field_thres=0.2,
         place_field_min_size=100,
+        place_field_max_size=200,
         place_field_min_peak=3,
         place_field_sigma=2,
     ):
@@ -63,6 +64,7 @@ class SpatialMap(object):
         self.place_field_thres = place_field_thres
         self.place_field_min_size = place_field_min_size
         self.place_field_min_peak = place_field_min_peak
+        self.place_field_max_size = place_field_max_size
         self.place_field_sigma = place_field_sigma
         # get speed and running epochs
         self.speed = nel.utils.ddt_asa(self.pos, smooth=True, sigma=0.1, norm=True)
@@ -171,7 +173,8 @@ class SpatialMap(object):
                     ratemap_,
                     min_firing_rate=self.place_field_min_peak,
                     thresh=self.place_field_thres,
-                    min_size=(self.place_field_min_size/self.s_binsize)*2,
+                    min_size=(self.place_field_min_size/self.s_binsize),
+                    max_size=(self.place_field_max_size/self.s_binsize),
                     sigma=self.place_field_sigma,
                 )
                 # field coords of fields using contours
