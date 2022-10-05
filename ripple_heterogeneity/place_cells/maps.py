@@ -9,6 +9,7 @@ import logging
 
 logging.getLogger().setLevel(logging.ERROR)
 
+
 class SpatialMap(object):
     """
     SpatialMap: make a spatial map tuning curve
@@ -157,15 +158,22 @@ class SpatialMap(object):
                 map_fields = fields.map_stats2(
                     ratemap_,
                     threshold=self.place_field_thres,
-                    min_size=self.place_field_min_size/self.s_binsize,
+                    min_size=self.place_field_min_size / self.s_binsize,
                     min_peak=self.place_field_min_peak,
                     sigma=self.place_field_sigma,
                 )
-                field_width.append(
-                    map_fields["sizes"].max() * len(ratemap_) * self.s_binsize
-                )
-                peak_rate.append(map_fields["peaks"].max())
-                mask.append(map_fields["fields"])
+                if len(map_fields["sizes"]) == 0:
+                    field_width.append(np.nan)
+                    peak_rate.append(np.nan)
+                    mask.append(map_fields["fields"])
+                else:
+                    field_width.append(
+                        np.array(map_fields["sizes"]).max()
+                        * len(ratemap_)
+                        * self.s_binsize
+                    )
+                    peak_rate.append(np.array(map_fields["peaks"]).max())
+                    mask.append(map_fields["fields"])
 
         if self.dim == 2:
             for ratemap_ in self.tc.ratemap:
@@ -173,8 +181,8 @@ class SpatialMap(object):
                     ratemap_,
                     min_firing_rate=self.place_field_min_peak,
                     thresh=self.place_field_thres,
-                    min_size=(self.place_field_min_size/self.s_binsize),
-                    max_size=(self.place_field_max_size/self.s_binsize),
+                    min_size=(self.place_field_min_size / self.s_binsize),
+                    max_size=(self.place_field_max_size / self.s_binsize),
                     sigma=self.place_field_sigma,
                 )
                 # field coords of fields using contours
@@ -190,7 +198,9 @@ class SpatialMap(object):
                         np.max(pdist(bc[0], "euclidean")) * self.s_binsize
                     )
                     field_ids = np.unique(peaks)
-                    peak_rate.append(ratemap_[peaks == np.min(field_ids[field_ids > 0])].max())
+                    peak_rate.append(
+                        ratemap_[peaks == np.min(field_ids[field_ids > 0])].max()
+                    )
                     mask.append(peaks)
 
         self.tc.field_width = np.array(field_width)
