@@ -1,4 +1,5 @@
 import warnings
+from ripple_heterogeneity.place_cells import place_cells_run, fields, maps
 
 warnings.filterwarnings("ignore")
 import pandas as pd
@@ -8,7 +9,8 @@ import statistics
 import nelpy as nel
 from scipy.ndimage import gaussian_filter
 from scipy.ndimage import rotate
-
+from skimage import measure
+from scipy.spatial.distance import pdist
 
 def get_ratemap(ts, x, y, st, bin_width=3, smooth_sigma=1, add_nan_back=False):
 
@@ -192,6 +194,9 @@ def run(
     tss = []
     st = []
     linear_dir = []
+    field_width = []
+    peak_rate = []
+    n_fields = []
     for ep_i, ep in enumerate(beh_epochs):
 
         x = pos[ep].data[0, :]
@@ -243,6 +248,27 @@ def run(
                         cell_id, st_run[dir_epoch], x, y, ts, bin_width, n_shuff
                     )
 
+                    map_fields = fields.map_stats2(
+                        ratemap_,
+                        threshold=.33,
+                        min_size=15 / bin_width,
+                        max_size=len(ratemap_) / bin_width,
+                        min_peak=3,
+                        sigma=None,
+                    )
+                    if len(map_fields["sizes"]) == 0:
+                        field_width.append(np.nan)
+                        peak_rate.append(np.nan)
+                    else:
+                        field_width.append(
+                            np.array(map_fields["sizes"]).max()
+                            * len(ratemap_)
+                            * bin_width
+                        )
+                        peak_rate.append(np.array(map_fields["peaks"]).max())
+                        field_ids = np.unique(map_fields["fields"])
+                        n_fields.append(len(field_ids[field_ids > 0]))
+
                     pvals.append(pval)
                     null_ics.append(null_ic)
                     spatial_infos.append(spatial_info)
@@ -272,6 +298,31 @@ def run(
                     spatial_info,
                 ) = get_maps_and_score(cell_id, st_run, x, y, ts, bin_width, n_shuff)
 
+                peaks = fields.compute_2d_place_fields(
+                    ratemap_,
+                    min_firing_rate=3,
+                    thresh=.2,
+                    min_size=(100 / bin_width),
+                    max_size=(200 / bin_width),
+                    sigma=2,
+                )
+
+                bc = measure.find_contours(
+                    peaks, 0, fully_connected="low", positive_orientation="low"
+                )
+                if len(bc) == 0:
+                    field_width.append(np.nan)
+                    peak_rate.append(np.nan)
+                else:
+                    field_width.append(
+                        np.max(pdist(bc[0], "euclidean")) * bin_width
+                    )
+                    field_ids = np.unique(peaks)
+                    n_fields.append(len(field_ids[field_ids > 0]))
+                    peak_rate.append(
+                        ratemap_[peaks == np.min(field_ids[field_ids > 0])].max()
+                    )
+
                 pvals.append(pval)
                 null_ics.append(null_ic)
                 spatial_infos.append(spatial_info)
@@ -299,6 +350,9 @@ def run(
     epoch["stopTime"] = np.hstack(stopTime)
     epoch["spatial_infos"] = np.hstack(spatial_infos)
     epoch["pvals"] = np.hstack(pvals)
+    epoch["field_width"] = np.hstack(field_width)
+    epoch["peak_rate"] = np.hstack(peak_rate)
+    epoch["n_fields"] = np.hstack(n_fields)
     epoch["linear_dir"] = np.hstack(linear_dir)
     epoch["basepath"] = basepath
 
