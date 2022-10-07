@@ -60,8 +60,8 @@ class SpatialMap(object):
         min_duration=0.1,
         minbgrate=0,
         place_field_thres=0.2,
-        place_field_min_size=100,
-        place_field_max_size=200,
+        place_field_min_size=None,
+        place_field_max_size=None,
         place_field_min_peak=3,
         place_field_sigma=2,
     ):
@@ -165,8 +165,12 @@ class SpatialMap(object):
         field_width = []
         peak_rate = []
         mask = []
-        if self.place_field_max_size is None:
+
+        if self.place_field_max_size is None and self.dim == 1:
             self.place_field_max_size = self.tc.n_bins * self.s_binsize
+        elif self.place_field_max_size is None and self.dim == 2:
+            self.place_field_max_size = self.tc.n_bins * self.s_binsize
+
         if self.dim == 1:
             for ratemap_ in self.tc.ratemap:
                 map_fields = fields.map_stats2(
@@ -208,14 +212,16 @@ class SpatialMap(object):
                     field_width.append(np.nan)
                     peak_rate.append(np.nan)
                     mask.append(peaks)
+                elif np.vstack(bc).shape[0] < 3:
+                    field_width.append(np.nan)
+                    peak_rate.append(np.nan)
+                    mask.append(peaks)
                 else:
                     field_width.append(
                         np.max(pdist(bc[0], "euclidean")) * self.s_binsize
                     )
-                    field_ids = np.unique(peaks)
-                    peak_rate.append(
-                        ratemap_[peaks == np.min(field_ids[field_ids > 0])].max()
-                    )
+                    # field_ids = np.unique(peaks)
+                    peak_rate.append(ratemap_[peaks == 1].max())
                     mask.append(peaks)
 
         self.tc.field_width = np.array(field_width)
