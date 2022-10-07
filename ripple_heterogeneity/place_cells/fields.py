@@ -102,10 +102,16 @@ def sort_fields_by_rate(rate_map, fields, func=None):
     )
     sort = np.argsort(rate_means)[::-1]
 
-    # new rate map with fields > min_size, sorted
     sorted_fields = np.zeros_like(fields)
-    for i in range(indx.max() + 1):
-        sorted_fields[fields == sort[i] + 1] = i + 1
+    for indx_i, indx_ in enumerate(indx[sort]):
+        if indx_ == 0:
+            continue
+        sorted_fields[fields == indx_] = np.max(sorted_fields) + 1
+
+    # new rate map with fields > min_size, sorted
+    # sorted_fields = np.zeros_like(fields)
+    # for i in range(indx.max() + 1):
+    #     sorted_fields[fields == sort[i] + 1] = i + 1
 
     return sorted_fields
 
@@ -578,8 +584,9 @@ def compute_2d_place_fields(
         labeled_image, num_labels = label(
             firing_rate > max(local_max * thresh, min_firing_rate)
         )
+        
         if not num_labels:  # nothing above min_firing_thresh
-            return receptive_fields
+            continue
         for i in range(1, num_labels + 1):
             image_label = labeled_image == i
             if local_max in firing_rate[image_label]:
@@ -592,8 +599,8 @@ def compute_2d_place_fields(
     receptive_fields = remove_fields_by_area(
         receptive_fields, int(min_size), maximum_field_area=max_size
     )
-    # if n_receptive_fields > 0:
-    #     receptive_fields = sort_fields_by_rate(firing_rate_orig, receptive_fields, func=np.max)
+    if n_receptive_fields > 0:
+        receptive_fields = sort_fields_by_rate(firing_rate_orig, receptive_fields, func=np.max)
     return receptive_fields
 
 
