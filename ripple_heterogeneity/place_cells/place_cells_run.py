@@ -304,7 +304,7 @@ def run(
                     thresh=.2,
                     min_size=80,
                     max_size=None,
-                    sigma=2,
+                    sigma=1,
                 )
 
                 bc = measure.find_contours(
