@@ -302,8 +302,8 @@ def run(
                     ratemap_,
                     min_firing_rate=3,
                     thresh=.2,
-                    min_size=(100 / bin_width),
-                    max_size=(200 / bin_width),
+                    min_size=80,
+                    max_size=None,
                     sigma=2,
                 )
 
@@ -320,7 +320,7 @@ def run(
                     field_ids = np.unique(peaks)
                     n_fields.append(len(field_ids[field_ids > 0]))
                     peak_rate.append(
-                        ratemap_[peaks == np.min(field_ids[field_ids > 0])].max()
+                        ratemap_[peaks == 1].max()
                     )
 
                 pvals.append(pval)
