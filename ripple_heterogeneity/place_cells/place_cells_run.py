@@ -133,12 +133,12 @@ def run(
     # exist if no behavior data
     if len(beh_df) == 0:
         return
-    if (
-        np.isnan(beh_df.x).all()
-        & np.isnan(beh_df.y).all()
-        & np.isnan(beh_df.linearized).all()
-    ):
-        return
+    if "x" not in beh_df.columns:
+        if "linearized" not in beh_df.columns:
+            return
+        else:
+            beh_df["x"] = beh_df.linearized.values
+            beh_df["y"] = np.ones_like(beh_df.linearized.values)
 
     # if no x, use linearized
     if np.isnan(beh_df.x).all():
@@ -173,7 +173,7 @@ def run(
 
     pos = nel.AnalogSignalArray(
         data=np.array([beh_df.x, beh_df.y]),
-        timestamps=beh_df.time,
+        timestamps=beh_df.time.values,
         fs=1 / statistics.mode(np.diff(beh_df.time)),
     )
 
