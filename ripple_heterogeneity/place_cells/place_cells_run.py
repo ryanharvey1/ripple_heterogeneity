@@ -142,8 +142,13 @@ def run(
 
     # if no x, use linearized
     if np.isnan(beh_df.x).all():
+        if "linearized" not in beh_df.columns:
+            return
         beh_df.x = beh_df.linearized
         beh_df.y = np.zeros_like(beh_df.x)
+
+    if np.isnan(beh_df.x).all():
+        return
 
     # make linear track linear
     for ep in epoch_df.itertuples():
@@ -242,7 +247,7 @@ def run(
                         ratemap_,
                         occupancy_,
                         pval,
-                        null_ic,
+                        null_ic, 
                         spatial_info,
                     ) = get_maps_and_score(
                         cell_id, st_run[dir_epoch], x, y, ts, bin_width, n_shuff
@@ -252,20 +257,21 @@ def run(
                         ratemap_,
                         threshold=.33,
                         min_size=15 / bin_width,
-                        max_size=len(ratemap_) / bin_width,
+                        max_size=None,
                         min_peak=3,
                         sigma=None,
                     )
                     if len(map_fields["sizes"]) == 0:
                         field_width.append(np.nan)
                         peak_rate.append(np.nan)
+                        n_fields.append(np.nan)
                     else:
                         field_width.append(
-                            np.array(map_fields["sizes"]).max()
+                            map_fields["sizes"][0]
                             * len(ratemap_)
                             * bin_width
                         )
-                        peak_rate.append(np.array(map_fields["peaks"]).max())
+                        peak_rate.append(map_fields["peaks"][0])
                         field_ids = np.unique(map_fields["fields"])
                         n_fields.append(len(field_ids[field_ids > 0]))
 
@@ -313,6 +319,7 @@ def run(
                 if len(bc) == 0:
                     field_width.append(np.nan)
                     peak_rate.append(np.nan)
+                    n_fields.append(np.nan)
                 else:
                     field_width.append(
                         np.max(pdist(bc[0], "euclidean")) * bin_width
