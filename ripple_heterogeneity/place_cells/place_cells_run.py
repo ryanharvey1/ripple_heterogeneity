@@ -253,6 +253,8 @@ def run(
                         cell_id, st_run[dir_epoch], x, y, ts, bin_width, n_shuff
                     )
 
+                    ratemap_ = ratemap_.flatten()
+                    
                     map_fields = fields.map_stats2(
                         ratemap_,
                         threshold=.33,
