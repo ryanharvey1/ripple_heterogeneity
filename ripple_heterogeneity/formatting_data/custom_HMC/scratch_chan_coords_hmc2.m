@@ -51,3 +51,10 @@ chanCoords.y(129:end) = coords.y_um_;
 chanCoords.x(129:end) = chanCoords.x(129:end) + 1800
 
 chanCoords.y(129:end) = chanCoords.y(129:end) - 1500
+
+
+%%
+
+chanMap0ind = [session.extracellular.electrodeGroups.channels{:}]-1'
+writeNPY(int32(chanMap0ind(connected)), 'channel_map_2.npy')
+
