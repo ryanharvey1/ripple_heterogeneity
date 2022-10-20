@@ -101,8 +101,8 @@ def run(
     basepath,
     n_shuff=500,
     min_session_duration=5,
-    bin_width=3,
-    speed_thres=4,
+    bin_width=3.0,
+    speed_thres=4.0,
     epochs_to_skip=["sleep", "wheel", "cheeseboard"],
     brainRegion="CA1",
     cell_type="Pyr",
@@ -214,8 +214,8 @@ def run(
             bin_width = 0.03
             speed_thres = 0.04
         else:
-            bin_width = 3
-            speed_thres = 4
+            bin_width = 3.0
+            speed_thres = 4.0
 
         # get speed
         speed = nel.utils.ddt_asa(pos[ep], smooth=True, sigma=0.1, norm=True)
