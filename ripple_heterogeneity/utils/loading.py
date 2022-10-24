@@ -1151,3 +1151,11 @@ def load_manipulation(
         return manipulation_epoch
     else:
         return df
+
+def load_channel_tags(basepath):
+    """ 
+    load_channel_tags returns dictionary of tags located in basename.session.channelTags
+    """
+    filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
+    data = sio.loadmat(filename,simplify_cells=True)
+    return data['session']['channelTags']
