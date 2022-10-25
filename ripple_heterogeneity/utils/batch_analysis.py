@@ -19,6 +19,7 @@ def main_loop(basepath, save_path, func, overwrite, skip_if_error, **kwargs):
         kwargs: dict of keyword arguments to pass to func (see run)
     """
     # get file name from basepath
+    basepath = os.path.normpath(basepath)
     save_file = os.path.join(
         save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
     )
