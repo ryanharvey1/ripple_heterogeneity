@@ -20,6 +20,7 @@ def main_loop(basepath, save_path, func, overwrite, skip_if_error, **kwargs):
     """
     # get file name from basepath
     basepath = os.path.normpath(basepath)
+    save_path = os.path.normpath(save_path)
     save_file = os.path.join(
         save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
     )
