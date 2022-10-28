@@ -142,19 +142,26 @@ class NodePicker:
 
         if self.epoch is not None:
             epochs = load_epoch(self.basepath)
-            na_idx = np.isnan(behave_df.x) | (
-                (behave_df.time < epochs.iloc[self.epoch].startTime)
-                & (behave_df.time > epochs.iloc[self.epoch].stopTime)
+            # na_idx = np.isnan(behave_df.x) | (
+            #     (behave_df.time < epochs.iloc[self.epoch].startTime)
+            #     & (behave_df.time > epochs.iloc[self.epoch].stopTime)
+            # )
+            cur_epoch = (
+                ~np.isnan(behave_df.x) &
+                (behave_df.time >= epochs.iloc[self.epoch].startTime) &
+                (behave_df.time <= epochs.iloc[self.epoch].stopTime)
             )
         else:
-            na_idx = np.isnan(behave_df.x)
+            # na_idx = np.isnan(behave_df.x)
+            cur_epoch = ~np.isnan(behave_df.x)
 
         print("running hmm...")
         track_graph = make_track_graph(self.node_positions, self.edges)
 
         position = np.vstack(
-            [behave_df[~na_idx].x.values, behave_df[~na_idx].y.values]
+            [behave_df[cur_epoch].x.values, behave_df[cur_epoch].y.values]
         ).T
+
         position_df = get_linearized_position(
             position=position,
             track_graph=track_graph,
@@ -163,24 +170,20 @@ class NodePicker:
         )
 
         print("saving to disk...")
-        behave_df.loc[~na_idx, "linear_position"] = position_df.linear_position.values
-        behave_df.loc[~na_idx, "track_segment_id"] = position_df.track_segment_id.values
-        behave_df.loc[
-            ~na_idx, "projected_x_position"
-        ] = position_df.projected_x_position.values
-        behave_df.loc[
-            ~na_idx, "projected_y_position"
-        ] = position_df.projected_y_position.values
+        behave_df.loc[cur_epoch, "linearized"] = position_df.linear_position.values
+        behave_df.loc[cur_epoch, "track_segment_id"] = position_df.track_segment_id.values
+        behave_df.loc[cur_epoch, "projected_x_position"] = position_df.projected_x_position.values
+        behave_df.loc[cur_epoch, "projected_y_position"] = position_df.projected_y_position.values
 
         filename = glob.glob(os.path.join(self.basepath, "*.animal.behavior.mat"))[0]
         data = loadmat(filename, simplify_cells=True)
 
-        data["behavior"]["position"]["linearized"] = behave_df.linear_position.values
+        data["behavior"]["position"]["linearized"] = behave_df.linearized.values
         data["behavior"]["states"] = behave_df.track_segment_id.values
         data["behavior"]["position"]["projected_x"] = behave_df.projected_x_position.values
         data["behavior"]["position"]["projected_y"] = behave_df.projected_y_position.values
 
-        savemat(filename, data,long_field_names=True)
+        savemat(filename, data, long_field_names=True)
 
         self.save_nodes_edges()
         self.disconnect()
