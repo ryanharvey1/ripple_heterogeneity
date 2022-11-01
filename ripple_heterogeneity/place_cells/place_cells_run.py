@@ -257,9 +257,9 @@ def run(
                     
                     map_fields = fields.map_stats2(
                         ratemap_,
-                        threshold=.33,
+                        threshold=.2,
                         min_size=15 / bin_width,
-                        max_size=None,
+                        max_size=np.ceil(len(ratemap_)*.75),
                         min_peak=3,
                         sigma=None,
                     )
@@ -310,8 +310,8 @@ def run(
                     ratemap_,
                     min_firing_rate=3,
                     thresh=.2,
-                    min_size=80,
-                    max_size=None,
+                    min_size=100,
+                    max_size=np.ceil(len(ratemap_.flatten())*.75),
                     sigma=1,
                 )
 
