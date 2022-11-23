@@ -518,7 +518,7 @@ def load_barrage_events(basepath):
 
     # locate .mat file
     try:
-        filename = glob.glob(basepath+os.sep+'Barrage_Files'+os.sep+'*HSE.mat')[0]
+        filename = glob.glob(basepath+os.sep+'Barrage_Files'+os.sep+os.path.basename(basepath)+'.HSE.mat')[0]
     except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
@@ -546,6 +546,10 @@ def load_barrage_events(basepath):
     df['basepath'] = basepath  
     df['basename'] = path_components[-2]
     df['animal'] = path_components[-3]
+
+    df = df.loc[np.array(data['HSE']['keep'][0][0]).T[0] - 1].reset_index(drop=True)
+
+    df = df.loc[np.array(data['HSE']['NREM'][0][0]).T[0] - 1].reset_index(drop=True)
 
     return df
 
