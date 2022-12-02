@@ -986,7 +986,7 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
 
     brainRegions = load_brain_regions(basepath)
     for key, value in brainRegions.items():
-        if 'ca1' in key.lower():
+        if ('ca1' in key.lower()) | ('ca2' in key.lower()):
             for shank in value['electrodeGroups']:
                 channel_df.loc[channel_df.shank == shank,"ca1_shank"] = True
 
