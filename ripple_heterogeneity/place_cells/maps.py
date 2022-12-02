@@ -64,6 +64,7 @@ class SpatialMap(object):
         place_field_max_size=None,
         place_field_min_peak=3,
         place_field_sigma=2,
+        transform_func=None
     ):
         self.pos = pos
         self.st = st
@@ -80,6 +81,8 @@ class SpatialMap(object):
         self.place_field_min_peak = place_field_min_peak
         self.place_field_max_size = place_field_max_size
         self.place_field_sigma = place_field_sigma
+        self.transform_func = transform_func
+
         # get speed and running epochs
         self.speed = nel.utils.ddt_asa(self.pos, smooth=True, sigma=0.1, norm=True)
         self.run_epochs = nel.utils.get_run_epochs(
@@ -120,6 +123,7 @@ class SpatialMap(object):
             extmax=x_max,
             sigma=self.tuning_curve_sigma,
             min_duration=0,
+            transform_func=self.transform_func
         )
         return tc, st_run, bst_run
 
@@ -157,6 +161,7 @@ class SpatialMap(object):
             sigma=self.tuning_curve_sigma,
             min_duration=self.min_duration,
             minbgrate=self.minbgrate,
+            transform_func=self.transform_func
         )
         return tc, st_run, bst_run
 
