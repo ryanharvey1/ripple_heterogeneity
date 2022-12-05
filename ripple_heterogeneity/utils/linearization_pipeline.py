@@ -15,7 +15,6 @@ plt.style.use("dark_background")
 """
 TODO: 
 -fix bugs in removing nodes and edges
--option to linearize epoch by epoch (different mazes)
 -automatically determine get_linearized_position params "sensor_std_dev"
     for instances where data is not in cm
 -add option to input your own nodes and edges
