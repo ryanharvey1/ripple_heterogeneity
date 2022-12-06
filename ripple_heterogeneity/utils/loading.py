@@ -388,7 +388,7 @@ def load_SWRunitMetrics(basepath):
 
     return df2
 
-def load_ripples_events(basepath):
+def load_ripples_events(basepath,return_epoch_array=False):
     """
     load info from ripples.events.mat and store within df
 
@@ -479,6 +479,9 @@ def load_ripples_events(basepath):
     except:
         pass
 
+    if return_epoch_array:
+        return nel.EpochArray([np.array([df.start, df.stop]).T],label="ripples")
+
     return df
 
 def load_theta_cycles(basepath):
@@ -496,7 +499,7 @@ def load_theta_cycles(basepath):
     df['theta_channel'] = data["thetacycles"]["detectorinfo"]["theta_channel"]
     return df
 
-def load_barrage_events(basepath):
+def load_barrage_events(basepath,return_epoch_array=False):
     """
     load info from barrage.events.mat and store within df
 
@@ -521,6 +524,8 @@ def load_barrage_events(basepath):
         filename = glob.glob(basepath+os.sep+'Barrage_Files'+os.sep+os.path.basename(basepath)+'.HSE.mat')[0]
     except:
         warnings.warn("file does not exist")
+        if return_epoch_array:
+            return nel.EpochArray()
         return pd.DataFrame()
 
     # load matfile
@@ -550,6 +555,9 @@ def load_barrage_events(basepath):
     df = df.loc[np.array(data['HSE']['keep'][0][0]).T[0] - 1].reset_index(drop=True)
 
     df = df.loc[np.array(data['HSE']['NREM'][0][0]).T[0] - 1].reset_index(drop=True)
+
+    if return_epoch_array:
+        return nel.EpochArray([np.array([df.start, df.stop]).T],label="barrage")
 
     return df
 
