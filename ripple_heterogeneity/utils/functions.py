@@ -15,6 +15,7 @@ from ripple_heterogeneity.assembly import find_sig_assembly
 from itertools import combinations
 from scipy import signal
 from ripple_heterogeneity.utils import compress_repeated_epochs as comp_rep_ep
+import random
 
 
 def set_plotting_defaults():
@@ -286,9 +287,7 @@ def pairwise_spatial_corr(X, return_index=False, pairs=None):
         x1 = X[s[0], :, :].flatten()
         x2 = X[s[1], :, :].flatten()
         bad_idx = np.isnan(x1) | np.isnan(x1)
-        spatial_corr.append(
-            np.corrcoef(x1[~bad_idx], x2[~bad_idx])[0, 1]
-        )
+        spatial_corr.append(np.corrcoef(x1[~bad_idx], x2[~bad_idx])[0, 1])
 
     if return_index:
         return np.array(spatial_corr), pairs
@@ -541,12 +540,13 @@ def get_participation(st, event_starts, event_stops, par_type="binary"):
         idx2 = np.searchsorted(s, event_stops, "left")
         unit_mat[i, :] = idx2 - idx1
 
-    if par_type == "counts":
-        pass
-    elif par_type == "binary":
-        unit_mat = (unit_mat > 0) * 1
-    elif par_type == "firing_rate":
-        unit_mat = unit_mat / (event_stops - event_starts)
+    par_type_funcs = {
+        "counts": lambda x: x,
+        "binary": lambda x: (x > 0) * 1,
+        "firing_rate": lambda x: x / (event_stops - event_starts),
+    }
+    calc_func = par_type_funcs[par_type]
+    unit_mat = calc_func(unit_mat)
 
     return unit_mat
 
@@ -1337,6 +1337,56 @@ def get_rank_order(
         raise Exception("other method, " + method + " is not implemented")
 
     return np.nanmedian(rank_order, axis=1), rank_order
+
+
+import random
+
+
+def randomize_epochs(epoch, randomize_each=True, start_stop=None):
+    """Randomly shifts the epochs of a EpochArray object and wraps them around the original time boundaries.
+
+    This method takes a EpochArray object as input, and can either randomly shift each epoch by a different amount
+    (if `randomize_each` is True) or shift all the epochs by the same amount (if `randomize_each` is False).
+    In either case, the method wraps the shifted epochs around the original time boundaries to make sure they remain
+    within the original time range. It then returns the modified EpochArray object.
+
+    Args:
+        epoch (EpochArray): The EpochArray object whose epochs should be shifted and wrapped.
+        randomize_each (bool, optional): If True, each epoch will be shifted by a different random amount.
+            If False, all the epochs will be shifted by the same random amount. Defaults to True.
+        start_stop (array, optional): If not None, time support will be taken from start_stop
+
+    Returns:
+        new_epochs: The modified EpochArray object with the shifted and wrapped epochs.
+    """
+
+    new_epochs = epoch.copy()
+
+    if start_stop is None:
+        start = new_epochs.start
+        stop = new_epochs.stop
+    else:
+        start = start_stop[0]
+        stop = start_stop[1]
+
+    ts_range = stop - start
+
+    if randomize_each:
+        # Randomly shift each epoch by a different amount
+        random_order = random.sample(
+            range(-int(ts_range), int(ts_range)), new_epochs.n_intervals
+        )
+        new_epochs._data = (
+            new_epochs.data + np.expand_dims(random_order, axis=1)
+        ) % ts_range + start
+    else:
+        # Shift all the epochs by the same amount
+        random_shift = random.randint(-int(ts_range), int(ts_range))
+        new_epochs._data = (
+            new_epochs.data + random_shift
+        ) % ts_range + start
+
+    return new_epochs
 
 
 def overlap_intersect(epoch, interval, return_indices=True):
