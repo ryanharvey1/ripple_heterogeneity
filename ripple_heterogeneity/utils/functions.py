@@ -1339,9 +1339,6 @@ def get_rank_order(
     return np.nanmedian(rank_order, axis=1), rank_order
 
 
-import random
-
-
 def randomize_epochs(epoch, randomize_each=True, start_stop=None):
     """Randomly shifts the epochs of a EpochArray object and wraps them around the original time boundaries.
 
@@ -1366,8 +1363,7 @@ def randomize_epochs(epoch, randomize_each=True, start_stop=None):
         start = new_epochs.start
         stop = new_epochs.stop
     else:
-        start = start_stop[0]
-        stop = start_stop[1]
+        start,stop = start_stop
 
     ts_range = stop - start
 
@@ -1382,9 +1378,7 @@ def randomize_epochs(epoch, randomize_each=True, start_stop=None):
     else:
         # Shift all the epochs by the same amount
         random_shift = random.randint(-int(ts_range), int(ts_range))
-        new_epochs._data = (
-            new_epochs.data + random_shift
-        ) % ts_range + start
+        new_epochs._data = (new_epochs.data + random_shift) % ts_range + start
 
     return new_epochs
 
