@@ -1357,13 +1357,21 @@ def randomize_epochs(epoch, randomize_each=True, start_stop=None):
         new_epochs: The modified EpochArray object with the shifted and wrapped epochs.
     """
 
+    def wrap_intervals(intervals, start, stop):
+        idx = np.any(intervals > stop, axis=1)
+        intervals[idx] = intervals[idx] - stop + start
+
+        idx = np.any(intervals < start, axis=1)
+        intervals[idx] = intervals[idx] - start + stop
+        return intervals
+
     new_epochs = epoch.copy()
 
     if start_stop is None:
         start = new_epochs.start
         stop = new_epochs.stop
     else:
-        start,stop = start_stop
+        start, stop = start_stop
 
     ts_range = stop - start
 
@@ -1372,13 +1380,17 @@ def randomize_epochs(epoch, randomize_each=True, start_stop=None):
         random_order = random.sample(
             range(-int(ts_range), int(ts_range)), new_epochs.n_intervals
         )
-        new_epochs._data = (
-            new_epochs.data + np.expand_dims(random_order, axis=1)
-        ) % ts_range + start
+
+        new_intervals = new_epochs.data + np.expand_dims(random_order, axis=1)
+        new_epochs._data = wrap_intervals(new_intervals, start, stop)
     else:
         # Shift all the epochs by the same amount
         random_shift = random.randint(-int(ts_range), int(ts_range))
-        new_epochs._data = (new_epochs.data + random_shift) % ts_range + start
+        new_epochs._data = wrap_intervals((new_epochs.data + random_shift), start, stop)
+
+    if not new_epochs.isempty:
+        if np.any(new_epochs.data[:, 1] - new_epochs.data[:, 0] < 0):
+            raise ValueError("start must be less than or equal to stop")
 
     return new_epochs
 
