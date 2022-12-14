@@ -3,9 +3,12 @@ import nelpy as nel
 import copy
 import scipy
 from ripple_heterogeneity.place_cells import fields
+from ripple_heterogeneity.utils import functions
 from skimage import measure
 from scipy.spatial.distance import pdist
 import logging
+import multiprocessing
+from joblib import Parallel, delayed
 
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -65,6 +68,7 @@ class SpatialMap(object):
         place_field_min_peak=3,
         place_field_sigma=2,
         transform_func=None,
+        n_shuff=500,
     ):
         self.pos = pos
         self.st = st
@@ -82,6 +86,7 @@ class SpatialMap(object):
         self.place_field_max_size = place_field_max_size
         self.place_field_sigma = place_field_sigma
         self.transform_func = transform_func
+        self.n_shuff = n_shuff
 
         # get speed and running epochs
         self.speed = nel.utils.ddt_asa(self.pos, smooth=True, sigma=0.1, norm=True)
@@ -99,13 +104,19 @@ class SpatialMap(object):
         # find place fields. Currently only collects metrics from peak field
         # self.find_fields()
 
-    def map_1d(self):
+    def map_1d(self, pos):
 
         if self.dir_epoch is None:
             raise ValueError("dir_epoch must be specified")
 
         # restrict spike trains to those epochs during which the animal was running
         st_run = self.st[self.dir_epoch][self.run_epochs]
+
+        # take pos as input for case of shuffling
+        if pos is not None:
+            pos_run = pos[self.dir_epoch][self.run_epochs]
+        else:
+            pos_run = self.pos[self.dir_epoch][self.run_epochs]
 
         # smooth and re-bin:
         bst_run = st_run.bin(ds=self.ds_bst)
@@ -117,7 +128,7 @@ class SpatialMap(object):
 
         tc = nel.TuningCurve1D(
             bst=bst_run,
-            extern=self.pos[self.dir_epoch][self.run_epochs],
+            extern=pos_run,
             n_extern=n_bins,
             extmin=x_min,
             extmax=x_max,
@@ -127,12 +138,16 @@ class SpatialMap(object):
         )
         return tc, st_run, bst_run
 
-    def map_2d(self):
+    def map_2d(self, pos=None):
 
         # restrict spike trains to those epochs during which the animal was running
         st_run = self.st[self.run_epochs]
 
-        pos_run = self.pos[self.run_epochs]
+        # take pos as input for case of shuffling
+        if pos is not None:
+            pos_run = pos[self.run_epochs]
+        else:
+            pos_run = self.pos[self.run_epochs]
 
         # get xy max min
         ext_xmin, ext_xmax = (
@@ -144,11 +159,11 @@ class SpatialMap(object):
             np.ceil(self.pos.data[1, :].max()),
         )
         # create bin edges
-        self.x_edges = np.arange(ext_xmin, ext_xmax+self.s_binsize, self.s_binsize)
-        self.y_edges = np.arange(ext_ymin, ext_ymax+self.s_binsize, self.s_binsize)
+        self.x_edges = np.arange(ext_xmin, ext_xmax + self.s_binsize, self.s_binsize)
+        self.y_edges = np.arange(ext_ymin, ext_ymax + self.s_binsize, self.s_binsize)
 
         # number of bins in each dimension
-        ext_nx,ext_ny = len(self.x_edges),len(self.y_edges)
+        ext_nx, ext_ny = len(self.x_edges), len(self.y_edges)
 
         # compute occupancy
         occupancy = self.compute_occupancy_2d(pos_run)
@@ -201,6 +216,49 @@ class SpatialMap(object):
         ratemap[bad_idx] = 0
 
         return ratemap
+
+    def shuffle_spatial_information(self):
+        def create_shuffled_coordinates(X, n_shuff=500):
+            range_ = X.shape[1]
+
+            surrogate = np.random.choice(
+                np.arange(-range_, range_), size=n_shuff, replace=False
+            )
+            x_temp = []
+            for n in surrogate:
+                x_temp.append(np.roll(X, n, axis=1))
+
+            return x_temp
+
+        def get_spatial_infos(pos_shuff, ts, dim):
+            pos_shuff = nel.AnalogSignalArray(
+                data=pos_shuff,
+                timestamps=ts,
+            )
+            if dim == 1:
+                tc, _, _ = self.map_1d(pos_shuff)
+            elif dim == 2:
+                tc, _ = self.map_2d(pos_shuff)
+                return tc.spatial_information()
+
+        pos_data_shuff = create_shuffled_coordinates(
+            self.pos.data, n_shuff=self.n_shuff
+        )
+
+        # construct tuning curves for each position shuffle
+        num_cores = multiprocessing.cpu_count()
+        shuffle_spatial_info = Parallel(n_jobs=num_cores)(
+            delayed(get_spatial_infos)(
+                pos_data_shuff[i], self.pos.abscissa_vals, self.dim
+            )
+            for i in range(self.n_shuff)
+        )
+        
+        # calculate p values for the obs vs null
+        _, pvalues = functions.get_significant_events(
+            self.tc.spatial_information(), np.array(shuffle_spatial_info)
+        )
+        return pvalues
 
     def find_fields(self):
 
