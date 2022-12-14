@@ -327,6 +327,7 @@ class SpatialMap(object):
         self.tc.field_width = np.array(field_width)
         self.tc.field_peak_rate = np.array(peak_rate)
         self.tc.field_mask = np.array(mask)
+        self.tc.n_fields = np.array([len(np.unique(mask_))-1 for mask_ in self.tc.field_mask])
 
 
 class TuningCurve2DContinuous:
