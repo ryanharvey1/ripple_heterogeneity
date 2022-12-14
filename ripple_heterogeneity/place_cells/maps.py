@@ -64,7 +64,7 @@ class SpatialMap(object):
         place_field_max_size=None,
         place_field_min_peak=3,
         place_field_sigma=2,
-        transform_func=None
+        transform_func=None,
     ):
         self.pos = pos
         self.st = st
@@ -90,7 +90,7 @@ class SpatialMap(object):
         ).merge()
         # calculate maps, 1d or 2d
         if dim == 2:
-            self.tc, self.st_run, self.bst_run = self.map_2d()
+            self.tc, self.st_run = self.map_2d()
         elif dim == 1:
             self.tc, self.st_run, self.bst_run = self.map_1d()
         else:
@@ -123,7 +123,7 @@ class SpatialMap(object):
             extmax=x_max,
             sigma=self.tuning_curve_sigma,
             min_duration=0,
-            transform_func=self.transform_func
+            transform_func=self.transform_func,
         )
         return tc, st_run, bst_run
 
@@ -132,38 +132,75 @@ class SpatialMap(object):
         # restrict spike trains to those epochs during which the animal was running
         st_run = self.st[self.run_epochs]
 
-        # bin spike trains
-        bst_run = st_run.bin(ds=self.ds_bst)
+        pos_run = self.pos[self.run_epochs]
 
-        # locate max and min of the position data
+        # get xy max min
         ext_xmin, ext_xmax = (
-            np.floor(self.pos[:, 0].min() / 10) * 10,
-            np.ceil(self.pos[:, 0].max() / 10) * 10,
+            np.floor(self.pos.data[0, :].min()),
+            np.ceil(self.pos.data[0, :].max()),
         )
         ext_ymin, ext_ymax = (
-            np.floor(self.pos[:, 1].min() / 10) * 10,
-            np.ceil(self.pos[:, 1].max() / 10) * 10,
+            np.floor(self.pos.data[1, :].min()),
+            np.ceil(self.pos.data[1, :].max()),
         )
-        # number of bins in each dimension
-        ext_nx = int((ext_xmax - ext_xmin) / self.s_binsize)
-        ext_ny = int((ext_ymax - ext_ymin) / self.s_binsize)
+        # create bin edges
+        self.x_edges = np.arange(ext_xmin, ext_xmax+self.s_binsize, self.s_binsize)
+        self.y_edges = np.arange(ext_ymin, ext_ymax+self.s_binsize, self.s_binsize)
 
-        # construct the tuning curves
+        # number of bins in each dimension
+        ext_nx,ext_ny = len(self.x_edges),len(self.y_edges)
+
+        # compute occupancy
+        occupancy = self.compute_occupancy_2d(pos_run)
+
+        # compute ratemap (in Hz)
+        ratemap = self.compute_ratemap_2d(st_run, pos_run, occupancy)
+
+        # enforce minimum background firing rate
+        ratemap[
+            ratemap < self.minbgrate
+        ] = self.minbgrate  # background firing rate of 0.01 Hz
+
         tc = nel.TuningCurve2D(
-            bst=bst_run,
-            extern=self.pos[self.run_epochs],
+            ratemap=ratemap,
             ext_xmin=ext_xmin,
             ext_ymin=ext_ymin,
             ext_xmax=ext_xmax,
             ext_ymax=ext_ymax,
             ext_ny=ext_ny,
             ext_nx=ext_nx,
-            sigma=self.tuning_curve_sigma,
-            min_duration=self.min_duration,
-            minbgrate=self.minbgrate,
-            transform_func=self.transform_func
         )
-        return tc, st_run, bst_run
+        tc._occupancy = occupancy
+        # tc.occupancy
+        if self.tuning_curve_sigma is not None:
+            if self.tuning_curve_sigma > 0:
+                tc.smooth(sigma=self.tuning_curve_sigma, inplace=True)
+
+        return tc, st_run
+
+    def compute_occupancy_2d(self, pos_run):
+
+        occupancy, _, _ = np.histogram2d(
+            pos_run.data[0, :], pos_run.data[1, :], bins=(self.x_edges, self.y_edges)
+        )
+        return occupancy / pos_run.fs
+
+    def compute_ratemap_2d(self, st_run, pos_run, occupancy):
+
+        ratemap = np.zeros(
+            (st_run.data.shape[0], occupancy.shape[0], occupancy.shape[1])
+        )
+        for i in range(st_run.data.shape[0]):
+            ratemap[i, : len(self.x_edges), : len(self.y_edges)], _, _ = np.histogram2d(
+                np.interp(st_run.data[i], pos_run.abscissa_vals, pos_run.data[0, :]),
+                np.interp(st_run.data[i], pos_run.abscissa_vals, pos_run.data[1, :]),
+                bins=(self.x_edges, self.y_edges),
+            )
+        ratemap = ratemap / occupancy
+        bad_idx = np.isnan(ratemap) | np.isinf(ratemap)
+        ratemap[bad_idx] = 0
+
+        return ratemap
 
     def find_fields(self):
 
