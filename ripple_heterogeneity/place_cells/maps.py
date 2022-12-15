@@ -104,7 +104,7 @@ class SpatialMap(object):
         # find place fields. Currently only collects metrics from peak field
         # self.find_fields()
 
-    def map_1d(self, pos):
+    def map_1d(self, pos=None):
 
         if self.dir_epoch is None:
             raise ValueError("dir_epoch must be specified")
