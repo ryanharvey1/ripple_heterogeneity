@@ -33,11 +33,14 @@ class SpatialMap(object):
         place_field_min_size: min size of place field (cm) (float)
         place_field_min_peak: min peak rate of place field (float)
         place_field_sigma: extra smoothing sigma to apply before field detection (float)
+        transform_func: function to transform position data (spike interp) before analysis (function).
+        n_shuff: number of positon shuffles for spatial information (int)
     attributes:
         tc: tuning curves (nelpy.TuningCurve)
         st_run: spike train restricted to running epochs (nelpy.SpikeTrain)
         bst_run: binned spike train restricted to running epochs (nelpy.binnedSpikeTrain)
-
+        speed: speed data (nelpy.AnalogSignal).
+        run_epochs: running epochs (nelpy.EpochArray)
     Note:
         Place field detector (.find_fields()) is sensitive to many parameters.
         For 2D, it is highly recommended to have good environmental sampling.
