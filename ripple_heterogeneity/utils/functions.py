@@ -16,7 +16,8 @@ from itertools import combinations
 from scipy import signal
 from ripple_heterogeneity.utils import compress_repeated_epochs as comp_rep_ep
 import random
-
+import bisect
+from nelpy import core
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -1423,6 +1424,43 @@ def overlap_intersect(epoch, interval, return_indices=True):
     if return_indices:
         return out, indices
     return out
+
+def find_intersecting_intervals(set1, set2):
+    """
+    Find the indices of the intervals in set1 that intersect with intervals in set2.
+
+    Parameters
+    ----------
+    set1 : nelpy EpochArray
+    set2 : nelpy EpochArray
+
+    Returns
+    -------
+    list
+        A list of indices indicating which intervals in set1 intersect with intervals in set2.
+
+    Examples
+    --------
+    >>> set1 = nel.EpochArray([(1, 3), (5, 7), (9, 10)])
+    >>> set2 = nel.EpochArray([(2, 4), (6, 8)])
+    >>> find_intersecting_intervals(set1, set2)
+    [0, 1]
+    """
+    if not isinstance(set1, core.IntervalArray) & isinstance(set2, core.IntervalArray):
+        raise ValueError("only EpochArrays are supported")
+
+    # convert intervals to list of tuples
+    set1 = list(map(tuple, set1.data))
+    set2 = list(map(tuple, set2.data))
+
+    intersecting_intervals = []
+    for i, (start1, end1) in enumerate(set1):
+        # Find the first interval in set2 that starts after start1
+        j = bisect.bisect_left(set2, (start1,))
+        # Check if the interval at index j in set2 intersects with the interval in set1
+        if j < len(set2) and set2[j][0] <= end1:
+            intersecting_intervals.append(i)
+    return intersecting_intervals
 
 
 def get_velocity(position, time=None):
