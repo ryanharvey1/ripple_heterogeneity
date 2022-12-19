@@ -388,12 +388,53 @@ def load_SWRunitMetrics(basepath):
 
     return df2
 
-def load_ripples_events(basepath,return_epoch_array=False):
+def add_manual_events(df,added_ts):
+    """
+    Add new rows to a dataframe representing manual events (from Neuroscope2) 
+    with durations equal to the mean duration of the existing events.
+
+    Parameters:
+    df (pandas DataFrame): The input dataframe, with at least two columns called
+        'start' and 'stop', representing the start and stop times of the events
+
+    added_ts (list): A list of timestamps representing the peaks of the new 
+        events to be added to the dataframe.
+
+    Returns:
+    pandas DataFrame: The modified dataframe with the new rows added and sorted by the 'peaks' column.
+    """
+    # Calculate the mean duration of the existing events
+    mean_duration = (df['stop'] - df['start']).mean()
+
+    # Create a new dataframe with a 'peaks' column equal to the added_ts values
+    df_added = pd.DataFrame()
+    df_added['peaks'] = added_ts
+
+    # Calculate the start and stop times of the new events based on the mean duration
+    df_added['start'] = added_ts - mean_duration / 2
+    df_added['stop'] = added_ts + mean_duration / 2
+
+    # Calculate the duration of the new events as the mean duration
+    df_added['duration'] = df_added.stop.values - df_added.start.values
+
+    # Append the new events to the original dataframe
+    df = pd.concat([df, df_added], ignore_index=True)
+
+    # Sort the dataframe by the 'peaks' column
+    df.sort_values(by=['peaks'], ignore_index=True, inplace=True)
+
+    return df
+
+def load_ripples_events(basepath,return_epoch_array=False, manual_events=True):
     """
     load info from ripples.events.mat and store within df
 
-    basepath: path to your session where ripples.events.mat is
-    
+    args:
+        basepath: path to your session where ripples.events.mat is
+        return_epoch_array: if you want the output in an EpochArray
+        manual_events: add manually added events from Neuroscope2 
+            (interval will be calculated from mean event duration)
+
     returns pandas dataframe with the following fields
         start: start time of ripple
         stop: end time of ripple
@@ -478,9 +519,15 @@ def load_ripples_events(basepath,return_epoch_array=False):
         df.reset_index(inplace=True)
     except:
         pass
+    
+    if manual_events:
+        try:
+            df = add_manual_events(df,data['ripples']["added"][0][0].T[0])
+        except:
+            pass
 
     if return_epoch_array:
-        return nel.EpochArray([np.array([df.start, df.stop]).T],label="ripples")
+        return nel.EpochArray([np.array([df.start, df.stop]).T], label="ripples")
 
     return df
 
