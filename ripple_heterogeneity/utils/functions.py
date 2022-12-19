@@ -1425,9 +1425,23 @@ def overlap_intersect(epoch, interval, return_indices=True):
         return out, indices
     return out
 
+@jit(nopython=True)
+def find_intersecting_intervals_(set1, set2):
+
+    intersecting_intervals = []
+    for i, (start1, end1) in enumerate(set1):
+        # Check if any of the intervals in set2 intersect with the current interval in set1
+        intersects = False
+        for start2, end2 in set2:
+            if start2 <= end1 and end2 >= start1:
+                intersects = True
+                break
+        intersecting_intervals.append(intersects)
+    return intersecting_intervals
+
 def find_intersecting_intervals(set1, set2):
     """
-    Find the indices of the intervals in set1 that intersect with intervals in set2.
+    Find whether each interval in set1 intersects with any interval in set2.
 
     Parameters
     ----------
@@ -1437,30 +1451,19 @@ def find_intersecting_intervals(set1, set2):
     Returns
     -------
     list
-        A list of indices indicating which intervals in set1 intersect with intervals in set2.
+        A list of bools, where each bool indicates whether the corresponding interval in set1 intersects with any interval in set2.
 
     Examples
     --------
     >>> set1 = nel.EpochArray([(1, 3), (5, 7), (9, 10)])
     >>> set2 = nel.EpochArray([(2, 4), (6, 8)])
     >>> find_intersecting_intervals(set1, set2)
-    [0, 1]
+    [True, True, False]
     """
     if not isinstance(set1, core.IntervalArray) & isinstance(set2, core.IntervalArray):
         raise ValueError("only EpochArrays are supported")
 
-    # convert intervals to list of tuples
-    set1 = list(map(tuple, set1.data))
-    set2 = list(map(tuple, set2.data))
-
-    intersecting_intervals = []
-    for i, (start1, end1) in enumerate(set1):
-        # Find the first interval in set2 that starts after start1
-        j = bisect.bisect_left(set2, (start1,))
-        # Check if the interval at index j in set2 intersects with the interval in set1
-        if j < len(set2) and set2[j][0] <= end1:
-            intersecting_intervals.append(i)
-    return intersecting_intervals
+    return find_intersecting_intervals_(set1.data, set2.data)
 
 
 def get_velocity(position, time=None):
