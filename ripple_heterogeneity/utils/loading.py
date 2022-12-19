@@ -500,6 +500,22 @@ def load_ripples_events(basepath,return_epoch_array=False, manual_events=True):
                 except:
                     df['ripple_channel'] = data['ripples']['detectorinfo'][0][0]['detectionchannel1'][0][0][0][0]
 
+
+    # remove flagged ripples, if exist
+    try:
+        df.drop(labels=np.array(data['ripples']["flagged"][0][0]).T[0] - 1, axis=0, inplace=True)
+        df.reset_index(inplace=True)
+    except:
+        pass
+
+    # adding manual events
+    if manual_events:
+        try:
+            df = add_manual_events(df,data['ripples']["added"][0][0].T[0])
+        except:
+            pass
+
+    # adding if ripples were restricted by spikes
     dt = data['ripples'].dtype
     if "eventSpikingParameters" in dt.names:
         df['event_spk_thres'] = 1
@@ -512,19 +528,6 @@ def load_ripples_events(basepath,return_epoch_array=False, manual_events=True):
     df['basepath'] = basepath  
     df['basename'] = path_components[-2]
     df['animal'] = path_components[-3]
-
-    # remove flagged ripples, if exist
-    try:
-        df.drop(labels=np.array(data['ripples']["flagged"][0][0]).T[0] - 1, axis=0, inplace=True)
-        df.reset_index(inplace=True)
-    except:
-        pass
-    
-    if manual_events:
-        try:
-            df = add_manual_events(df,data['ripples']["added"][0][0].T[0])
-        except:
-            pass
 
     if return_epoch_array:
         return nel.EpochArray([np.array([df.start, df.stop]).T], label="ripples")
