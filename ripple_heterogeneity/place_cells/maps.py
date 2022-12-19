@@ -267,7 +267,20 @@ class SpatialMap(object):
         return self.spatial_information_pvalues
 
     def find_fields(self):
+        """
+        Find place fields in the spatial maps.
 
+        args: inherited from Class
+
+        Returns:
+            None.
+        
+        Attributes:
+            field_mask: mask of the place fields (list of numpy arrays).
+            n_fields: number of place fields detected (int).
+            field_width: width of the place fields (list of floats).
+            field_peak_rate: peak firing rate of the place fields (list of floats).
+        """
         field_width = []
         peak_rate = []
         mask = []
