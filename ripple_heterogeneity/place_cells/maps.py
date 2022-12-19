@@ -9,6 +9,8 @@ from scipy.spatial.distance import pdist
 import logging
 import multiprocessing
 from joblib import Parallel, delayed
+from scipy.io import savemat
+import os
 
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -253,12 +255,13 @@ class SpatialMap(object):
             )
             for i in range(self.n_shuff)
         )
-        
+
         # calculate p values for the obs vs null
-        _, pvalues = functions.get_significant_events(
+        _, self.spatial_information_pvalues = functions.get_significant_events(
             self.tc.spatial_information(), np.array(shuffle_spatial_info)
         )
-        return pvalues
+
+        return self.spatial_information_pvalues
 
     def find_fields(self):
 
@@ -327,7 +330,97 @@ class SpatialMap(object):
         self.tc.field_width = np.array(field_width)
         self.tc.field_peak_rate = np.array(peak_rate)
         self.tc.field_mask = np.array(mask)
-        self.tc.n_fields = np.array([len(np.unique(mask_))-1 for mask_ in self.tc.field_mask])
+        self.tc.n_fields = np.array(
+            [len(np.unique(mask_)) - 1 for mask_ in self.tc.field_mask]
+        )
+
+    def save_mat_file(self, basepath, UID=None):
+
+        """
+        Save firing rate map data to a .mat file in MATLAB format.
+
+        The saved file will contain the following variables:
+        - map: a 1xN cell array containing the ratemaps, where N is the number of ratemaps.
+        - field: a 1xN cell array containing the field masks, if they exist.
+        - n_fields: the number of fields detected.
+        - size: the width of the detected fields.
+        - peak: the peak firing rate of the detected fields.
+        - occupancy: the occupancy map.
+        - spatial_information: the spatial information of the ratemaps.
+        - spatial_sparsity: the spatial sparsity of the ratemaps.
+        - x_bins: the bin edges for the x-axis of the ratemaps.
+        - y_bins: the bin edges for the y-axis of the ratemaps.
+        - run_epochs: the time points at which the animal was running.
+        - speed: the speed data.
+        - timestamps: the timestamps for the speed data.
+        - pos: the position data.
+
+        The file will be saved to a .mat file with the name `basepath.ratemap.firingRateMap.mat`, where
+        `basepath` is the base path of the data.
+        """
+
+        if self.dim == 1:
+            raise ValueError("1d storeage not implemented")
+
+        # set up dict
+        firingRateMap = {}
+
+        # store UID if exist
+        if UID is not None:
+            firingRateMap["UID"] = UID.tolist()
+
+        # set up empty fields for conversion to matlab cell array
+        firingRateMap["map"] = np.empty(self.tc.ratemap.shape[0], dtype=object)
+        firingRateMap["field"] = np.empty(self.tc.ratemap.shape[0], dtype=object)
+
+        # Iterate over the ratemaps and store each one in a cell of the cell array
+        for i, ratemap in enumerate(self.tc.ratemap):
+            firingRateMap["map"][i] = ratemap
+
+        # store occupancy
+        firingRateMap["occupancy"] = self.tc.occupancy
+
+        # store bin edges
+        firingRateMap["x_bins"] = self.tc.xbins.tolist()
+        firingRateMap["y_bins"] = self.tc.ybins.tolist()
+
+        # store field mask if exist
+        if hasattr(self.tc, "field_mask"):
+            for i, field_mask in enumerate(self.tc.field_mask):
+                firingRateMap["field"][i] = field_mask
+
+            # store field finding info
+            firingRateMap["n_fields"] = self.tc.n_fields.tolist()
+            firingRateMap["size"] = self.tc.field_width.tolist()
+            firingRateMap["peak"] = self.tc.field_peak_rate.tolist()
+
+        # store spatial metrics
+        firingRateMap["spatial_information"] = self.tc.spatial_information().tolist()
+        if hasattr(self, "spatial_information_pvalues"):
+            firingRateMap[
+                "spatial_information_pvalues"
+            ] = self.spatial_information_pvalues.tolist()
+        firingRateMap["spatial_sparsity"] = self.tc.spatial_sparsity().tolist()
+
+        # store position speed and timestamps
+        firingRateMap["timestamps"] = self.speed.abscissa_vals.tolist()
+        firingRateMap["pos"] = self.pos.data
+        firingRateMap["speed"] = self.speed.data.tolist()
+        firingRateMap["run_epochs"] = self.run_epochs.time.tolist()
+
+        # store epoch interval
+        firingRateMap["epoch_interval"] = [
+            self.pos.support.start,
+            self.pos.support.stop,
+        ]
+
+        # save matlab file
+        savemat(
+            os.path.join(
+                basepath, os.path.basename(basepath) + ".ratemap.firingRateMap.mat"
+            ),
+            {"firingRateMap": firingRateMap},
+        )
 
 
 class TuningCurve2DContinuous:
