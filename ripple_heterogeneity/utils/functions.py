@@ -1463,7 +1463,7 @@ def find_intersecting_intervals(set1, set2):
     if not isinstance(set1, core.IntervalArray) & isinstance(set2, core.IntervalArray):
         raise ValueError("only EpochArrays are supported")
 
-    return find_intersecting_intervals_(set1.data, set2.data)
+    return np.array(find_intersecting_intervals_(set1.data, set2.data))
 
 
 def get_velocity(position, time=None):
