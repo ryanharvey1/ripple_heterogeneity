@@ -242,6 +242,7 @@ class SpatialMap(object):
             )
             if dim == 1:
                 tc, _, _ = self.map_1d(pos_shuff)
+                return tc.spatial_information()
             elif dim == 2:
                 tc, _ = self.map_2d(pos_shuff)
                 return tc.spatial_information()
