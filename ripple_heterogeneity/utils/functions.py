@@ -16,7 +16,6 @@ from itertools import combinations
 from scipy import signal
 from ripple_heterogeneity.utils import compress_repeated_epochs as comp_rep_ep
 import random
-import bisect
 from nelpy import core
 
 def set_plotting_defaults():
