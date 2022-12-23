@@ -336,6 +336,52 @@ def compute_cross_correlogram(X, dt=1, window=0.5):
         return crosscorrs[(crosscorrs.index >= -window) & (crosscorrs.index <= window)]
 
 
+def get_raster_points(data, time_ref, bin_width=0.002, n_bins=100, window=None):
+    """
+    Generate points for a raster plot centered around each reference time in the `time_ref` array.
+
+    Parameters
+    ----------
+    data : ndarray
+        A 1D array of data values.
+    time_ref : ndarray
+        A 1D array of reference times.
+    bin_width : float, optional
+        The width of each bin in the raster plot, in seconds. Default is 0.002 seconds.
+    n_bins : int, optional
+        The number of bins in the raster plot. Default is 100.
+    window : tuple, optional
+        A tuple containing the start and end times of the window to be plotted around each reference time.
+        If not provided, the window will be centered around each reference time and have a width of `n_bins * bin_width` seconds.
+
+    Returns
+    -------
+    x : ndarray
+        A 1D array of x values representing the time offsets of each data point relative to the corresponding reference time.
+    y : ndarray
+        A 1D array of y values representing the reference times.
+    times : ndarray
+        A 1D array of time values corresponding to the bins in the raster plot.
+    """
+
+    if window is not None:
+        times = np.arange(window[0],window[1]+bin_width,bin_width)
+    else:
+        times = np.linspace(-(n_bins * bin_width) / 2, (n_bins * bin_width) / 2, n_bins + 1)
+
+    x = []
+    y = []
+    for i, r in enumerate(time_ref):
+        idx = (data > r + times.min()) & (data < r + times.max())
+        cur_data = data[idx]
+        if any(cur_data):
+            x.append(cur_data - r)
+            y.append(np.ones_like(cur_data)+i)       
+    x = list(itertools.chain(*x))
+    y = list(itertools.chain(*y))
+    return x, y, times
+
+
 def BurstIndex_Royer_2012(autocorrs):
     # calc burst index from royer 2012
     # burst_idx will range from -1 to 1
