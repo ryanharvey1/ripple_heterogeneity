@@ -638,16 +638,16 @@ def load_dentate_spike(basepath):
     def extract_data(s_type, data):
         # make data frame of known fields
         df = pd.DataFrame()
-        df["start"] = data[s_type]["timestamps"][0][0][:, 0]
-        df["stop"] = data[s_type]["timestamps"][0][0][:, 1]
-        df["peaks"] = data[s_type]["peaks"][0][0]
+        df["start"] = data[s_type]["timestamps"][:, 0]
+        df["stop"] = data[s_type]["timestamps"][:, 1]
+        df["peaks"] = data[s_type]["peaks"]
         df["event_label"] = s_type
-        df["amplitude"] = data[s_type]["amplitudes"][0][0]
-        df["duration"] = data[s_type]["duration"][0][0]
-        df["amplitudeUnits"] = data[s_type]["amplitudeUnits"][0][0][0]
-        df["detectorName"] = data[s_type]["detectorinfo"][0][0]["detectorname"][0][0][0]
-        df["ml_channel"] = data[s_type]["detectorinfo"][0][0]["ml_channel"][0][0][0][0]
-        df["h_channel"] = data[s_type]["detectorinfo"][0][0]["h_channel"][0][0][0][0]
+        df["amplitude"] = data[s_type]["amplitudes"]
+        df["duration"] = data[s_type]["duration"]
+        df["amplitudeUnits"] = data[s_type]["amplitudeUnits"]
+        df["detectorName"] = data[s_type]["detectorinfo"]["detectorname"]
+        df["ml_channel"] = data[s_type]["detectorinfo"]["ml_channel"]
+        df["h_channel"] = data[s_type]["detectorinfo"]["h_channel"]
         return df
 
     # locate .mat file
@@ -655,7 +655,7 @@ def load_dentate_spike(basepath):
     for s_type in ["DS1", "DS2"]:
         filename = glob.glob(basepath + os.sep + "*" + s_type + ".events.mat")[0]
         # load matfile
-        data = sio.loadmat(filename)
+        data = sio.loadmat(filename,simplify_cells=True)
         # pull out data
         df = pd.concat([df,extract_data(s_type, data)], ignore_index=True)
 
