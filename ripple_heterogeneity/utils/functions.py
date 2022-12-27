@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
-from numba import jit
+from numba import jit,njit
 from numba import int8
 from numba.typed import List
 from numba import typeof
@@ -1546,3 +1546,33 @@ def find_interval(logical):
     if start is not None:
         intervals.append((start, len(logical) - 1))
     return intervals
+
+@njit(parallel=True)
+def in_intervals(timestamps, intervals):
+    """
+    Find which timestamps fall within the given intervals.
+
+    Parameters
+    ----------
+    timestamps : ndarray
+        An array of timestamp values. assumes sorted
+    intervals : ndarray
+        An array of time intervals, represented as pairs of start and end times.
+
+    Returns
+    -------
+    ndarray
+        A logical index indicating which timestamps fall within the intervals.
+
+    Examples
+    --------
+    >>> timestamps = np.array([1, 2, 3, 4, 5, 6, 7, 8])
+    >>> intervals = np.array([[2, 4], [5, 7]])
+    >>> in_intervals(timestamps, intervals)
+    array([False,  True,  True,  True,  True,  True,  True, False])
+    """
+    in_interval = np.empty(timestamps.shape, dtype=np.bool_) * False
+    for i, (start, end) in enumerate(intervals):
+        in_interval[(timestamps >= start) & (timestamps <= end)] = True
+
+    return in_interval
