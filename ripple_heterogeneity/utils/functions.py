@@ -1520,3 +1520,29 @@ def get_velocity(position, time=None):
 def get_speed(position, time=None):
     velocity = get_velocity(position, time=time)
     return np.sqrt(np.sum(velocity**2, axis=1))
+
+def find_interval(logical):
+    """
+    Find consecutive intervals of True values in a list of boolean values.
+    
+    Parameters:
+    logical (List[bool]): The list of boolean values.
+    
+    Returns:
+    List[Tuple[int, int]]: A list of tuples representing the start and end indices of each consecutive interval of True values in the logical list.
+    
+    Example:
+    find_interval([0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1]) -> [(2, 4), (6, 7), (10, 11)]
+    find_interval([1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1]) -> [(0, 2), (4, 5), (9, 10)]
+    """
+    intervals = []
+    start = None
+    for i, value in enumerate(logical):
+        if value and start is None:
+            start = i
+        elif not value and start is not None:
+            intervals.append((start, i - 1))
+            start = None
+    if start is not None:
+        intervals.append((start, len(logical) - 1))
+    return intervals
