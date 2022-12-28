@@ -653,11 +653,17 @@ def load_dentate_spike(basepath):
     # locate .mat file
     df = pd.DataFrame()
     for s_type in ["DS1", "DS2"]:
-        filename = glob.glob(basepath + os.sep + "*" + s_type + ".events.mat")[0]
+        filename = glob.glob(basepath + os.sep + "*" + s_type + ".events.mat")
+        if len(filename) == 0:
+            continue
         # load matfile
+        filename = filename[0]
         data = sio.loadmat(filename,simplify_cells=True)
         # pull out data
         df = pd.concat([df,extract_data(s_type, data)], ignore_index=True)
+
+    if df.shape[0] == 0:
+        return df
 
     # get basename and animal
     normalized_path = os.path.normpath(filename)
