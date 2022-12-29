@@ -886,10 +886,16 @@ def get_animal_id(basepath):
     return data['session'][0][0]['animal'][0][0]['name'][0]
 
 def load_basic_data(basepath):
-    nChannels, fs, fs_dat, shank_to_channel = loadXML(basepath)
+
+    try:
+        nChannels, fs, fs_dat, shank_to_channel = loadXML(basepath)
+    except:
+        fs_dat = load_extracellular_metadata(basepath).get("sr")
+
     ripples = load_ripples_events(basepath)
-    cell_metrics,data = load_cell_metrics(basepath)
-    return cell_metrics,data,ripples,fs_dat
+    cell_metrics, data = load_cell_metrics(basepath)
+
+    return cell_metrics, data, ripples, fs_dat
 
 def load_spikes(basepath,
                 putativeCellType=[], # restrict spikes to putativeCellType
@@ -908,11 +914,17 @@ def load_spikes(basepath,
     if not isinstance(brainRegion, list):
         brainRegion = [brainRegion]
 
-    _,_,fs_dat,_ = loadXML(basepath)
+    # get sample rate from xml or session
+    try:
+        _,_,fs_dat,_ = loadXML(basepath)
+    except:
+        fs_dat = load_extracellular_metadata(basepath).get("sr")
 
+    # load cell metrics and spike data
     cell_metrics,data = load_cell_metrics(basepath)
 
-    st = np.array(data['spikes'],dtype=object)
+    # put spike data into array st
+    st = np.array(data['spikes'], dtype=object)
 
     # restrict cell metrics                      
     if len(putativeCellType) > 0:
@@ -1232,3 +1244,13 @@ def load_channel_tags(basepath):
     filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
     data = sio.loadmat(filename,simplify_cells=True)
     return data['session']['channelTags']
+
+
+def load_extracellular_metadata(basepath):
+    """ 
+    load_extracellular returns dictionary of metadata located 
+        in basename.session.extracellular
+    """
+    filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
+    data = sio.loadmat(filename,simplify_cells=True)
+    return data['session']['extracellular']
