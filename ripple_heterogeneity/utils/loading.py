@@ -840,6 +840,30 @@ def load_epoch(basepath):
         return pd.DataFrame(data["session"]["epochs"])
     except:
         return pd.DataFrame([data["session"]["epochs"]])
+
+def load_trials(basepath):
+    """
+    Loads trials from cell explorer basename.session.behavioralTracking and stores in df
+    """
+    try:
+        filename = glob.glob(os.path.join(basepath,'*.animal.behavior.mat'))[0]
+    except:
+        warnings.warn("file does not exist")
+        return pd.DataFrame()
+
+    # load file
+    data = sio.loadmat(filename,simplify_cells=True)
+
+    try:
+        df = pd.DataFrame(data = data["behavior"]["trials"])
+        df.columns = ['startTime','endTime']
+        df["trialsID"] = data["behavior"]["trialsID"]
+        return df
+    except:
+        df = pd.DataFrame(data = [data["behavior"]["trials"]])
+        df.columns = ['startTime','endTime']
+        df["trialsID"] = data["behavior"]["trialsID"]
+        return df
     
 def load_brain_regions(basepath):
     """
