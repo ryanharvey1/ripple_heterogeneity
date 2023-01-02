@@ -856,12 +856,12 @@ def load_trials(basepath):
 
     try:
         df = pd.DataFrame(data = data["behavior"]["trials"])
-        df.columns = ['startTime','endTime']
+        df.columns = ['startTime','stopTime']
         df["trialsID"] = data["behavior"]["trialsID"]
         return df
     except:
         df = pd.DataFrame(data = [data["behavior"]["trials"]])
-        df.columns = ['startTime','endTime']
+        df.columns = ['startTime','stopTime']
         df["trialsID"] = data["behavior"]["trialsID"]
         return df
     
