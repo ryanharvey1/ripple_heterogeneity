@@ -156,12 +156,12 @@ class SpatialMap(object):
 
         # get xy max min
         ext_xmin, ext_xmax = (
-            np.floor(self.pos.data[0, :].min()),
-            np.ceil(self.pos.data[0, :].max()),
+            np.floor(np.nanmin(self.pos.data[0, :])),
+            np.ceil(np.nanmax(self.pos.data[0, :])),
         )
         ext_ymin, ext_ymax = (
-            np.floor(self.pos.data[1, :].min()),
-            np.ceil(self.pos.data[1, :].max()),
+            np.floor(np.nanmin(self.pos.data[1, :])),
+            np.ceil(np.nanmax(self.pos.data[1, :])),
         )
         # create bin edges
         self.x_edges = np.arange(ext_xmin, ext_xmax + self.s_binsize, self.s_binsize)
