@@ -1437,6 +1437,8 @@ def randomize_epochs(epoch, randomize_each=True, start_stop=None):
     if not new_epochs.isempty:
         if np.any(new_epochs.data[:, 1] - new_epochs.data[:, 0] < 0):
             raise ValueError("start must be less than or equal to stop")
+            
+    new_epochs._sort()
 
     return new_epochs
 
