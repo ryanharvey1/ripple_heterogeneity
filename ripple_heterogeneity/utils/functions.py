@@ -1154,6 +1154,41 @@ def find_pre_task_post(env, pre_post_label="sleep"):
                 dummy[0 + i : 3 + i] = True
                 return dummy, [0, 1, 2] + i
 
+def find_multitask_pre_post_epoch(env, task_tag = 'open_field|linear_track|box|tmaze|wmaze'):
+    """
+    Find the row index for pre_task/post_task sleep for a given enviornment from cell explorer session.epochs dataframe 
+    Returns list of pre/task_post epochs for each task. 
+    input: 
+        df: data frame consisting of cell explorer session.epochs data 
+        col_name: name of column to query task tag. Default is environemnt
+        task_tag: string within col_name that indicates a task. 
+    output: 
+        list of epoch indicies [pre_task, task, post_task] of size n = # of task epochs
+
+    LB/RH 1/5/2022    
+    """
+    # Find the row indices that contain the search string in the specified column
+    task_bool = env.str.contains(task_tag, case=False)
+    sleep_bool = env.str.contains('sleep', case=False)
+
+    task_idx = np.where(task_bool)[0]
+    task_idx = np.delete(task_idx,task_idx == 0,0)
+    sleep_idx = np.where(sleep_bool)[0]
+    
+    pre_task_post = []
+    for task in task_idx:
+        temp = sleep_idx - task
+        pre_task = sleep_idx[temp < 0]
+        post_task = sleep_idx[temp > 0]
+
+        if len(post_task) == 0:
+            print('no post_task sleep for task epoch '+str(task))
+        elif len(pre_task) == 0:
+            print('no pre_task sleep for task epoch '+str(task))
+        else:
+            pre_task_post.append([pre_task[-1], task, post_task[0]])
+
+    return pre_task_post
 
 def find_epoch_pattern(env, pattern):
     """
