@@ -1154,7 +1154,7 @@ def find_pre_task_post(env, pre_post_label="sleep"):
                 dummy[0 + i : 3 + i] = True
                 return dummy, [0, 1, 2] + i
 
-def find_multitask_pre_post_epoch(env, task_tag = 'open_field|linear_track|box|tmaze|wmaze'):
+def find_multitask_pre_post(env, task_tag = 'open_field|linear_track|box|tmaze|wmaze'):
     """
     Find the row index for pre_task/post_task sleep for a given enviornment from cell explorer session.epochs dataframe 
     Returns list of pre/task_post epochs for each task. 
