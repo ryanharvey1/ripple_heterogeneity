@@ -1615,6 +1615,35 @@ def in_intervals(timestamps, intervals):
     return in_interval
 
 
+def count_events(events, time_ref, time_range):
+    """
+    Count the number of events that occur within a given time range after each reference event.
+    Parameters
+    ----------
+    events : ndarray
+        A 1D array of event times.
+    time_ref : ndarray
+        A 1D array of reference times.
+    time_range : tuple
+        A tuple containing the start and end times of the time range.
+    Returns
+    -------
+    counts : ndarray
+        A 1D array of event counts, one for each reference time (same len as time_ref).
+    """
+    # Initialize an array to store the event counts
+    counts = np.zeros_like(time_ref)
+
+    # Iterate over the reference times
+    for i, r in enumerate(time_ref):
+        # Check if any events occur within the time range
+        idx = (events > r + time_range[0]) & (events < r + time_range[1])
+        # Increment the event count if any events are found
+        counts[i] = len(events[idx])
+
+    return counts
+
+
 def clean_lfp(lfp, thresholds=[5,10], artifact_time_expand=[0.25,0.1]):
     """
     Remove artefacts and noise from a local field potential (LFP) signal.
