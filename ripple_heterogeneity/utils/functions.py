@@ -1188,6 +1188,9 @@ def find_multitask_pre_post(env, task_tag = 'open_field|linear_track|box|tmaze|w
         else:
             pre_task_post.append([pre_task[-1], task, post_task[0]])
 
+    if len(pre_task_post) == 0:
+        pre_task_post = None
+        
     return pre_task_post
 
 def find_epoch_pattern(env, pattern):
