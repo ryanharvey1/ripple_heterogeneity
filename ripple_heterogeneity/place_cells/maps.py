@@ -74,6 +74,7 @@ class SpatialMap(object):
         place_field_sigma=2,
         transform_func=None,
         n_shuff=500,
+        parallel_shuff=True,
     ):
         self.pos = pos
         self.st = st
@@ -92,6 +93,7 @@ class SpatialMap(object):
         self.place_field_sigma = place_field_sigma
         self.transform_func = transform_func
         self.n_shuff = n_shuff
+        self.parallel_shuff = parallel_shuff
 
         # get speed and running epochs
         self.speed = nel.utils.ddt_asa(self.pos, smooth=True, sigma=0.1, norm=True)
@@ -252,13 +254,19 @@ class SpatialMap(object):
         )
 
         # construct tuning curves for each position shuffle
-        num_cores = multiprocessing.cpu_count()
-        shuffle_spatial_info = Parallel(n_jobs=num_cores)(
-            delayed(get_spatial_infos)(
-                pos_data_shuff[i], self.pos.abscissa_vals, self.dim
+        if self.parallel_shuff:
+            num_cores = multiprocessing.cpu_count()
+            shuffle_spatial_info = Parallel(n_jobs=num_cores)(
+                delayed(get_spatial_infos)(
+                    pos_data_shuff[i], self.pos.abscissa_vals, self.dim
+                )
+                for i in range(self.n_shuff)
             )
-            for i in range(self.n_shuff)
-        )
+        else:
+            shuffle_spatial_info = [
+                get_spatial_infos(pos_data_shuff[i], self.pos.abscissa_vals, self.dim)
+                for i in range(self.n_shuff)
+            ]
 
         # calculate p values for the obs vs null
         _, self.spatial_information_pvalues = functions.get_significant_events(
@@ -275,7 +283,7 @@ class SpatialMap(object):
 
         Returns:
             None.
-        
+
         Attributes:
             field_mask: mask of the place fields (list of numpy arrays).
             n_fields: number of place fields detected (int).
