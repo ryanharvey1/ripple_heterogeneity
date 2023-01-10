@@ -616,6 +616,42 @@ def load_barrage_events(basepath,return_epoch_array=False,restrict_to_nrem=True)
 
     return df
 
+def load_ied_events(basepath, return_epoch_array=False):
+    """
+    load info from ripples.events.mat and store within df
+
+    args:
+        basepath: path to your session where ripples.events.mat is
+        return_epoch_array: if you want the output in an EpochArray
+        manual_events: add manually added events from Neuroscope2
+            (interval will be calculated from mean event duration)
+
+    returns pandas dataframe
+
+        * Note that basepath/basename/animal relies on specific folder
+        structure and may be incorrect for some data structures
+    """
+
+    # locate .mat file
+    try:
+        filename = glob.glob(basepath + os.sep + "*IED.events.mat")[0]
+    except:
+        # warnings.warn("file does not exist")
+        return pd.DataFrame()
+
+    df = pd.DataFrame()
+
+    data = sio.loadmat(filename, simplify_cells=True)
+    struct_name = list(data.keys())[-1]
+    df["start"] = data[struct_name]["timestamps"][:, 0]
+    df["stop"] = data[struct_name]["timestamps"][:, 1]
+    df["center"] = data[struct_name]["peaks"]
+
+    if return_epoch_array:
+        return nel.EpochArray([np.array([df.start, df.stop]).T], label="ied")
+
+    return df
+
 def load_dentate_spike(basepath):
     """
     load info from DS*.events.mat and store within df
