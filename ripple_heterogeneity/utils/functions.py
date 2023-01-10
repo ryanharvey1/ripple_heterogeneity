@@ -1575,6 +1575,9 @@ def find_interval(logical):
     find_interval([0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1]) -> [(2, 4), (6, 7), (10, 11)]
     find_interval([1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1]) -> [(0, 2), (4, 5), (9, 10)]
     """
+    logical = np.array(logical)
+    logical = logical[~np.isnan(logical)]
+
     intervals = []
     start = None
     for i, value in enumerate(logical):
