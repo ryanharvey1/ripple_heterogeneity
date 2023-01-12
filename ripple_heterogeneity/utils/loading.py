@@ -30,7 +30,7 @@ def loadXML(basepath):
         basename = os.path.basename(basepath)
         filename = glob.glob(os.path.join(basepath,basename+'.xml'))[0]
     except:
-        warnings.warn("file does not exist")
+        warnings.warn("xml file does not exist")
         return 
 
     from xml.dom import minidom
