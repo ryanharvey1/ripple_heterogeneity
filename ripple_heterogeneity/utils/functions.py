@@ -598,23 +598,26 @@ def get_participation(st, event_starts, event_stops, par_type="binary"):
 
 
 def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
-    """Return the significant events based on percentiles.
-    NOTE: The score is compared to the distribution of scores obtained
-    using the randomized data and a Monte Carlo p-value can be computed
-    according to: p = (r+1)/(n+1), where r is the number of
-    randomizations resulting in a score higher than (ETIENNE EDIT: OR EQUAL TO?)
-    the real score and n is the total number of randomizations performed.
+    """
+    Return the significant events based on percentiles,
+    the p-values and the standard deviation of the scores 
+    in terms of the shuffled scores.
     Parameters
     ----------
     scores : array of shape (n_events,)
+        The array of scores for which to calculate significant events
     shuffled_scores : array of shape (n_shuffles, n_events)
+        The array of scores obtained from randomized data 
     q : float in range of [0,100]
         Percentile to compute, which must be between 0 and 100 inclusive.
     Returns
     -------
     sig_event_idx : array of shape (n_sig_events,)
         Indices (from 0 to n_events-1) of significant events.
-    pvalues :
+    pvalues : array of shape (n_events,)
+        The p-values 
+    stddev : array of shape (n_events,)
+        The standard deviation of the scores in terms of the shuffled scores
     """
     # check shape and correct if needed
     if shuffled_scores.shape[1] != len(scores):
@@ -638,7 +641,12 @@ def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
         scores > np.percentile(shuffled_scores, axis=0, q=q)
     ).squeeze()
 
-    return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues)
+    # calculate how many standard deviations away from shuffle
+    stddev = (np.abs(scores) - np.nanmean(np.abs(shuffled_scores), axis=0)) / np.nanstd(
+        np.abs(shuffled_scores), axis=0
+    )
+
+    return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues), np.atleast_1d(stddev)
 
 
 def find_laps(
