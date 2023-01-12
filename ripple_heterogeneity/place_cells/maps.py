@@ -104,7 +104,7 @@ class SpatialMap(object):
         if dim == 2:
             self.tc, self.st_run = self.map_2d()
         elif dim == 1:
-            self.tc, self.st_run, self.bst_run = self.map_1d()
+            self.tc, self.st_run = self.map_1d()
         else:
             raise ValueError("dim must be 1 or 2")
 
@@ -125,25 +125,60 @@ class SpatialMap(object):
         else:
             pos_run = self.pos[self.dir_epoch][self.run_epochs]
 
-        # smooth and re-bin:
-        bst_run = st_run.bin(ds=self.ds_bst)
-
         x_max = np.ceil(np.nanmax(self.pos[self.dir_epoch].data))
         x_min = np.floor(np.nanmin(self.pos[self.dir_epoch].data))
 
+        self.x_edges = np.arange(x_min, x_max + self.s_binsize, self.s_binsize)
+
         n_bins = int((x_max - x_min) / self.s_binsize)
 
+        # compute occupancy
+        occupancy = self.compute_occupancy_1d(pos_run)
+
+        # compute ratemap (in Hz)
+        ratemap = self.compute_ratemap_1d(st_run, pos_run, occupancy)
+
+        # enforce minimum background firing rate
+        # background firing rate of xx Hz
+        ratemap[ratemap < self.minbgrate] = self.minbgrate  
+
+        # enforce minimum background occupancy
+        for uu in range(st_run.n_units):
+            ratemap[uu][occupancy < self.min_duration] = 0
+
+        # add to nelpy tuning curve class
         tc = nel.TuningCurve1D(
-            bst=bst_run,
-            extern=pos_run,
-            n_extern=n_bins,
+            ratemap=ratemap,
             extmin=x_min,
             extmax=x_max,
-            sigma=self.tuning_curve_sigma,
-            min_duration=0,
-            transform_func=self.transform_func,
         )
-        return tc, st_run, bst_run
+
+        tc._occupancy = occupancy
+
+        if self.tuning_curve_sigma is not None:
+            if self.tuning_curve_sigma > 0:
+                tc.smooth(sigma=self.tuning_curve_sigma, inplace=True)
+
+        return tc, st_run
+
+    def compute_occupancy_1d(self, pos_run):
+
+        occupancy, _ = np.histogram(pos_run.data[0, :], bins=self.x_edges)
+        return occupancy / pos_run.fs
+
+    def compute_ratemap_1d(self, st_run, pos_run, occupancy):
+
+        ratemap = np.zeros((st_run.data.shape[0], occupancy.shape[0]))
+        for i in range(st_run.data.shape[0]):
+            ratemap[i, : len(self.x_edges)], _, = np.histogram(
+                np.interp(st_run.data[i], pos_run.abscissa_vals, pos_run.data[0, :]),
+                bins=self.x_edges,
+            )
+        ratemap = ratemap / occupancy
+        bad_idx = np.isnan(ratemap) | np.isinf(ratemap)
+        ratemap[bad_idx] = 0
+
+        return ratemap
 
     def map_2d(self, pos=None):
 
@@ -179,9 +214,12 @@ class SpatialMap(object):
         ratemap = self.compute_ratemap_2d(st_run, pos_run, occupancy)
 
         # enforce minimum background firing rate
-        ratemap[
-            ratemap < self.minbgrate
-        ] = self.minbgrate  # background firing rate of 0.01 Hz
+        # background firing rate of xx Hz
+        ratemap[ratemap < self.minbgrate] = self.minbgrate  
+
+        # enforce minimum background occupancy
+        for uu in range(st_run.n_units):
+            ratemap[uu][occupancy < self.min_duration] = 0
 
         tc = nel.TuningCurve2D(
             ratemap=ratemap,
@@ -193,7 +231,7 @@ class SpatialMap(object):
             ext_nx=ext_nx,
         )
         tc._occupancy = occupancy
-        # tc.occupancy
+
         if self.tuning_curve_sigma is not None:
             if self.tuning_curve_sigma > 0:
                 tc.smooth(sigma=self.tuning_curve_sigma, inplace=True)
@@ -243,7 +281,7 @@ class SpatialMap(object):
                 timestamps=ts,
             )
             if dim == 1:
-                tc, _, _ = self.map_1d(pos_shuff)
+                tc, _ = self.map_1d(pos_shuff)
                 return tc.spatial_information()
             elif dim == 2:
                 tc, _ = self.map_2d(pos_shuff)
