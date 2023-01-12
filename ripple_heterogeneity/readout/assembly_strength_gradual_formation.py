@@ -136,7 +136,7 @@ def run(
     for _ in range(shuffles):
         slopes_shuff.append(find_slope_over_time_shuffle(assembly_act))
 
-    sig_event_idx, pvals = functions.get_significant_events(slopes, np.vstack(slopes_shuff), q=95, tail="both")
+    sig_event_idx, pvals, _ = functions.get_significant_events(slopes, np.vstack(slopes_shuff), q=95, tail="both")
 
 
     label_df = pd.DataFrame()

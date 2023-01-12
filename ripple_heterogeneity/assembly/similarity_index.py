@@ -65,6 +65,6 @@ def similarity_index(patterns, n_shuffles=1000, parallel=True):
         si_shuffles = [get_si(shuffle_patterns(patterns)) for _ in range(n_shuffles)]
 
     # calculate p-values for each pattern combination
-    _, pvalues = functions.get_significant_events(si, np.array(si_shuffles))
+    _, pvalues, _ = functions.get_significant_events(si, np.array(si_shuffles))
 
     return si, combos, pvalues

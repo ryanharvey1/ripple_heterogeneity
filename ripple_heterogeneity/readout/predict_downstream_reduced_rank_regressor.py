@@ -378,7 +378,7 @@ def run(
                         mse = mean_squared_error(
                             y_test, regressor.predict(X_test), multioutput="raw_values"
                         )
-                        _, pval = functions.get_significant_events(
+                        _, pval, _ = functions.get_significant_events(
                             mse, np.array(error_shuff_unit), tail="left"
                         )
                         pval_shuffles_unit.append(pval)
@@ -463,7 +463,7 @@ def run(
         df["median_error_shuff"] = np.hstack(median_error_shuff)
         df["mean_r2_shuff"] = np.hstack(mean_r2_shuff)
         df["median_r2_shuff"] = np.hstack(median_r2_shuff)
-        _, pval = functions.get_significant_events(
+        _, pval, _ = functions.get_significant_events(
             np.hstack(r2_rrr_test), np.vstack(r2_shuffles)
         )
         df["pvalues"] = pval

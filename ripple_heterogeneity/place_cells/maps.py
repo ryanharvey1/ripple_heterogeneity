@@ -269,7 +269,7 @@ class SpatialMap(object):
             ]
 
         # calculate p values for the obs vs null
-        _, self.spatial_information_pvalues = functions.get_significant_events(
+        _, self.spatial_information_pvalues, _ = functions.get_significant_events(
             self.tc.spatial_information(), np.array(shuffle_spatial_info)
         )
 

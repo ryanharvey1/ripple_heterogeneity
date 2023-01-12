@@ -305,7 +305,7 @@ def run(
             mi_shuff = shuffle_mi(
                 ripple_mat, n_shuffles=n_shuffles, parallel=parallel_shuffle
             )
-            _, pvalues = functions.get_significant_events(mi, np.array(mi_shuff))
+            _, pvalues, _ = functions.get_significant_events(mi, np.array(mi_shuff))
         else:
             pvalues = None
 

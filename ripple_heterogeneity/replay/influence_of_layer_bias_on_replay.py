@@ -256,13 +256,13 @@ def get_significant_events(cell_metrics, replay_par_mat, n_shuffles=1000, q_perc
         n_middle_obs.append(sum(middle_idx))
 
     # get the index of significant events
-    sig_idx_deep, pval_deep = functions.get_significant_events(
+    sig_idx_deep, pval_deep, _  = functions.get_significant_events(
         np.hstack(n_deep_obs), n_deep, q=q_perc
     )
-    sig_idx_sup, pval_sup = functions.get_significant_events(
+    sig_idx_sup, pval_sup,  _ = functions.get_significant_events(
         np.hstack(n_sup_obs), n_sup, q=q_perc
     )
-    sig_idx_middle, pval_middle = functions.get_significant_events(
+    sig_idx_middle, pval_middle,  _  = functions.get_significant_events(
         np.hstack(n_middle_obs), n_middle, q=q_perc
     )
 

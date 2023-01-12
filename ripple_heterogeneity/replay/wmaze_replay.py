@@ -468,7 +468,7 @@ def run(
         )
 
         # check decoding quality against chance distribution
-        _, decoding_r2_pval = functions.get_significant_events(
+        _, decoding_r2_pval, _ = functions.get_significant_events(
             [decoding_r2], decoding_r2_shuff
         )
 
@@ -509,10 +509,10 @@ def run(
             bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True
         )
 
-        _, score_pval_time_swap = functions.get_significant_events(
+        _, score_pval_time_swap, _ = functions.get_significant_events(
             scores, scores_time_swap
         )
-        _, score_pval_col_cycle = functions.get_significant_events(
+        _, score_pval_col_cycle, _ = functions.get_significant_events(
             scores, scores_col_cycle
         )
 
