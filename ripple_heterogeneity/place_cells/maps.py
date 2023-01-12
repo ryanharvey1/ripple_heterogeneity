@@ -140,7 +140,7 @@ class SpatialMap(object):
 
         # enforce minimum background firing rate
         # background firing rate of xx Hz
-        ratemap[ratemap < self.minbgrate] = self.minbgrate  
+        ratemap[ratemap < self.minbgrate] = self.minbgrate
 
         # enforce minimum background occupancy
         for uu in range(st_run.n_units):
@@ -215,7 +215,7 @@ class SpatialMap(object):
 
         # enforce minimum background firing rate
         # background firing rate of xx Hz
-        ratemap[ratemap < self.minbgrate] = self.minbgrate  
+        ratemap[ratemap < self.minbgrate] = self.minbgrate
 
         # enforce minimum background occupancy
         for uu in range(st_run.n_units):
@@ -484,6 +484,142 @@ class SpatialMap(object):
             ),
             {"firingRateMap": firingRateMap},
         )
+
+    @property
+    def is2d(self):
+        return self.tc.is2d
+
+    @property
+    def occupancy(self):
+        return self.tc._occupancy
+
+    @property
+    def n_units(self):
+        return self.tc.n_units
+
+    @property
+    def shape(self):
+        return self.tc.shape
+
+    def __repr__(self):
+        return self.tc.__repr__()
+
+    @property
+    def isempty(self):
+        return self.tc.isempty
+
+    @property
+    def ratemap(self):
+        return self.tc.ratemap
+
+    def __len__(self):
+        return self.tc.__len__()
+
+    def smooth(self, **kwargs):
+        return self.tc.smooth(**kwargs)
+
+    @property
+    def mean(self):
+        return self.tc.mean
+
+    @property
+    def std(self):
+        return self.tc.std
+
+    @property
+    def max(self):
+        return self.tc.max
+
+    @property
+    def min(self):
+        return self.tc.min
+
+    @property
+    def mask(self):
+        return self.tc.mask
+
+    @property
+    def n_bins(self):
+        return self.tc.n_bins
+
+    @property
+    def n_xbins(self):
+        return self.tc.n_xbins
+
+    @property
+    def n_ybins(self):
+        return self.tc.n_ybins
+
+    @property
+    def xbins(self):
+        return self.tc.xbins
+
+    @property
+    def ybins(self):
+        return self.tc.ybins
+
+    @property
+    def xbin_centers(self):
+        return self.tc.xbin_centers
+
+    @property
+    def ybin_centers(self):
+        return self.tc.ybin_centers
+
+    @property
+    def bin_centers(self):
+        return self.tc.bin_centers
+
+    @property
+    def bins(self):
+        return self.tc.bins
+
+    def normalize(self, **kwargs):
+        return self.tc.normalize(**kwargs)
+
+    @property
+    def spatial_sparsity(self):
+        return self.tc.spatial_sparsity
+
+    @property
+    def spatial_information(self):
+        return self.tc.spatial_information
+
+    def __sub__(self, other):
+        return self.tc.__sub__(other)
+
+    def __mul__(self, other):
+        return self.tc.__mul__(other)
+
+    def __rmul__(self, other):
+        return self.tc.__rmul__(other)
+
+    def __truediv__(self, other):
+        return self.tc.__truediv__(other)
+
+    def __iter__(self):
+        return self.tc.__iter__()
+
+    def __next__(self):
+        return self.tc.__next__()
+
+    def __getitem__(self, *idx):
+        return self.tc.__getitem__(*idx)
+
+    def _get_peak_firing_order_idx(self):
+        return self.tc._get_peak_firing_order_idx()
+
+    def get_peak_firing_order_ids(self):
+        return self.tc.get_peak_firing_order_ids()
+
+    def _reorder_units_by_idx(self):
+        return self.tc._reorder_units_by_idx()
+
+    def reorder_units_by_ids(self):
+        return self.tc.reorder_units_by_ids()
+
+    def reorder_units(self):
+        return self.tc.reorder_units()
 
 
 class TuningCurve2DContinuous:
