@@ -620,8 +620,9 @@ def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
         The standard deviation of the scores in terms of the shuffled scores
     """
     # check shape and correct if needed
-    if shuffled_scores.shape[1] != len(scores):
-        shuffled_scores = shuffled_scores.T
+    if isinstance(scores,list) | isinstance(scores,np.ndarray):
+        if shuffled_scores.shape[1] != len(scores):
+            shuffled_scores = shuffled_scores.T
 
     n, _ = shuffled_scores.shape
     if tail == "both":
