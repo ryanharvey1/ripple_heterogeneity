@@ -342,7 +342,7 @@ def get_raster_points(data, time_ref, bin_width=0.002, n_bins=100, window=None):
     Parameters
     ----------
     data : ndarray
-        A 1D array of data values.
+        A 1D array of time values.
     time_ref : ndarray
         A 1D array of reference times.
     bin_width : float, optional
