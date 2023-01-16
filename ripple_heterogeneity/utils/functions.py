@@ -381,6 +381,70 @@ def get_raster_points(data, time_ref, bin_width=0.002, n_bins=100, window=None):
     return x, y, times
 
 
+def event_triggered_average(
+    timestamps, data, time_ref, bin_width=0.002, n_bins=100, window=None
+):
+    """
+    Compute the average and standard deviation of data values within a window around 
+    each reference time.
+    Parameters
+    ----------
+    timestamps : ndarray
+        A 1D array of times associated with data.
+    data : ndarray
+        A 1D array of data values.
+    time_ref : ndarray
+        A 1D array of reference times.
+    bin_width : float, optional
+        The width of each bin in the window, in seconds. Default is 0.002 seconds.
+    n_bins : int, optional
+        The number of bins in the window. Default is 100.
+    window : tuple, optional
+        A tuple containing the start and end times of the window to be plotted around each reference time.
+        If not provided, the window will be centered around each reference time and have a 
+        width of `n_bins * bin_width` seconds.
+
+    Returns
+    -------
+    pd.DataFrame, pd.DataFrame
+        two dataframes, the first containing the average values, the second the 
+        standard deviation of data values within the window around each reference time.
+    """
+
+    if window is not None:
+        times = np.arange(window[0], window[1] + bin_width, bin_width)
+    else:
+        times = np.linspace(
+            -(n_bins * bin_width) / 2, (n_bins * bin_width) / 2, n_bins + 1
+        )
+    x = []
+    y = []
+    for i, r in enumerate(time_ref):
+        idx = (timestamps > r + times.min()) & (timestamps < r + times.max())
+        x.append((timestamps - r)[idx])
+        y.append(data[idx])
+
+    temp_df = pd.DataFrame()
+    if len(x) == 0:
+        return temp_df, temp_df
+    temp_df["time"] = np.hstack(x)
+    temp_df["data"] = np.hstack(y)
+    temp_df = temp_df.sort_values(by="time",ascending=True)
+
+    average_val = np.zeros(len(times)-1)
+    std_val = np.zeros(len(times)-1)
+    for i in range(len(times)-1):
+        average_val[i] = temp_df[temp_df.time.between(times[i], times[i+1])].data.mean()
+        std_val[i] = temp_df[temp_df.time.between(times[i], times[i+1])].data.std()
+
+    avg = pd.DataFrame(index=times[:-1] + bin_width/2)
+    avg[0] = average_val
+
+    std = pd.DataFrame(index=times[:-1] + bin_width/2)
+    std[0] = std_val
+
+    return avg, std
+
 def BurstIndex_Royer_2012(autocorrs):
     # calc burst index from royer 2012
     # burst_idx will range from -1 to 1
