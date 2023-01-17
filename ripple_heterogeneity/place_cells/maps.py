@@ -266,6 +266,9 @@ class SpatialMap(object):
         def create_shuffled_coordinates(X, n_shuff=500):
             range_ = X.shape[1]
 
+            # if fewer coordinates then shuffles, reduce number of shuffles to n coords
+            n_shuff = np.min([range_, n_shuff])
+
             surrogate = np.random.choice(
                 np.arange(-range_, range_), size=n_shuff, replace=False
             )
