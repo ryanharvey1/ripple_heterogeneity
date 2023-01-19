@@ -488,6 +488,13 @@ class SpatialMap(object):
             {"firingRateMap": firingRateMap},
         )
 
+    def _unit_subset(self,unit_list):
+        newtuningcurve = copy.copy(self)
+        newtuningcurve.st = newtuningcurve.st._unit_subset(unit_list)
+        newtuningcurve.st_run = newtuningcurve.st_run._unit_subset(unit_list)
+        newtuningcurve.tc = self.tc._unit_subset(unit_list)
+        return newtuningcurve
+
     @property
     def is2d(self):
         return self.tc.is2d
