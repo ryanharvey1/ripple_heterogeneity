@@ -597,7 +597,7 @@ def load_barrage_events(basepath,return_epoch_array=False,restrict_to_nrem=True)
     try:
         df['duration'] = data['HSE']['duration'][0][0]
     except:
-        df['duration'] = np.nan
+        df['duration'] = df['stop'] - df['start']
 
     # get basename and animal
     normalized_path = os.path.normpath(filename)
