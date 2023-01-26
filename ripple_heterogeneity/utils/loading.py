@@ -805,19 +805,26 @@ def load_SleepState_states(basepath):
 
     return dict_
 
-def load_animal_behavior(basepath):
+def load_animal_behavior(basepath,alternative_file=None):
     """
     load_animal_behavior loads basename.animal.behavior.mat files created by general_behavior_file.m
     The output is a pandas data frame with [time,x,y,z,linerized,speed,acceleration,trials,epochs]
 
     Ryan H 2021
     """
-    try:
-        filename = glob.glob(os.path.join(basepath,'*.animal.behavior.mat'))[0]
-    except:
-        warnings.warn("file does not exist")
-        return 
 
+    if alternative_file is None:
+        try:
+            filename = glob.glob(os.path.join(basepath,'*.animal.behavior.mat'))[0]
+        except:
+            warnings.warn("file does not exist")
+            return 
+    else:
+        try:
+            filename = glob.glob(os.path.join(basepath,'*'+alternative_file+'.mat'))[0]
+        except:
+            warnings.warn("file does not exist")
+            return 
     data = []
     data = sio.loadmat(filename, simplify_cells=True)
 
