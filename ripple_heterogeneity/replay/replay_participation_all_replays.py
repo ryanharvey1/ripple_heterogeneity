@@ -7,10 +7,11 @@ import nelpy as nel
 import glob
 import pickle
 
+
 def handle_epochs(basepath, environments, epochs_to_combine, min_env_criteria):
     """
     handle_epochs takes in a list of epochs and combines them into a single epoch
-    
+
     Inputs:
         basepath: string, path to session
         environments: list of strings, environments to use
@@ -26,21 +27,21 @@ def handle_epochs(basepath, environments, epochs_to_combine, min_env_criteria):
     # just keep these epochs in var 'environments'
     idx, _ = functions.find_epoch_pattern(epoch_df.environment, environments)
     if idx is None:
-        print('No epochs found for {}'.format(environments))
+        print("No epochs found for {}".format(environments))
         idx, _ = functions.find_epoch_pattern(epoch_df.environment, min_env_criteria)
     if idx is None:
-        print('No epochs found for {}'.format(min_env_criteria))
-        return None,None
+        print("No epochs found for {}".format(min_env_criteria))
+        return None, None
     epoch_df = epoch_df[idx]
 
     # get index of epochs to combine
     idx, _ = functions.find_epoch_pattern(epoch_df.environment, epochs_to_combine)
     if idx is None:
-        print('No epochs found for {}'.format(epochs_to_combine))
+        print("No epochs found for {}".format(epochs_to_combine))
         epoch_labels = epoch_df.environment.values
         behavior_epochs = nel.EpochArray(
-                [np.array([epoch_df.startTime, epoch_df.stopTime]).T]
-            )
+            [np.array([epoch_df.startTime, epoch_df.stopTime]).T]
+        )
     else:
         epoch_labels = []
         # get epoch array of remaining individual epochs
@@ -52,7 +53,11 @@ def handle_epochs(basepath, environments, epochs_to_combine, min_env_criteria):
 
         # get epoch array of combined epochs
         behavior_epochs_ = nel.EpochArray(
-            [np.array([epoch_df[idx].iloc[0].startTime, epoch_df[idx].iloc[-1].stopTime]).T]
+            [
+                np.array(
+                    [epoch_df[idx].iloc[0].startTime, epoch_df[idx].iloc[-1].stopTime]
+                ).T
+            ]
         )
         # concatenate combined epoch labels
         epoch_labels.append("_".join(epoch_df[idx].environment))
@@ -85,7 +90,7 @@ def run(
     min_spk_count=200,
     type_shuffle_for_replay="score_pval_time_swap",
     environments=["linear", "sleep"],
-    min_env_criteria = None,
+    min_env_criteria=None,
     epochs_to_combine=["linear", "sleep"],
 ):
     """
@@ -118,7 +123,13 @@ def run(
     # select current session from replay_df
     replay_df = replay_df[replay_df.basepath == basepath]
 
-    sig_replay_idx = replay_df[type_shuffle_for_replay] <= alpha
+    # pull out replays using 1 or 2 methods defined by "type_shuffle_for_replay"
+    if isinstance(type_shuffle_for_replay, list):
+        sig_replay_idx = (replay_df[type_shuffle_for_replay[0]] <= alpha) & (
+            replay_df[type_shuffle_for_replay[1]] <= alpha
+        )
+    else:
+        sig_replay_idx = replay_df[type_shuffle_for_replay] <= alpha
 
     starts = replay_df[sig_replay_idx & (replay_df.replay_type == "forward")].start
     stops = replay_df[sig_replay_idx & (replay_df.replay_type == "forward")].stop
@@ -128,7 +139,13 @@ def run(
     stops = replay_df[sig_replay_idx & (replay_df.replay_type == "reverse")].stop
     reverse_replay = nel.EpochArray(np.array([starts, stops]).T)
 
-    non_sig_replay_idx = replay_df[type_shuffle_for_replay] > alpha
+    if isinstance(type_shuffle_for_replay, list):
+        non_sig_replay_idx = (replay_df[type_shuffle_for_replay[0]] > alpha) & (
+            replay_df[type_shuffle_for_replay[1]] > alpha
+        )
+    else:
+        non_sig_replay_idx = replay_df[type_shuffle_for_replay] > alpha
+
     starts = replay_df[non_sig_replay_idx].start
     stops = replay_df[non_sig_replay_idx].stop
     canidate_non_replay = nel.EpochArray(np.array([starts, stops]).T)
@@ -179,7 +196,7 @@ def run(
         uids_inbound_epochs = results["inbound_epochs"]["cell_metrics"].UID
     except:
         pass
-    uid = pd.unique(np.hstack([uids_outbound_epochs,uids_inbound_epochs]))
+    uid = pd.unique(np.hstack([uids_outbound_epochs, uids_inbound_epochs]))
 
     # remove uids with bad waveforms as we can not estimate deep/sup
     if "tags_bad_waveform" in cell_metrics.columns:
@@ -318,9 +335,7 @@ def run(
             reverse_replay_par.append(current_st.n_events * np.nan)
 
         # get epoch info
-        epoch.append(
-            [epoch_labels[beh_ep_i]] * sta_placecells.data.shape[0]
-        )
+        epoch.append([epoch_labels[beh_ep_i]] * sta_placecells.data.shape[0])
         epoch_i.append(np.tile(beh_ep_i, sta_placecells.data.shape[0]))
 
         # get UID
@@ -367,6 +382,7 @@ def run(
     temp_df["basepath"] = basepath
 
     return temp_df
+
 
 def load_result(save_path_cur_analysis):
     sessions = glob.glob(save_path_cur_analysis + os.sep + "*.pkl")
