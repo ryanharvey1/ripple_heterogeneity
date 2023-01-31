@@ -688,7 +688,7 @@ def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
         if shuffled_scores.shape[1] != len(scores):
             shuffled_scores = shuffled_scores.T
 
-    n, _ = shuffled_scores.shape
+    n = shuffled_scores.shape[0]
     if tail == "both":
         r = np.sum(np.abs(shuffled_scores) >= np.abs(scores), axis=0)
     elif tail == "right":
@@ -700,7 +700,8 @@ def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
     pvalues = (r + 1) / (n + 1)
 
     # set nan scores to 1
-    pvalues[np.isnan(scores)] = 1
+    if isinstance(np.isnan(scores),np.ndarray):
+        pvalues[np.isnan(scores)] = 1
 
     sig_event_idx = np.argwhere(
         scores > np.percentile(shuffled_scores, axis=0, q=q)
