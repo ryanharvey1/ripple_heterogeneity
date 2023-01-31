@@ -55,7 +55,7 @@ def add_new_deep_sup_class(df, layer_dist=30):
     return df_out
 
 
-def deep_sup_from_deepSuperficialDistance(cell_metrics, layer_dist=30):
+def deep_sup_from_deepSuperficialDistance(cell_metrics, layer_dist=30, hpc_assumption=True):
     """
     Assign deepSuperficial classification based on distance from the pyramidal layer
     Will work if you already have the (up to date) deepSuperficialDistance in the cell_metrics dataframe
@@ -78,6 +78,7 @@ def deep_sup_from_deepSuperficialDistance(cell_metrics, layer_dist=30):
     cell_metrics.loc[cell_metrics.deepSuperficialDistance >= sup, "deepSuperficial"] = "Superficial"
 
     # make sure these are ca1
-    cell_metrics.loc[~cell_metrics.brainRegion.str.contains("CA1|CA2"),"deepSuperficial"] = "unknown"
+    if hpc_assumption:
+        cell_metrics.loc[~cell_metrics.brainRegion.str.contains("CA1|CA2"),"deepSuperficial"] = "unknown"
 
     return cell_metrics
