@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 from ripple_heterogeneity.utils import functions, loading, compress_repeated_epochs
 import nelpy as nel
-
+import glob
+import pickle
 
 def handle_epochs(basepath, environments, epochs_to_combine, min_env_criteria):
     """
