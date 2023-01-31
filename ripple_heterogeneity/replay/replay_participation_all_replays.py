@@ -366,3 +366,12 @@ def run(
     temp_df["basepath"] = basepath
 
     return temp_df
+
+def load_result(save_path_cur_analysis):
+    sessions = glob.glob(save_path_cur_analysis + os.sep + "*.pkl")
+    par_df = pd.DataFrame()
+    for session in sessions:
+        with open(session, "rb") as f:
+            results = pickle.load(f)
+        par_df = pd.concat([par_df, results])
+    return par_df
