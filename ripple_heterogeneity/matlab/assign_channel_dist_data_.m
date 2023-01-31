@@ -101,6 +101,7 @@ end
 
 deepSuperficialfromRipple.processinginfo.params.adjusted_by_predictive_model = true;
 
+disp(['updating ',basepath])
 save(fullfile(basepath,[basename,'.deepSuperficialfromRipple.channelinfo.mat']),...
     'deepSuperficialfromRipple')
 save(fullfile(basepath,[basename,'.cell_metrics.cellinfo.mat']),'cell_metrics')
