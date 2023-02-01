@@ -232,6 +232,7 @@ def run(
     ripple_par = []
     UID = []
     n_ripples = []
+    n_replay_canidates = []
     n_replays = []
     n_forward_replays = []
     n_reverse_replays = []
@@ -359,6 +360,12 @@ def run(
             )
         )
 
+        n_replay_canidates.append(
+            np.tile(
+                canidate_non_replay[beh_ep].n_intervals, sta_placecells.data.shape[0]
+            )
+        )
+
     # stack all data
     temp_df = pd.DataFrame()
     temp_df["avg_fr"] = np.hstack(avg_fr)
@@ -379,6 +386,7 @@ def run(
     temp_df["n_forward_replays"] = np.hstack(n_forward_replays)
     temp_df["n_reverse_replays"] = np.hstack(n_reverse_replays)
     temp_df["n_ripples"] = np.hstack(n_ripples)
+    temp_df["n_replay_canidates"] = np.hstack(n_replay_canidates)
     temp_df["basepath"] = basepath
 
     return temp_df
