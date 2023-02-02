@@ -123,9 +123,9 @@ def run(
     # select current session from replay_df
     replay_df = replay_df[replay_df.basepath == basepath]
 
-    if replay_df.shape[0]:
+    if replay_df.shape[0] == 0:
         return None
-        
+
     # pull out replays using 1 or 2 methods defined by "type_shuffle_for_replay"
     if isinstance(type_shuffle_for_replay, list):
         sig_replay_idx = (replay_df[type_shuffle_for_replay[0]] <= alpha) & (
