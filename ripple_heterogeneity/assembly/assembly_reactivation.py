@@ -24,7 +24,7 @@ class AssemblyReact(object):
     basepath: str
         Path to the session folder
     brainRegion: str
-        Brain region to restrict to
+        Brain region to restrict to. Can be multi ex. "CA1|CA2"
     putativeCellType: str
         Cell type to restrict to
     weight_dt: float
@@ -34,24 +34,22 @@ class AssemblyReact(object):
 
     attributes:
     -----------
-    st: spike train
-    cell_metrics: cell metrics
-    ripples: ripples
-    zactmat: z matrix
-    ts: timestamps
-    patterns: patterns
-    assembly_act: assembly activity
+    st: spike train (nelpy:SpikeTrainArray)
+    cell_metrics: cell metrics (pandas:DataFrame)
+    ripples: ripples (nelpy:EpochArray)
+    patterns: assembly patterns (numpy:array)
+    assembly_act: assembly activity (nelpy:AnalogSignalArray)
 
     methods:
     --------
-    load_data: load data
-    restrict_to_epoch: restrict to epoch
-    restrict_to_events: restrict to events
+    load_data: load data (st, ripples, epochs)
+    restrict_to_epoch: restrict to a epoch
     get_z_mat: get z matrix
-    get_weights: get weights
+    get_weights: get assembly weights
     get_assembly_act: get assembly activity
-    session_loop_activation: session loop activation
-
+    n_assemblies: number of detected assemblies
+    isempty: isempty (bool)
+    copy: returns copy of class
     """
 
     def __init__(
