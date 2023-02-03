@@ -10,8 +10,10 @@ from scipy import stats
 from ripple_heterogeneity.utils import functions, loading, compress_repeated_epochs
 from ripple_heterogeneity.assembly import assembly
 import logging
+import copy
 
 logging.getLogger().setLevel(logging.ERROR)
+
 
 class AssemblyReact(object):
     """
@@ -65,6 +67,7 @@ class AssemblyReact(object):
         self.putativeCellType = putativeCellType
         self.weight_dt = weight_dt
         self.z_mat_dt = z_mat_dt
+        self.type_name = self.__class__.__name__
 
     def add_st(self, st):
         self.st = st
@@ -102,7 +105,7 @@ class AssemblyReact(object):
             [np.array([epoch_df.startTime, epoch_df.stopTime]).T]
         )
         self.epoch_df = epoch_df
-        
+
     def load_data(self):
         """
         loads data (spikes,ripples,epochs) from the session folder
@@ -179,6 +182,40 @@ class AssemblyReact(object):
             fs=1 / self.z_mat_dt,
         )
         return assembly_act
+
+    def n_assemblies(self):
+        if hasattr(self, "patterns"):
+            return self.patterns.shape[0]
+
+    @property
+    def isempty(self):
+        if hasattr(self, "st"):
+            return False
+        elif not hasattr(self, "st"):
+            return True
+
+    def copy(self):
+        """Returns a copy of the current class."""
+        newcopy = copy.deepcopy(self)
+        return newcopy
+
+    def __repr__(self) -> str:
+
+        if self.isempty:
+            return f"<{self.type_name}: empty>"
+
+        # if st data as been loaded and patterns have been computed
+        if hasattr(self, "patterns"):
+            n_units = f"{self.st.n_active} units"
+            n_patterns = f"{self.n_assemblies()} assemblies"
+            dstr = f"of length {self.st.support.length}"
+            return "<%s: %s, %s> %s" % (self.type_name, n_units, n_patterns, dstr)
+
+        # if st data as been loaded
+        if hasattr(self, "st"):
+            n_units = f"{self.st.n_active} units"
+            dstr = f"of length {self.st.support.length}"
+            return "<%s: %s> %s" % (self.type_name, n_units, dstr)
 
 
 def get_peak_activity(assembly_act, epochs):
