@@ -11,6 +11,7 @@ from ripple_heterogeneity.utils import functions, loading, compress_repeated_epo
 from ripple_heterogeneity.assembly import assembly
 import logging
 import copy
+import matplotlib.pyplot as plt
 
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -180,6 +181,42 @@ class AssemblyReact(object):
             fs=1 / self.z_mat_dt,
         )
         return assembly_act
+
+    def plot(self):
+        """
+        plots basic stem plot to display assembly weights
+        """
+        if not hasattr(self, "patterns"):
+            return f"run get_weights first"
+        else:
+            # set up figure with size relative to assembly matrix
+            fig, axes = plt.subplots(
+                1,
+                self.n_assemblies(),
+                figsize=(self.n_assemblies() + 1, np.round(self.n_assemblies() / 2)),
+                sharey=True,
+                sharex=True,
+            )
+            # iter over each assembly and plot the weight per cell
+            for i in range(self.n_assemblies()):
+                markerline, stemlines, baseline = axes[i].stem(
+                    self.patterns[i, :], orientation="horizontal"
+                )
+                markerline._color = "k"
+                baseline._color = "grey"
+                baseline.zorder = -100
+                plt.setp(stemlines, "color", plt.getp(markerline, "color"))
+
+                axes[i].spines["top"].set_visible(False)
+                axes[i].spines["right"].set_visible(False)
+
+            # give room for marker
+            axes[0].set_xlim(-self.patterns.max()-.1,self.patterns.max()+.1)
+            
+            axes[0].set_ylabel("Neurons #")
+            axes[0].set_xlabel("Weights (a.u.)")
+
+            return fig, axes
 
     def n_assemblies(self):
         if hasattr(self, "patterns"):
