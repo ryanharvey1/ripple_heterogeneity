@@ -28,6 +28,8 @@ data = data[data$layer_label != "unknown",]
 
 data$basepath = factor(data$basepath)
 data$animal_id = factor(data$animal_id)
+data$ref = factor(data$ref)
+data$target = factor(data$target)
 data$deepSuperficial_ref = factor(data$deepSuperficial_ref)
 data$deepSuperficial_target = factor(data$deepSuperficial_target)
 data$deepSuperficial_target = factor(data$deepSuperficial_target)
@@ -62,8 +64,25 @@ lme.dscore(m1,data=data,type="lme4")
 
 ```
 
-```{r}
+# use the reference id in the model
 
+```{r}
+data$y_trans <- log(data$rho+2)
+
+mdl_boxcox <- boxcox(y_trans ~ layer_label, data=data, lambda = seq(-5, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+data$y_trans <- data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ layer_label + (1 | animal_id/basepath/ref), data = data,REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
 
 ```
 
