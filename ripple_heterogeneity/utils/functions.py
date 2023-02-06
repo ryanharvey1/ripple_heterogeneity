@@ -17,6 +17,8 @@ from scipy import signal
 from ripple_heterogeneity.utils import compress_repeated_epochs as comp_rep_ep
 import random
 from nelpy import core
+from ripple_heterogeneity.utils import loading
+
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -1350,6 +1352,16 @@ def find_env_paradigm_pre_task_post(epoch_df, env="sleep", paradigm="memory"):
     ).values
     return idx
 
+def add_animal_id(df:pd.core.frame.DataFrame) -> pd.core.frame.DataFrame:
+    df["animal_id"] = df.basepath.map(
+        dict(
+            [
+                (basepath, loading.get_animal_id(basepath))
+                    for basepath in df.basepath.unique()
+            ]
+        )
+    )
+    return df
 
 def get_rank_order(
     st,
