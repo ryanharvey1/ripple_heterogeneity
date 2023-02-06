@@ -20,6 +20,9 @@ class AssemblyReact(object):
     """
     Class for running assembly reactivation analysis
 
+    Core assembly methods come from assembly.py by Vítor Lopes dos Santos
+        https://doi.org/10.1016/j.jneumeth.2013.04.010
+        
     Parameters:
     -----------
     basepath: str
@@ -159,6 +162,12 @@ class AssemblyReact(object):
         """
         Gets the assembly weights
         """
+
+        # check if st has any neurons
+        if self.st.isempty:
+            self.patterns = []
+            return
+        
         if epoch is not None:
             bst = self.st[epoch].bin(ds=self.weight_dt).data
         else:
@@ -170,6 +179,11 @@ class AssemblyReact(object):
             self.patterns, _, _ = assembly.runPatterns(bst)
 
     def get_assembly_act(self, epoch=None):
+
+        # check for num of assemblies first
+        if self.n_assemblies() == 0:
+            return nel.AnalogSignalArray(empty=True)
+        
         if epoch is not None:
             zactmat, ts = self.get_z_mat(self.st[epoch])
         else:
@@ -189,6 +203,8 @@ class AssemblyReact(object):
         if not hasattr(self, "patterns"):
             return f"run get_weights first"
         else:
+            if self.patterns == []:
+                return None, None
             # set up figure with size relative to assembly matrix
             fig, axes = plt.subplots(
                 1,
@@ -220,6 +236,8 @@ class AssemblyReact(object):
 
     def n_assemblies(self):
         if hasattr(self, "patterns"):
+            if self.patterns == []:
+                return 0
             return self.patterns.shape[0]
 
     @property
