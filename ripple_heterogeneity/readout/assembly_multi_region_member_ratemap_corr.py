@@ -103,7 +103,7 @@ def run(basepath):
         return None
 
     # pull in previous results from assembly multi region analysis
-    prop_df, assembly_df = assembly_multi_region.compile_results_df(results)
+    prop_df, assembly_df, _ = assembly_multi_region.compile_results_df(results)
     m1 = results["react"]
 
     # if there is only single epoch, that must by task
