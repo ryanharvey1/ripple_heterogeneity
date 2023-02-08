@@ -104,7 +104,7 @@ def run(basepath, binsize=0.005, nbins=200):
     if results is None:
         return None
         
-    prop_df, assembly_df = assembly_multi_region.compile_results_df(results)
+    prop_df, assembly_df, _ = assembly_multi_region.compile_results_df(results)
     m1 = results["react"]
     # restrict to pre/task/post epochs
     try:
