@@ -13,11 +13,36 @@ import logging
 logging.getLogger().setLevel(logging.ERROR)
 
 
-def locate_task_epoch(m1, env):
-    epoch_df = m1.epoch_df.reset_index(drop=True).copy()
+def locate_task_epoch(epoch_df, env, position_df):
+    """
+    locate_task_epoch: here, I'm trying to find the longest behavioral
+        epoch that has linearized coordinates. The issue is that some older
+        data has epochs labeled as tmaze, but no tracking data.
+    """
+    epoch_df = epoch_df.reset_index(drop=True).copy()
     epoch_df["duration"] = epoch_df.stopTime - epoch_df.startTime
-    epoch_df.sort_values("duration", ascending=False, inplace=True)
-    return int(epoch_df[epoch_df.environment.str.contains(env)].index[0])
+    # epoch_df.sort_values("duration", ascending=False, inplace=True)
+    # return int(epoch_df[epoch_df.environment.str.contains(env)].index[0])
+
+    task_idx_longest_epoch = (
+        epoch_df.query("environment.str.contains(@env)")
+        .sort_values(by="duration", ascending=False)
+        .index
+    )
+    task_idx_valid_position = np.where(
+            epoch_df.name
+            == position_df[~position_df.linearized.isnull()].epochs.unique()[0]
+        )[0]
+
+    # epoch intersection between longest and valid position
+    possible_epochs = list(set(task_idx_longest_epoch) & set(task_idx_valid_position))
+
+    # if longest is in possible, return
+    if task_idx_longest_epoch[0] in possible_epochs:
+        return int(task_idx_longest_epoch[0])
+    else:
+        # else return the first possible epoch
+        return int(possible_epochs[0])
 
 
 def dissociate_laps_by_states(states, dir_epoch, states_of_interest=[1, 2]):
@@ -49,7 +74,7 @@ def get_pos(basepath, epochs, epoch_df, task_idx):
         timestamps=position_df_no_nan.timestamps.values,
     )
     # make min pos 2
-    pos._data = (pos.data - np.nanmin(pos.data)) + 2
+    # pos._data = (pos.data - np.nanmin(pos.data)) + 2
 
     pos = pos[epochs[task_idx]]
 
@@ -131,6 +156,26 @@ def get_cross_region_assemblies(
     return m1, assembly_act
 
 
+def locate_t_maze_key_locations(current_pos):
+    start_pos = (
+        current_pos.dropna(subset=["linearized", "x", "y"])
+        .query("states==0")
+        .sort_values(by="linearized")[["x", "y"]][:10]
+        .mean()
+        .values
+    )
+    decision_pos = (
+        current_pos.dropna(subset=["linearized", "x", "y"])
+        .query("states==0")
+        .sort_values(by="linearized", ascending=False)[["x", "y"]][:10]
+        .mean()
+        .values
+    )
+    reward_right_pos = start_pos.copy()
+    reward_left_pos = start_pos.copy()
+    return start_pos, decision_pos, reward_left_pos, reward_right_pos
+
+
 def run(
     basepath,
     regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # brain regions to load
@@ -161,21 +206,29 @@ def run(
     if not epoch_df.environment.str.contains(env).any():
         return None
 
-    # locate key points (TODO: fix the hard coded values)
-    start_pos = nodes_and_edges["node_positions"][0]
-    decision_pos = nodes_and_edges["node_positions"][1]
-    reward_left_pos = nodes_and_edges["node_positions"][3]
-    reward_right_pos = nodes_and_edges["node_positions"][5]
-
     # find longest xx session
-    # task_idx = locate_task_epoch(m1, env)
     position_df = loading.load_animal_behavior(basepath)
-    task_idx = int(
-        np.where(
-            epoch_df.name
-            == position_df[~position_df.linearized.isnull()].epochs.unique()[0]
-        )[0][0]
-    )
+
+    task_idx = locate_task_epoch(epoch_df, env, position_df)
+
+    # locate key points (TODO: fix the hard coded values)
+    # FujisawaS/AYA10 and Mwheel data will have these reward zones
+    if "FujisawaS" in basepath or "Mwheel" in epoch_df.iloc[task_idx] or "AYA10" in basepath:
+        start_pos = nodes_and_edges["node_positions"][0]
+        decision_pos = nodes_and_edges["node_positions"][1]
+        reward_left_pos = nodes_and_edges["node_positions"][3]
+        reward_right_pos = nodes_and_edges["node_positions"][5]
+    else:
+        # locate key points from states
+        current_pos = position_df.query(
+            "time >= @epoch_df.iloc[@task_idx].startTime & time <= @epoch_df.iloc[@task_idx].stopTime"
+        )
+        (
+            start_pos,
+            decision_pos,
+            reward_left_pos,
+            reward_right_pos,
+        ) = locate_t_maze_key_locations(current_pos)
 
     # get cross region assemblies
     assem_labels = []
