@@ -29,10 +29,8 @@ def locate_task_epoch(epoch_df, env, position_df):
         .sort_values(by="duration", ascending=False)
         .index
     )
-    task_idx_valid_position = np.where(
-            epoch_df.name
-            == position_df[~position_df.linearized.isnull()].epochs.unique()[0]
-        )[0]
+    valid_epoch_names = position_df[~position_df.linearized.isnull()].epochs.unique()
+    task_idx_valid_position = np.where(np.isin(epoch_df.name,valid_epoch_names))[0]
 
     # epoch intersection between longest and valid position
     possible_epochs = list(set(task_idx_longest_epoch) & set(task_idx_valid_position))
