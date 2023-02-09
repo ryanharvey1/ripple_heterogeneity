@@ -324,7 +324,8 @@ def deconvolve_peth(signal,events,bin_width=0.002, n_bins=100):
     
     Based on DeconvolvePETH.m from https://github.com/ayalab1/neurocode/blob/master/spikes/DeconvolvePETH.m
     """
-    
+
+    # calculate time lags for peth
     times = np.linspace(-(n_bins * bin_width) / 2, (n_bins * bin_width) / 2, n_bins + 1)
 
     # Calculate the autocorrelogram of the signal and the PETH of the events and the signal
@@ -408,22 +409,35 @@ def get_raster_points(data, time_ref, bin_width=0.002, n_bins=100, window=None):
     """
 
     if window is not None:
-        times = np.arange(window[0],window[1]+bin_width,bin_width)
+        times = np.arange(window[0], window[1] + bin_width/2, bin_width)
     else:
         times = np.linspace(-(n_bins * bin_width) / 2, (n_bins * bin_width) / 2, n_bins + 1)
-
     x = []
     y = []
     for i, r in enumerate(time_ref):
         idx = (data > r + times.min()) & (data < r + times.max())
         cur_data = data[idx]
-        if any(cur_data):
-            x.append(cur_data - r)
-            y.append(np.ones_like(cur_data)+i)       
+        # if any(cur_data):
+        x.append(cur_data - r)
+        y.append(np.ones_like(cur_data)+i)       
     x = list(itertools.chain(*x))
     y = list(itertools.chain(*y))
     return x, y, times
 
+def peth_matrix(data, time_ref, bin_width=0.002, n_bins=100, window=None):
+
+    x, y, t = get_raster_points(
+        data, time_ref, bin_width=bin_width, n_bins=n_bins, window=window
+    )
+    dt = np.diff(t)[0]
+    x, y = np.array(x), np.array(y)
+    H, xedges, yedges = np.histogram2d(
+        x, y, bins=(
+            np.arange(t.min(),t.max()+dt,dt),
+            np.arange(.5,len(time_ref) + 1.5)
+            )
+    )
+    return H, t[:-1]+dt/2
 
 def event_triggered_average(
     timestamps, data, time_ref, bin_width=0.002, n_bins=100, window=None
