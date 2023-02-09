@@ -1,5 +1,5 @@
 from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
-from ripple_heterogeneity.assembly import assembly_reactivation
+from ripple_heterogeneity.assembly import assembly_reactivation, find_sig_assembly
 from ripple_heterogeneity.readout import assembly_multi_region
 import pandas as pd
 import numpy as np
@@ -30,7 +30,7 @@ def locate_task_epoch(epoch_df, env, position_df):
         .index
     )
     valid_epoch_names = position_df[~position_df.linearized.isnull()].epochs.unique()
-    task_idx_valid_position = np.where(np.isin(epoch_df.name,valid_epoch_names))[0]
+    task_idx_valid_position = np.where(np.isin(epoch_df.name, valid_epoch_names))[0]
 
     # epoch intersection between longest and valid position
     possible_epochs = list(set(task_idx_longest_epoch) & set(task_idx_valid_position))
@@ -211,7 +211,11 @@ def run(
 
     # locate key points (TODO: fix the hard coded values)
     # FujisawaS/AYA10 and Mwheel data will have these reward zones
-    if "FujisawaS" in basepath or "Mwheel" in epoch_df.iloc[task_idx] or "AYA10" in basepath:
+    if (
+        "FujisawaS" in basepath
+        or "Mwheel" in epoch_df.iloc[task_idx]
+        or "AYA10" in basepath
+    ):
         start_pos = nodes_and_edges["node_positions"][0]
         decision_pos = nodes_and_edges["node_positions"][1]
         reward_left_pos = nodes_and_edges["node_positions"][3]
@@ -247,10 +251,30 @@ def run(
             if assembly_act_ is None:
                 continue
 
-            assembly_act.append(assembly_act_.data)
+            # make sure assembly members represent cross region label
+            keep_assembly = []
+            _, _, keep_assembly_, is_member = find_sig_assembly.main(m1_.patterns)
+            for assembly_i in range(m1_.n_assemblies()):
+                member_idx = is_member[assembly_i, :]
+                cortex_check = (
+                    m1_.cell_metrics[member_idx]
+                    .brainRegion.str.contains(cross_region[1])
+                    .any()
+                )
+                ca1_check = (
+                    m1_.cell_metrics[member_idx]
+                    .brainRegion.str.contains(cross_region[0])
+                    .any()
+                )
+                ca1_layer_check = (
+                    m1_.cell_metrics[member_idx].deepSuperficial == deepSuperficial
+                ).any()
+                keep_assembly.append(cortex_check & ca1_check & ca1_layer_check)
+
+            assembly_act.append(assembly_act_.data[keep_assembly, :])
             abscissa_vals.append(assembly_act_.abscissa_vals)
             assem_labels.append(
-                [deepSuperficial + "_" + cross_region[1]] * assembly_act_.n_signals
+                [deepSuperficial + "_" + cross_region[1]] * sum(keep_assembly)
             )
             m1[deepSuperficial + "_" + cross_region[1]] = m1_
 
