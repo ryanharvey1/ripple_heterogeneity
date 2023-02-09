@@ -18,6 +18,7 @@ from ripple_heterogeneity.utils import compress_repeated_epochs as comp_rep_ep
 import random
 from nelpy import core
 from ripple_heterogeneity.utils import loading
+from scipy.linalg import toeplitz
 
 
 def set_plotting_defaults():
@@ -306,6 +307,47 @@ def compute_psth(spikes, event, bin_width=0.002, n_bins=100):
     for i, s in enumerate(spikes):
         ccg[i] = crossCorr(event, s, bin_width, n_bins)
     return ccg
+
+def deconvolve_peth(signal,events,bin_width=0.002, n_bins=100):
+    """
+    This function performs deconvolution of a peri-event time histogram (PETH) signal.
+    
+    Parameters:
+    signal (array): An array representing the discrete events.
+    events (array): An array representing the discrete events.
+    bin_width (float, optional): The width of a time bin in seconds (default value is 0.002 seconds).
+    n_bins (int, optional): The number of bins to use in the PETH (default value is 100 bins).
+    
+    Returns:
+    deconvolved (array): An array representing the deconvolved signal.
+    times (array): An array representing the time points corresponding to the bins.
+    
+    Based on DeconvolvePETH.m from https://github.com/ayalab1/neurocode/blob/master/spikes/DeconvolvePETH.m
+    """
+    
+    times = np.linspace(-(n_bins * bin_width) / 2, (n_bins * bin_width) / 2, n_bins + 1)
+
+    # Calculate the autocorrelogram of the signal and the PETH of the events and the signal
+    autocorrelogram = crossCorr(signal, signal, bin_width, n_bins*2)
+    raw_peth = crossCorr(events, signal, bin_width, n_bins*2)
+
+    # Subtract the mean value from the raw_peth
+    const = np.mean(raw_peth)
+    raw_peth = raw_peth - const
+
+    # Calculate the Toeplitz matrix using the autocorrelogram and
+    #   the cross-correlation of the autocorrelogram
+    T0 = toeplitz(
+        autocorrelogram,
+        np.hstack([autocorrelogram[0], np.zeros(len(autocorrelogram)-1)])
+    )
+    T = T0[n_bins:, :n_bins+1]
+
+    # Calculate the deconvolved signal by solving a linear equation
+    deconvolved = np.linalg.solve(
+        T, raw_peth[int(n_bins / 2) : int(n_bins / 2 * 3 + 1)].T + const / len(events)
+    )   
+    return deconvolved, times
 
 
 def compute_cross_correlogram(X, dt=1, window=0.5):
