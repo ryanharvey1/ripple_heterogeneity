@@ -285,6 +285,10 @@ def run(
         data=np.vstack(assembly_act),
         timestamps=abscissa_vals[0],
     )
+    
+    if assembly_act.isempty:
+        return None
+
     assem_labels = np.hstack(assem_labels)
 
     pos, right_epochs, left_epochs, states, position_df_no_nan = get_pos(
