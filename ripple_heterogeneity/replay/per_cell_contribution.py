@@ -125,7 +125,7 @@ def get_pcc_score(
 
     pcc = []
     # iter over each cell
-    for cell_id in range(bst.n_active):
+    for cell_id in range(len(bst.series_labels)):
         tc_new = copy.deepcopy(tc)
 
         # shuffle single cell and return shuffled weighted correlations
