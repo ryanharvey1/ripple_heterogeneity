@@ -47,9 +47,7 @@ def circular_place_field_shuffle(tuningcurve):
     # make copy of tuning curves so manipulation doesn't effect original
     tuningcurve_new = copy.deepcopy(tuningcurve)
     # make random ints to circularly shift tuning curves
-    shuff_idx = random.sample(
-        range(tuningcurve_new.ratemap.shape[1]), tuningcurve_new.ratemap.shape[0]
-    )
+    shuff_idx = np.random.randint(0, tuningcurve_new.ratemap.shape[1], tuningcurve_new.ratemap.shape[0])
     # randomly shift each tuning curve
     x = [
         np.roll(tc, shuff_val)
@@ -190,7 +188,7 @@ def run(
         )
         if pcc is None:
             continue
-        
+
         # add to dataframe
         temp_df = pd.DataFrame()
         temp_df["pcc"] = pcc.T.flatten()
