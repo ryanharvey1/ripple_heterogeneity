@@ -3,14 +3,12 @@ from ripple_heterogeneity.utils import (
     functions,
     loading,
     add_new_deep_sup,
-    compress_repeated_epochs
+    compress_repeated_epochs,
 )
 import pandas as pd
 import numpy as np
-import glob
 import os
 import pickle
-import nelpy as nel
 from nelpy.analysis import replay
 import copy
 import random
@@ -47,7 +45,9 @@ def circular_place_field_shuffle(tuningcurve):
     # make copy of tuning curves so manipulation doesn't effect original
     tuningcurve_new = copy.deepcopy(tuningcurve)
     # make random ints to circularly shift tuning curves
-    shuff_idx = np.random.randint(0, tuningcurve_new.ratemap.shape[1], tuningcurve_new.ratemap.shape[0])
+    shuff_idx = np.random.randint(
+        0, tuningcurve_new.ratemap.shape[1], tuningcurve_new.ratemap.shape[0]
+    )
     # randomly shift each tuning curve
     x = [
         np.roll(tc, shuff_val)
@@ -108,16 +108,16 @@ def get_pcc_score(
 
     if not results[direction]:
         return None
-    
+
     # pull out data
     # only look at pre-defined replay events
     idx_replay = np.where(results[direction]["df"].score_pval_time_swap < 0.05)[0]
     bst = copy.deepcopy(results[direction]["bst_placecells"][idx_replay])
     tc = copy.deepcopy(results[direction]["tc"])
-    
+
     if bst.isempty:
         return None
-    
+
     # get the number of units that participated in each event
     n_active = [bst_.n_active for bst_ in bst]
     n_active = np.array(n_active)
@@ -222,10 +222,12 @@ def run(
 
         # add epoch metadata
         for t in range(epoch_df.shape[0]):
-            idx = (temp_df.start >= epoch_df.startTime.iloc[t]) & (temp_df.stop <= epoch_df.stopTime.iloc[t])
-            temp_df.loc[idx,'epochs'] = epoch_df.name.iloc[t] 
-            temp_df.loc[idx,'environment'] = epoch_df.environment.iloc[t] 
-            temp_df.loc[idx,'epoch_n'] = t
+            idx = (temp_df.start >= epoch_df.startTime.iloc[t]) & (
+                temp_df.stop <= epoch_df.stopTime.iloc[t]
+            )
+            temp_df.loc[idx, "epochs"] = epoch_df.name.iloc[t]
+            temp_df.loc[idx, "environment"] = epoch_df.environment.iloc[t]
+            temp_df.loc[idx, "epoch_n"] = t
 
         temp_df["direction"] = direction
         temp_df["basepath"] = basepath
