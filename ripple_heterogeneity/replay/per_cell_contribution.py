@@ -3,6 +3,7 @@ from ripple_heterogeneity.utils import (
     functions,
     loading,
     add_new_deep_sup,
+    compress_repeated_epochs
 )
 import pandas as pd
 import numpy as np
@@ -153,8 +154,11 @@ def get_pcc_score(
 
 
 def run(
-    basepath, replay_save_path=None, n_shuffles_single_cell=1000, n_shuffles_corr=1000
-):
+    basepath: str,
+    replay_save_path: str = None,
+    n_shuffles_single_cell: int = 1000,
+    n_shuffles_corr: int = 1000,
+) -> pd.core.frame.DataFrame:
 
     # locate saved replay file and load it
     save_file = os.path.join(
@@ -167,27 +171,60 @@ def run(
     if results is None:
         return None
 
+    epoch_df = loading.load_epoch(basepath)
+    epoch_df = compress_repeated_epochs.main(epoch_df, epoch_name="sleep")
+
     # saved replay files have two major keys associated with the direction of travel
     # iterate over them
     results_df = pd.DataFrame()
     for direction in ["inbound_epochs", "outbound_epochs"]:
-        temp_df = pd.DataFrame()
-        temp_df["pcc"] = get_pcc_score(
+
+        pcc = get_pcc_score(
             results,
             direction,
             n_shuffles_single_cell=n_shuffles_single_cell,
             n_shuffles_corr=n_shuffles_corr,
         )
-
+        # add to dataframe
+        temp_df = pd.DataFrame()
+        temp_df["pcc"] = pcc.T.flatten()
+        temp_df["replay_n"] = (
+            (np.ones((pcc.shape[0], pcc.shape[1])) * np.arange(pcc.shape[1]))
+            .T.astype(int)
+            .ravel()
+        )
+        # add metadata from cell metrics
         cell_metrics = results[direction]["cell_metrics"]
-        temp_df["UID"] = cell_metrics.UID.values
-        temp_df["deepSuperficialDistance"] = cell_metrics.deepSuperficialDistance.values
-        temp_df["deepSuperficial"] = cell_metrics.deepSuperficial.values
-        temp_df["brainRegion"] = cell_metrics.brainRegion.values
+        temp_df["UID"] = np.tile(cell_metrics.UID.values, pcc.shape[1])
+        temp_df["deepSuperficialDistance"] = np.tile(
+            cell_metrics.deepSuperficialDistance.values, pcc.shape[1]
+        )
+        temp_df["deepSuperficial"] = np.tile(
+            cell_metrics.deepSuperficial.values, pcc.shape[1]
+        )
+        temp_df["brainRegion"] = np.tile(cell_metrics.brainRegion.values, pcc.shape[1])
+
+        # add metadata from replay_df
+        current_replay_df = results[direction]["df"].query(
+            "score_pval_time_swap < 0.05"
+        )
+        keys = current_replay_df.keys()
+        for replay_i, df in enumerate(current_replay_df.iterrows()):
+            for key in keys:
+                temp_df.loc[temp_df.replay_n == replay_i, key] = df[1][key]
+
+        # add epoch metadata
+        for t in range(epoch_df.shape[0]):
+            idx = (temp_df.start >= epoch_df.startTime.iloc[t]) & (temp_df.stop <= epoch_df.stopTime.iloc[t])
+            temp_df.loc[idx,'epochs'] = epoch_df.name.iloc[t] 
+            temp_df.loc[idx,'environment'] = epoch_df.environment.iloc[t] 
+            temp_df.loc[idx,'epoch_n'] = t
+
         temp_df["direction"] = direction
         temp_df["basepath"] = basepath
+
         results_df = pd.concat([results_df, temp_df], ignore_index=True)
 
-    results_df = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(results_df) 
+    results_df = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(results_df)
 
     return results_df
