@@ -108,6 +108,9 @@ def get_pcc_score(
     get_pcc_score: will return a (n cells x n events) matrix of contribution of that cell to the event
     """
 
+    if not results[direction]:
+        return None
+    
     # pull out data
     # only look at pre-defined replay events
     idx_replay = np.where(results[direction]["df"].score_pval_time_swap < 0.05)[0]
@@ -185,6 +188,9 @@ def run(
             n_shuffles_single_cell=n_shuffles_single_cell,
             n_shuffles_corr=n_shuffles_corr,
         )
+        if pcc is None:
+            continue
+        
         # add to dataframe
         temp_df = pd.DataFrame()
         temp_df["pcc"] = pcc.T.flatten()
