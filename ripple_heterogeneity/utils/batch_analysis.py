@@ -8,7 +8,14 @@ from tqdm import tqdm
 import traceback
 
 
-def main_loop(basepath, save_path, func, overwrite, skip_if_error, **kwargs):
+def main_loop(
+    basepath: str,
+    save_path: str,
+    func,
+    overwrite: bool,
+    skip_if_error: bool,
+    **kwargs,
+) -> None:
     """
     main_loop: file management & run function
     Inputs:
@@ -46,16 +53,16 @@ def main_loop(basepath, save_path, func, overwrite, skip_if_error, **kwargs):
 
 
 def run(
-    df,
-    save_path,
+    df: pd.core.frame.DataFrame,
+    save_path: str,
     func,
-    parallel=True,
-    verbose=False,
-    overwrite=False,
-    skip_if_error=False,
-    num_cores=None,
+    parallel: bool = True,
+    verbose: bool = False,
+    overwrite: bool = False,
+    skip_if_error: bool = False,
+    num_cores: int = None,
     **kwargs,
-):
+) -> None:
     """
     Inputs:
         df: pandas dataframe with basepath column
@@ -103,10 +110,10 @@ def load_results(save_path: str, verbose: bool = False) -> pd.core.frame.DataFra
     This will have to be adapted if your output was more complicated, but you can
         use this function as an example.
     """
-    
+
     if not os.path.exists(save_path):
         raise ValueError(f"folder {save_path} does not exist")
-    
+
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
     results = pd.DataFrame()
