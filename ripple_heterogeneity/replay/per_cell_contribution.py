@@ -114,7 +114,10 @@ def get_pcc_score(
     idx_replay = np.where(results[direction]["df"].score_pval_time_swap < 0.05)[0]
     bst = copy.deepcopy(results[direction]["bst_placecells"][idx_replay])
     tc = copy.deepcopy(results[direction]["tc"])
-
+    
+    if bst.isempty:
+        return None
+    
     # get the number of units that participated in each event
     n_active = [bst_.n_active for bst_ in bst]
     n_active = np.array(n_active)
