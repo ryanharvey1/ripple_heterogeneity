@@ -1,3 +1,4 @@
+import glob
 import multiprocessing
 import os
 import pickle
@@ -90,3 +91,34 @@ def run(
                 print(basepath)
             # run main_loop on each basepath in df
             main_loop(basepath, save_path, func, overwrite, skip_if_error, **kwargs)
+
+
+def load_results(save_path: str, verbose: bool = False) -> pd.core.frame.DataFrame:
+    """
+    load_results: load results (pandas dataframe) from a pickle file
+
+    This is the most basic results loader and
+        **will only work if your output was a pandas dataframe (long format)**
+
+    This will have to be adapted if your output was more complicated, but you can
+        use this function as an example.
+    """
+    
+    if not os.path.exists(save_path):
+        raise ValueError(f"folder {save_path} does not exist")
+    
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+
+    results = pd.DataFrame()
+
+    for session in sessions:
+        if verbose:
+            print(session)
+        with open(session, "rb") as f:
+            results_ = pickle.load(f)
+        if results_ is None:
+            continue
+
+        results = pd.concat([results, results_], ignore_index=True)
+
+    return results
