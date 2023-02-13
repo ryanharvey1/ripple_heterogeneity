@@ -12,6 +12,9 @@ import pickle
 from nelpy.analysis import replay
 import copy
 import random
+import logging
+
+logging.getLogger().setLevel(logging.ERROR)
 
 
 def weighted_correlation(posterior, time=None, place_bin_centers=None):
@@ -129,6 +132,7 @@ def get_pcc_score(
     _, pval, rZ_obs = functions.get_significant_events(scores, scores_circ_place_shuff)
 
     pcc = []
+    pcc_raw = []
     # iter over each cell
     for cell_id in range(len(bst.series_labels)):
         tc_new = copy.deepcopy(tc)
@@ -146,6 +150,7 @@ def get_pcc_score(
 
         # calculate per cell contribution
         pcc.append((rZ_obs - rZ_shuff) * n_active)
+        pcc_raw.append((rZ_obs - rZ_shuff))
 
     pcc = np.array(pcc)
 
@@ -153,8 +158,9 @@ def get_pcc_score(
     events_active = [np.any(bst_.data > 0, axis=1) for bst_ in bst]
     events_active = np.array(events_active).T
     pcc[events_active == False] = np.nan
+    pcc_raw[events_active == False] = np.nan
 
-    return pcc
+    return pcc, pcc_raw
 
 
 def run(
@@ -183,7 +189,7 @@ def run(
     results_df = pd.DataFrame()
     for direction in ["inbound_epochs", "outbound_epochs"]:
 
-        pcc = get_pcc_score(
+        pcc, pcc_raw = get_pcc_score(
             results,
             direction,
             n_shuffles_single_cell=n_shuffles_single_cell,
@@ -195,6 +201,8 @@ def run(
         # add to dataframe
         temp_df = pd.DataFrame()
         temp_df["pcc"] = pcc.T.flatten()
+        temp_df["pcc_raw"] = pcc_raw.T.flatten()
+
         temp_df["replay_n"] = (
             (np.ones((pcc.shape[0], pcc.shape[1])) * np.arange(pcc.shape[1]))
             .T.astype(int)
@@ -234,6 +242,9 @@ def run(
 
         results_df = pd.concat([results_df, temp_df], ignore_index=True)
 
+    if results_df.shape[0] == 0:
+        return None
+    
     results_df = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(results_df)
 
     return results_df
