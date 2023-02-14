@@ -556,7 +556,7 @@ def event_triggered_average(
     >>> assembly_act = m1.get_assembly_act()
 
     >>> peth_avg, time_lags = event_triggered_average(
-    ...    assembly_act.data.T, assembly_act.abscissa_vals, m1.ripples.starts, window=[-0.5, 0.5]
+    ...    assembly_act.abscissa_vals, assembly_act.data.T, m1.ripples.starts, window=[-0.5, 0.5]
     ... )
 
     >>> plt.plot(time_lags,peth_avg)
