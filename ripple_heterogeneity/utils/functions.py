@@ -10,16 +10,14 @@ from numba import typeof
 import sys
 import nelpy as nel
 import warnings
-from scipy import stats
+from scipy import stats, signal
 from ripple_heterogeneity.assembly import find_sig_assembly
 from itertools import combinations
-from scipy import signal
 from ripple_heterogeneity.utils import compress_repeated_epochs as comp_rep_ep
 import random
 from nelpy import core
 from ripple_heterogeneity.utils import loading
 from scipy.linalg import toeplitz
-
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -508,7 +506,12 @@ def event_triggered_average_irregular_sample(
 
 
 def event_triggered_average(
-        timestamps:np.ndarray, signal:np.ndarray, events:np.ndarray, window=[-0.5, 0.5]
+        timestamps:np.ndarray,
+        signal:np.ndarray,
+        events:np.ndarray,
+        sampling_rate=None,
+        window=[-0.5, 0.5],
+        return_pandas: bool=False
 ) -> np.ndarray:
     """
     Calculates the spike-triggered averages of signals in a time window
@@ -569,14 +572,16 @@ def event_triggered_average(
 
     num_signals = signal.shape[1]
 
-    sampling_rate = 1 / np.diff(timestamps)[0]
+    if sampling_rate is None:
+        sampling_rate = 1 / stats.mode(np.diff(timestamps))[0][0]
+
     # window_bins: number of bins of the chosen averaging interval
     window_bins = int(np.ceil(((window_stoptime - window_starttime) * sampling_rate)))
     # result_sta: array containing finally the spike-triggered averaged signal
     result_sta = np.zeros((window_bins, num_signals))
     # setting of correct times of the spike-triggered average
     # relative to the spike
-    time_lags = np.arange(window_starttime, window_stoptime, 1 / sampling_rate)
+    time_lags = np.linspace(window_starttime, window_stoptime, window_bins)
 
     used_events = np.zeros(num_signals, dtype=int)
     total_used_events = 0
@@ -608,6 +613,9 @@ def event_triggered_average(
 
     if total_used_events == 0:
         warnings.warn("No events at all was either found or used for averaging")
+
+    if return_pandas:
+        return pd.DataFrame(index=time_lags, columns=np.arange(result_sta.shape[1]), data=result_sta)
 
     return result_sta, time_lags
 
