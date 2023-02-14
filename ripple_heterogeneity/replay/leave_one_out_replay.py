@@ -1,5 +1,5 @@
+"""analysis to assess contribution of each cell to trajectory score"""
 from ripple_heterogeneity.utils import (
-    functions,
     loading,
     add_new_deep_sup,
     compress_repeated_epochs,
@@ -10,7 +10,6 @@ import os
 import pickle
 from nelpy.analysis import replay
 import copy
-import random
 import logging
 
 logging.getLogger().setLevel(logging.ERROR)
@@ -157,4 +156,3 @@ def run(basepath:str,replay_save_path: str = None)-> pd.core.frame.DataFrame:
     results_df = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(results_df)
 
     return results_df
-
