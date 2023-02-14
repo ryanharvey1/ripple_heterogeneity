@@ -439,12 +439,15 @@ def peth_matrix(data, time_ref, bin_width=0.002, n_bins=100, window=None):
     )
     return H, t[:-1]+dt/2
 
-def event_triggered_average(
+def event_triggered_average_irregular_sample(
     timestamps, data, time_ref, bin_width=0.002, n_bins=100, window=None
 ):
     """
     Compute the average and standard deviation of data values within a window around 
     each reference time.
+
+    Specifically for irregularly sampled data
+
     Parameters
     ----------
     timestamps : ndarray
@@ -502,6 +505,112 @@ def event_triggered_average(
     std[0] = std_val
 
     return avg, std
+
+
+def event_triggered_average(
+        timestamps:np.ndarray, signal:np.ndarray, events:np.ndarray, window=[-0.5, 0.5]
+) -> np.ndarray:
+    """
+    Calculates the spike-triggered averages of signals in a time window
+    relative to the event times of a corresponding events for multiple
+    signals each. The function receives n signals and either one or
+    n events. In case it is one event this one is muliplied n-fold
+    and used for each of the n signals.
+
+    adapted from elephant.sta.spike_triggered_average to be used with ndarray
+
+    Parameters
+    ----------
+    timestamps : ndarray (n samples)
+
+    signal : ndarray (n samples x n signals)
+
+    events : one numpy ndarray or a list of n of either of these.
+
+    window : tuple of 2.
+        'window' is the start time and the stop time, relative to a event, of
+        the time interval for signal averaging.
+        If the window size is not a multiple of the sampling interval of the
+        signal the window will be extended to the next multiple.
+
+    Returns
+    -------
+    result_sta : ndarray
+        'result_sta' contains the event-triggered averages of each of the
+        signals with respect to the event in the corresponding
+        events. The length of 'result_sta' is calculated as the number
+        of bins from the given start and stop time of the averaging interval
+        and the sampling rate of the signal. If for an signal
+        no event was either given or all given events had to be ignored
+        because of a too large averaging interval, the corresponding returned
+        signal has all entries as nan.
+
+
+    Examples
+    --------
+
+    >>> m1 = assembly_reactivation.AssemblyReact(basepath=r"Z:\Data\HMC2\day5")
+
+    >>> m1.load_data()
+    >>> m1.get_weights(epoch=m1.epochs[1])
+    >>> assembly_act = m1.get_assembly_act()
+
+    >>> peth_avg, time_lags = event_triggered_average(
+    ...    assembly_act.data.T, assembly_act.abscissa_vals, m1.ripples.starts, window=[-0.5, 0.5]
+    ... )
+
+    >>> plt.plot(time_lags,peth_avg)
+    >>> plt.show()
+    """
+    window_starttime, window_stoptime = window
+
+    if len(signal.shape) == 1:
+        signal = signal[:, np.newaxis]
+
+    num_signals = signal.shape[1]
+
+    sampling_rate = 1 / np.diff(timestamps)[0]
+    # window_bins: number of bins of the chosen averaging interval
+    window_bins = int(np.ceil(((window_stoptime - window_starttime) * sampling_rate)))
+    # result_sta: array containing finally the spike-triggered averaged signal
+    result_sta = np.zeros((window_bins, num_signals))
+    # setting of correct times of the spike-triggered average
+    # relative to the spike
+    time_lags = np.arange(window_starttime, window_stoptime, 1 / sampling_rate)
+
+    used_events = np.zeros(num_signals, dtype=int)
+    total_used_events = 0
+
+    for i in range(num_signals):
+        # summing over all respective signal intervals around spiketimes
+        for event in events:
+            # checks for sufficient signal data around spiketime
+            if (
+                event + window_starttime >= timestamps[0]
+                and event + window_stoptime <= timestamps[-1]
+            ):
+                # calculating the startbin in the analog signal of the
+                # averaging window for event
+                startbin = int(
+                    np.floor(
+                        ((event + window_starttime - timestamps[0]) * sampling_rate)
+                    )
+                )
+                # adds the signal in selected interval relative to the spike
+                result_sta[:, i] += signal[startbin : startbin + window_bins, i]
+                # counting of the used event
+                used_events[i] += 1
+
+        # normalization
+        result_sta[:, i] = result_sta[:, i] / used_events[i]
+
+        total_used_events += used_events[i]
+
+    if total_used_events == 0:
+        warnings.warn("No events at all was either found or used for averaging")
+
+    return result_sta, time_lags
+
 
 def BurstIndex_Royer_2012(autocorrs):
     # calc burst index from royer 2012
