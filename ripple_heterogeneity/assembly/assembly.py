@@ -133,7 +133,7 @@ def extractPatterns(actmat, significance, method):
         idxs = np.argsort(-significance.explained_variance_)[0:nassemblies]
         patterns = significance.components_[idxs, :]
     elif method == "ica":
-        ica = FastICA(n_components=nassemblies)
+        ica = FastICA(n_components=nassemblies, random_state=0)
         ica.fit(actmat.T)
         patterns = ica.components_
     else:
@@ -224,6 +224,7 @@ def runPatterns(
 
     return patterns, significance, zactmat
 
+
 @jit(nopython=True)
 def computeAssemblyActivity(patterns, zactmat, zerodiag=True):
 
@@ -240,6 +241,8 @@ def computeAssemblyActivity(patterns, zactmat, zerodiag=True):
         projMat = np.outer(pattern, pattern)
         projMat -= zerodiag * np.diag(np.diag(projMat))
         for bini in range(nbins):
-            assemblyAct[assemblyi, bini] = (zactmat[:, bini] @ projMat) @ zactmat[:, bini]
+            assemblyAct[assemblyi, bini] = (zactmat[:, bini] @ projMat) @ zactmat[
+                :, bini
+            ]
 
     return assemblyAct
