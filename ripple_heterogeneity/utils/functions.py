@@ -1974,3 +1974,22 @@ def clean_lfp(lfp, thresholds=[5,10], artifact_time_expand=[0.25,0.1]):
     
     return values
 
+def confidence_intervals(X:np.ndarray, conf:float=0.95):
+    """
+    confidence_intervals: calculates upper and lower .95 confidence intervals on matrix
+
+    Input:
+        X - numpy ndarray, (n signals, n samples)
+        conf - float, confidence level value (default: .95)
+    """
+    # remove nans
+    X = X[np.sum(np.isnan(X), axis=1) == 0, :]
+    # compute interval for each column
+    interval = [
+        stats.t.interval(conf, len(a) - 1, loc=np.mean(a), scale=stats.sem(a))
+        for a in X.T
+    ]
+    interval = np.vstack(interval)
+    lower = interval[:, 0]
+    upper = interval[:, 1]
+    return lower, upper
