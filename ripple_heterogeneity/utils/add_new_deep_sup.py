@@ -82,3 +82,7 @@ def deep_sup_from_deepSuperficialDistance(cell_metrics, layer_dist=30, hpc_assum
         cell_metrics.loc[~cell_metrics.brainRegion.str.contains("CA1|CA2"),"deepSuperficial"] = "unknown"
 
     return cell_metrics
+
+def deep_sup_from_distance(cell_metrics, layer_dist=30, hpc_assumption=True):
+    """calls deep_sup_from_deepSuperficialDistance"""
+    return deep_sup_from_deepSuperficialDistance(cell_metrics, layer_dist=layer_dist, hpc_assumption=hpc_assumption)
