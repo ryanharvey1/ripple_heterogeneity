@@ -14,6 +14,10 @@ from nelpy.analysis import replay
 
 def get_scores(bst, tc, n_shuffles=400):
 
+    # empty if no replays existed
+    if bst.isempty:
+        return None, None
+    
     # find observed score for each replay event
     scores, scores_time_swap, _ = replay.trajectory_score_bst(
         bst,
@@ -65,6 +69,9 @@ def run(
 
         # find observed score for each replay event
         std_obs, obs_scores = get_scores(bst[idx_replay], tc, n_shuffles=n_shuffles)
+        
+        if std_obs is None:
+            continue
 
         # pull out cell metrics for use
         cell_metrics = results[direction]["cell_metrics"]
