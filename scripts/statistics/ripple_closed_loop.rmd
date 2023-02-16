@@ -1,0 +1,110 @@
+---
+title: "Untitled"
+author: "ryan"
+date: '2023-02-16'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+library(glmmTMB)
+```
+
+
+```{r}
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/closed_loop_prop_active.csv")
+
+data = data[data$deepSuperficial == "Deep" | data$deepSuperficial == "Superficial",]
+
+data$deepSuperficial = factor(data$deepSuperficial)
+data$basepath = factor(data$basepath)
+data$animal_id = factor(data$animal_id)
+
+summary(data)
+```
+
+
+```{r}
+m1 = glmer(partic_pre_stim_both_active ~ deepSuperficial + (1|basepath), weights=n_events, data=data,family="binomial")
+
+
+summary(m1)
+
+testDispersion(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F, refit=T)
+plot(simulationOutput)
+# 
+# lme.dscore(m1,data=temp_data,type="lme4")
+plot(partic_pre_stim_both_active ~ deepSuperficial, data = data)
+
+# a1 = anova(m1)
+# F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=data,type="lme4")
+```
+
+## correct for dispersion
+
+https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#fitting-models-with-overdispersion
+
+```{r}
+m1 = glmer(partic_pre_stim_both_active ~ deepSuperficial + (1|basepath), weights=n_events, data=data,family="binomial")
+
+
+summary(m1)
+
+overdisp_fun <- function(model) {
+    rdf <- df.residual(model)
+    rp <- residuals(model,type="pearson")
+    Pearson.chisq <- sum(rp^2)
+    prat <- Pearson.chisq/rdf
+    pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+    c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+}
+
+## extract summary table; you may also be able to do this via
+##  broom::tidy or broom.mixed::tidy
+quasi_table <- function(model,ctab=coef(summary(model)),
+                           phi=overdisp_fun(model)["ratio"]) {
+    qctab <- within(as.data.frame(ctab),
+    {   `Std. Error` <- `Std. Error`*sqrt(phi)
+        `z value` <- Estimate/`Std. Error`
+        `Pr(>|z|)` <- 2*pnorm(abs(`z value`), lower.tail=FALSE)
+    })
+    return(qctab)
+}
+printCoefmat(quasi_table(m1),digits=3)
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
