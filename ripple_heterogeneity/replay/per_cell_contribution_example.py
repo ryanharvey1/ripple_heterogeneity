@@ -6,16 +6,17 @@ import pandas as pd
 import numpy as np
 import os
 import pickle
-import nelpy as nel
 import copy
 import os
 from nelpy.analysis import replay
+import logging
 
+logging.getLogger().setLevel(logging.ERROR)
 
 def get_scores(bst, tc, n_shuffles=400):
 
     # empty if no replays existed
-    if bst.isempty:
+    if bst.isempty | tc.isempty:
         return None, None
     
     # find observed score for each replay event
@@ -104,7 +105,7 @@ def run(
                 n_dropped.append(i + 1)
 
                 # if we have removed all from bst, continue
-                if bst.isempty:
+                if bst.isempty | tc.isempty:
                     scores.append(np.nan)
                     std_dropped.append(np.nan)
                     continue
