@@ -11,6 +11,7 @@ from joblib import Parallel, delayed
 import pickle
 import copy
 import warnings
+from ripple_heterogeneity.place_cells import maps
 from ripple_heterogeneity.replay import score
 from scipy import ndimage
 import logging
@@ -64,40 +65,6 @@ def decode_and_shuff(bst, tc, pos, n_shuffles=500):
         )
 
     return rvalue, median_error, rvalue_time_swap, median_error_time_swap
-
-
-def get_significant_events(scores, shuffled_scores, q=95):
-    """Return the significant events based on percentiles.
-    NOTE: The score is compared to the distribution of scores obtained
-    using the randomized data and a Monte Carlo p-value can be computed
-    according to: p = (r+1)/(n+1), where r is the number of
-    randomizations resulting in a score higher than (ETIENNE EDIT: OR EQUAL TO?)
-    the real score and n is the total number of randomizations performed.
-    Parameters
-    ----------
-    scores : array of shape (n_events,)
-    shuffled_scores : array of shape (n_shuffles, n_events)
-    q : float in range of [0,100]
-        Percentile to compute, which must be between 0 and 100 inclusive.
-    Returns
-    -------
-    sig_event_idx : array of shape (n_sig_events,)
-        Indices (from 0 to n_events-1) of significant events.
-    pvalues :
-    """
-
-    n, _ = shuffled_scores.shape
-    r = np.sum(abs(shuffled_scores) >= abs(scores), axis=0)
-    pvalues = (r + 1) / (n + 1)
-
-    # set nan scores to 1
-    pvalues[np.isnan(scores)] = 1
-
-    sig_event_idx = np.argwhere(
-        scores > np.percentile(shuffled_scores, axis=0, q=q)
-    ).squeeze()
-
-    return np.atleast_1d(sig_event_idx), np.atleast_1d(pvalues)
 
 
 def get_features(bst_placecells, posteriors, bdries, mode_pth, pos, dp=3):
@@ -345,34 +312,27 @@ def handle_behavior(
 def get_tuning_curves(
     pos, st_all, dir_epoch, speed_thres, ds_50ms, s_binsize, tuning_curve_sigma
 ):
-    # compute and smooth speed
-    speed1 = nel.utils.ddt_asa(pos[dir_epoch], smooth=True, sigma=0.1, norm=True)
 
-    # find epochs where the animal ran > 4cm/sec
-    run_epochs = nel.utils.get_run_epochs(speed1, v1=speed_thres, v2=speed_thres)
+    spatial_maps = maps.SpatialMap(
+        pos,
+        st_all,
+        dim=1,
+        dir_epoch=dir_epoch,
+        s_binsize=s_binsize,
+        speed_thres=speed_thres,
+        tuning_curve_sigma=tuning_curve_sigma,
+        minbgrate=0.01,  # decoding does not like 0 firing rate
+    )
 
     # restrict spike trains to those epochs during which the animal was running
-    st_run = st_all[dir_epoch][run_epochs]
+    st_run = st_all[dir_epoch][spatial_maps.run_epochs]
 
-    # smooth and re-bin:
+    # bin running:
     bst_run = st_run.bin(ds=ds_50ms)
 
-    ext_xmin, ext_xmax = (
-        np.floor(pos[dir_epoch].min() / 10) * 10,
-        np.ceil(pos[dir_epoch].max()),
-    )
-    n_bins = int((ext_xmax - ext_xmin) / s_binsize)
-
-    tc = nel.TuningCurve1D(
-        bst=bst_run,
-        extern=pos[dir_epoch][run_epochs],
-        n_extern=n_bins,
-        extmin=ext_xmin,
-        extmax=ext_xmax,
-        sigma=tuning_curve_sigma,
-        min_duration=0,
-    )
-    return tc, st_run, bst_run
+    # return class 'auxiliary.TuningCurve1D'
+    #   instead of class 'maps.SpatialMap' for decoding.py compatibility
+    return spatial_maps.tc, st_run, bst_run
 
 
 def restrict_to_place_cells(
@@ -476,8 +436,9 @@ def run_all(
     tuning_curve_sigma=3,  # 3 cm sd of smoothing on tuning curve
     expand_canidate_by_mua=False,  # whether to expand candidate units by mua (note: will only take rips with mua)
     restrict_manipulation=True,  # whether to restrict manipulation epochs
-    shuffle_parallel=True,  # whether to shuffle in parallel
+    shuffle_parallel=False,  # whether to shuffle in parallel
     ds_beh_decode=0.2,  # bin width to bin st for decoding behavior
+    min_decoding_error=25 # minimum decoding error
 ):
     """
     Main function that conducts the replay analysis
@@ -613,12 +574,15 @@ def run_all(
         decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(
             bst_run_beh, tc, pos[dir_epoch], n_shuffles=behav_shuff
         )
+        if median_error > min_decoding_error:
+            continue
+
         # check decoding quality against chance distribution
-        _, decoding_r2_pval = get_significant_events(decoding_r2, decoding_r2_shuff)
+        _, decoding_r2_pval,_ = functions.get_significant_events(decoding_r2, decoding_r2_shuff)
 
         # get ready to decode replay
         # bin data for replay (20ms default)
-        bst_placecells = sta_placecells.bin(ds=replay_binsize)[ripple_epochs]
+        bst_placecells = sta_placecells[ripple_epochs].bin(ds=replay_binsize)
 
         # count units per event
         n_active = [bst.n_active for bst in bst_placecells]
@@ -653,29 +617,26 @@ def run_all(
         )
 
         # score each event using trajectory_score_bst (sums the posterior probability in a range (w) from the LS line)
-        scores, scores_time_swap, scores_col_cycle = replay.trajectory_score_bst(
-            bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True
-        )
-
-        # (
-        #     scores,
-        #     avg_jump,
-        #     radon_score,
-        #     scores_time_swap,
-        #     scores_col_cycle,
-        #     jump_col_cycle,
-        #     radon_score_time_swap,
-        #     radon_score_col_cycle
-        # ) = score.trajectory_score_bst(
-        #     bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True, parallel=shuffle_parallel
+        # scores, scores_time_swap, scores_col_cycle = replay.trajectory_score_bst(
+        #     bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True
         # )
 
+        (
+            scores,
+            weighted_corr,
+            scores_time_swap,
+            scores_col_cycle,
+            weighted_corr_time_swap,
+            weighted_corr_col_cycle,
+        ) = score.trajectory_score_bst(
+            bst_placecells, tc, w=3, n_shuffles=traj_shuff, normalize=True, parallel=shuffle_parallel
+        )
+
         # find sig events using time and column shuffle distributions
-        _, score_pval_time_swap = get_significant_events(scores, scores_time_swap)
-        _, score_pval_col_cycle = get_significant_events(scores, scores_col_cycle)
-        # _, jump_pval_col_cycle = get_significant_events(avg_jump, jump_col_cycle)
-        # _, radon_score_pval_time_swap = get_significant_events(radon_score, radon_score_time_swap)
-        # _, radon_score_pval_col_cycle = get_significant_events(radon_score, radon_score_col_cycle)
+        _, score_pval_time_swap, score_z_time_swap = functions.get_significant_events(scores, scores_time_swap)
+        _, score_pval_col_cycle, score_z_col_cycle = functions.get_significant_events(scores, scores_col_cycle)
+        _, weighted_corr_pval_time_swap, weighted_corr_z_time_swap = functions.get_significant_events(weighted_corr, weighted_corr_time_swap)
+        _, weighted_corr_pval_col_cycle, weighted_corr_z_col_cycle = functions.get_significant_events(weighted_corr, weighted_corr_col_cycle)
 
         (traj_dist, traj_speed, traj_step, replay_type, position) = get_features(
             bst_placecells, posteriors, bdries, mode_pth, pos[dir_epoch], dp=s_binsize
@@ -702,16 +663,18 @@ def run_all(
         temp_df["n_active"] = n_active
         temp_df["inactive_bin_prop"] = inactive_bin_prop
         temp_df["trajectory_score"] = scores
-        # temp_df["avg_jump"] = avg_jump
-        # temp_df["radon_score"] = radon_score
+        temp_df["weighted_corr"] = weighted_corr
         temp_df["r_squared"] = r2values
         temp_df["slope"] = slope
         temp_df["intercept"] = intercept
         temp_df["score_pval_time_swap"] = score_pval_time_swap
         temp_df["score_pval_col_cycle"] = score_pval_col_cycle
-        # temp_df["jump_pval_col_cycle"] = jump_pval_col_cycle
-        # temp_df["radon_score_pval_time_swap"] = radon_score_pval_time_swap
-        # temp_df["radon_score_pval_col_cycle"] = radon_score_pval_col_cycle
+        temp_df["weighted_corr_pval_time_swap"] = weighted_corr_pval_time_swap
+        temp_df["weighted_corr_pval_col_cycle"] = weighted_corr_pval_col_cycle
+        temp_df["score_z_time_swap"] = score_z_time_swap
+        temp_df["score_z_col_cycle"] = score_z_col_cycle
+        temp_df["weighted_corr_z_time_swap"] = weighted_corr_z_time_swap
+        temp_df["weighted_corr_z_col_cycle"] = weighted_corr_z_col_cycle
         temp_df["traj_dist"] = traj_dist
         temp_df["traj_speed"] = traj_speed
         temp_df["traj_step"] = traj_step
