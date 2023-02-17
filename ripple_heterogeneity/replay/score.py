@@ -4,7 +4,32 @@ from nelpy.decoding import decode1D as decode
 from nelpy.decoding import get_mode_pth_from_array
 import multiprocessing
 from joblib import Parallel, delayed
-from replay_trajectory_classification.standard_decoder import detect_line_with_radon
+
+# from replay_trajectory_classification.standard_decoder import detect_line_with_radon
+
+
+def weighted_correlation(posterior, time=None, place_bin_centers=None):
+    def _m(x, w):
+        """Weighted Mean"""
+        return np.sum(x * w) / np.sum(w)
+
+    def _cov(x, y, w):
+        """Weighted Covariance"""
+        return np.sum(w * (x - _m(x, w)) * (y - _m(y, w))) / np.sum(w)
+
+    def _corr(x, y, w):
+        """Weighted Correlation"""
+        return _cov(x, y, w) / np.sqrt(_cov(x, x, w) * _cov(y, y, w))
+
+    if time is None:
+        time = np.arange(posterior.shape[1])
+    if place_bin_centers is None:
+        place_bin_centers = np.arange(posterior.shape[0])
+
+    place_bin_centers = place_bin_centers.squeeze()
+    posterior[np.isnan(posterior)] = 0.0
+
+    return _corr(time[:, np.newaxis],place_bin_centers[np.newaxis, :], posterior.T)
 
 
 def shuffle_and_score(posterior_array, w, normalize, tc, ds, dp):
@@ -18,21 +43,15 @@ def shuffle_and_score(posterior_array, w, normalize, tc, ds, dp):
     scores_col_cycle = replay.trajectory_score_array(
         posterior=posterior_cs, w=w, normalize=normalize
     )
-    diff_mode_pth_cs = np.diff(get_mode_pth_from_array(posterior_cs, tuningcurve=tc))
 
-    _, _, _, radon_score_time_swap = detect_line_with_radon(
-        posterior_ts.T, ds, dp, filter_invalid_positions=False
-    )
-    _, _, _, radon_score_col_cycle = detect_line_with_radon(
-        posterior_cs.T, ds, dp, filter_invalid_positions=False
-    )
+    weighted_corr_time_swap = weighted_correlation(posterior_ts)
+    weighted_corr_col_cycle = weighted_correlation(posterior_cs)
 
     return (
         scores_time_swap,
         scores_col_cycle,
-        np.abs(np.nanmean(diff_mode_pth_cs)),
-        radon_score_time_swap,
-        radon_score_col_cycle,
+        weighted_corr_time_swap,
+        weighted_corr_col_cycle,
     )
 
 
@@ -45,67 +64,6 @@ def trajectory_score_bst(
     normalize=False,
     parallel=True,
 ):
-    """Compute the trajectory scores from Davidson et al. for each event
-    in the BinnedSpikeTrainArray.
-
-    This function returns the trajectory scores by decoding all the
-    events in the BinnedSpikeTrainArray, and then calling an external
-    function to determine the slope and intercept for each event, and
-    then finally computing the scores for those events.
-
-    If n_shuffles > 0, then in addition to the trajectory scores,
-    shuffled scores will be returned for both column cycle shuffling, as
-    well as posterior time bin shuffling (time swap).
-
-    NOTE1: this function does NOT attempt to find the line that
-    maximizes the trajectory score. Instead, it delegates the
-    determination of the line to an external function (which currently
-    is called from trajectory_score_array), and at the time of writing
-    this documentation, is simply the best line fit to the modes of the
-    decoded posterior distribution.
-
-    NOTE2: the score is then the sum of the probabilities in a band of
-    w bins around the line, ignoring bins that are NaNs. Even when w=0
-    (only the sum of peak probabilities) this is different from the r^2
-    coefficient of determination, in that here more concentrated
-    posterior probabilities contribute more heavily than weaker ones.
-
-    NOTE3: the returned scores are NOT normalized, but if desired, they
-    can be normalized by dividing by the number of non-NaN bins in each
-    event.
-
-    Reference(s)
-    ------------
-    Davidson TJ, Kloosterman F, Wilson MA (2009)
-        Hippocampal replay of extended experience. Neuron 63:497-507
-
-    Parameters
-    ----------
-    bst : BinnedSpikeTrainArray
-        BinnedSpikeTrainArray containing all the candidate events to
-        score.
-    tuningcurve : TuningCurve1D
-        Tuning curve to decode events in bst.
-    w : int, optional (default is 0)
-        Half band width for calculating the trajectory score. If w=0,
-        then only the probabilities falling directly under the line are
-        used. If w=1, then a total band of 2*w+1 = 3 will be used.
-    n_shuffles : int, optional (default is 250)
-        Number of times to perform both time_swap and column_cycle
-        shuffles.
-    weights : not yet used, but idea is to assign weights to the bands
-        surrounding the line
-    normalize : bool, optional (default is False)
-        If True, the scores will be normalized by the number of non-NaN
-        bins in each event.
-
-    Returns
-    -------
-    scores, [scores_time_swap, scores_col_cycle]
-        scores is of size (bst.n_epochs, )
-        scores_time_swap and scores_col_cycle are each of size
-            (n_shuffles, bst.n_epochs)
-    """
 
     if w is None:
         w = 0
@@ -119,19 +77,14 @@ def trajectory_score_bst(
 
     posterior, bdries, _, _ = decode(bst=bst, ratemap=tuningcurve)
 
-    # idea: cycle each column so that the top w rows are the band
-    # surrounding the regression line
-
     scores = np.zeros(bst.n_epochs)
-    avg_jump = np.zeros(bst.n_epochs)
-    radon_score = np.zeros(bst.n_epochs)
+    weighted_corr = np.zeros(bst.n_epochs)
 
     if n_shuffles > 0:
         scores_time_swap = np.zeros((n_shuffles, bst.n_epochs))
         scores_col_cycle = np.zeros((n_shuffles, bst.n_epochs))
-        jump_col_cycle = np.zeros((n_shuffles, bst.n_epochs))
-        radon_score_time_swap = np.zeros((n_shuffles, bst.n_epochs))
-        radon_score_col_cycle = np.zeros((n_shuffles, bst.n_epochs))
+        weighted_corr_time_swap = np.zeros((n_shuffles, bst.n_epochs))
+        weighted_corr_col_cycle = np.zeros((n_shuffles, bst.n_epochs))
 
     if parallel:
         num_cores = multiprocessing.cpu_count()
@@ -143,25 +96,14 @@ def trajectory_score_bst(
         scores[idx] = replay.trajectory_score_array(
             posterior=posterior_array, w=w, normalize=normalize
         )
+        weighted_corr[idx] = weighted_correlation(posterior_array)
 
-        _, _, _, radon_score[idx] = detect_line_with_radon(
-            posterior_array.T, ds, dp, filter_invalid_positions=False
-        )
-
-        avg_jump[idx] = np.abs(
-            np.nanmean(
-                np.diff(
-                    get_mode_pth_from_array(posterior_array, tuningcurve=tuningcurve)
-                )
-            )
-        )
         if parallel:
             (
                 scores_time_swap[:, idx],
                 scores_col_cycle[:, idx],
-                jump_col_cycle[:, idx],
-                radon_score_time_swap[:, idx],
-                radon_score_col_cycle[:, idx],
+                weighted_corr_time_swap[:, idx],
+                weighted_corr_col_cycle[:, idx],
             ) = zip(
                 *Parallel(n_jobs=num_cores)(
                     delayed(shuffle_and_score)(
@@ -174,9 +116,8 @@ def trajectory_score_bst(
             (
                 scores_time_swap[:, idx],
                 scores_col_cycle[:, idx],
-                jump_col_cycle[:, idx],
-                radon_score_time_swap[:, idx],
-                radon_score_col_cycle[:, idx],
+                weighted_corr_time_swap[:, idx],
+                weighted_corr_col_cycle[:, idx],
             ) = zip(
                 *[
                     shuffle_and_score(
@@ -189,12 +130,10 @@ def trajectory_score_bst(
     if n_shuffles > 0:
         return (
             scores,
-            avg_jump,
-            radon_score,
+            weighted_corr,
             scores_time_swap,
             scores_col_cycle,
-            jump_col_cycle,
-            radon_score_time_swap,
-            radon_score_col_cycle,
+            weighted_corr_time_swap,
+            weighted_corr_col_cycle,
         )
-    return scores, avg_jump
+    return scores, weighted_corr
