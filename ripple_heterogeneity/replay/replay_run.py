@@ -570,7 +570,7 @@ def run_all(
             continue
 
         # access decoding accuracy on behavioral time scale
-        bst_run_beh = sta_placecells.bin(ds=ds_beh_decode)[dir_epoch]
+        bst_run_beh = sta_placecells[dir_epoch].bin(ds=ds_beh_decode)
         decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(
             bst_run_beh, tc, pos[dir_epoch], n_shuffles=behav_shuff
         )
@@ -741,7 +741,7 @@ def load_results(save_path, pre_task_post=False, verbose=False):
             results = pickle.load(f)
         if results is None:
             continue
-        if (results["outbound_epochs"] == {}) & (results["outbound_epochs"] == {}):
+        if (results["outbound_epochs"] == {}) & (results["inbound_epochs"] == {}):
             continue
         try:
             basepath = results["outbound_epochs"]["session"]
@@ -782,7 +782,7 @@ def load_results(save_path, pre_task_post=False, verbose=False):
             results[key_]["df"]["decoding_median_error"] = float(
                 results[key_]["decoding_median_error"]
             )
-            results[key_]["df"]["total_units"] = float(results[key_]["total_units"])
+            results[key_]["df"]["total_units"] = int(results[key_]["total_units"])
             results[key_]["df"]["direction"] = key_
 
             # add epoch
