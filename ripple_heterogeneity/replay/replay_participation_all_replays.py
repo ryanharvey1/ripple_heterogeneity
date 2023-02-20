@@ -92,6 +92,7 @@ def run(
     environments=["linear", "sleep"],
     min_env_criteria=None,
     epochs_to_combine=["linear", "sleep"],
+    incude_all_units=True
 ):
     """
     Compile replay participation for a session
@@ -158,6 +159,7 @@ def run(
     )
     if behavior_epochs is None:
         return None
+
     # get ripple epochs
     ripples = loading.load_ripples_events(basepath)
     ripple_epochs = nel.EpochArray([np.array([ripples.start, ripples.stop]).T])
@@ -181,37 +183,40 @@ def run(
     except:
         pass
 
-    session = os.path.join(
-        replay_save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
-    )
+    # get units from cell metrics and units used in replay
+    if incude_all_units == False:
 
-    with open(session, "rb") as f:
-        results = pickle.load(f)
+        session = os.path.join(
+            replay_save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
+        )
 
-    # get active units from cell metrics
-    uids_outbound_epochs = []
-    uids_inbound_epochs = []
-    try:
-        uids_outbound_epochs = results["outbound_epochs"]["cell_metrics"].UID
-    except:
-        pass
-    try:
-        uids_inbound_epochs = results["inbound_epochs"]["cell_metrics"].UID
-    except:
-        pass
-    uid = pd.unique(np.hstack([uids_outbound_epochs, uids_inbound_epochs]))
+        with open(session, "rb") as f:
+            results = pickle.load(f)
 
-    # remove uids with bad waveforms as we can not estimate deep/sup
-    if "tags_bad_waveform" in cell_metrics.columns:
-        a = set(cell_metrics[cell_metrics.tags_bad_waveform].UID.values)
-        b = set(uid)
-        c = b.difference(a)
-        uid = np.sort(np.array(list(c)))
+        uids_outbound_epochs = []
+        uids_inbound_epochs = []
+        try:
+            uids_outbound_epochs = results["outbound_epochs"]["cell_metrics"].UID
+        except:
+            pass
+        try:
+            uids_inbound_epochs = results["inbound_epochs"]["cell_metrics"].UID
+        except:
+            pass
+        uid = pd.unique(np.hstack([uids_outbound_epochs, uids_inbound_epochs]))
 
-    _, x_ind, _ = np.intersect1d(cell_metrics.UID, uid, return_indices=True)
-    unit_ids_to_keep = (x_ind + 1).squeeze().tolist()
-    sta_placecells = st._unit_subset(unit_ids_to_keep)
-    cell_metrics = cell_metrics.iloc[x_ind]
+        # remove uids with bad waveforms as we can not estimate deep/sup
+        if "tags_bad_waveform" in cell_metrics.columns:
+            a = set(cell_metrics[cell_metrics.tags_bad_waveform].UID.values)
+            b = set(uid)
+            c = b.difference(a)
+            uid = np.sort(np.array(list(c)))
+
+        _, x_ind, _ = np.intersect1d(cell_metrics.UID, uid, return_indices=True)
+        unit_ids_to_keep = (x_ind + 1).squeeze().tolist()
+        st = st._unit_subset(unit_ids_to_keep)
+        cell_metrics = cell_metrics.iloc[x_ind]
+
 
     # epoch array of all replay epochs
     all_replay = forward_replay | reverse_replay
@@ -252,7 +257,7 @@ def run(
     # iterate through all behavioral epochs and get ripple and replay participation
     for beh_ep_i, beh_ep in enumerate(behavior_epochs):
 
-        current_st = sta_placecells[beh_ep]
+        current_st = st[beh_ep]
 
         # get avg firing rate over epoch
         avg_fr.append(current_st.n_events / beh_ep.length)
@@ -339,8 +344,8 @@ def run(
             reverse_replay_par.append(current_st.n_events * np.nan)
 
         # get epoch info
-        epoch.append([epoch_labels[beh_ep_i]] * sta_placecells.data.shape[0])
-        epoch_i.append(np.tile(beh_ep_i, sta_placecells.data.shape[0]))
+        epoch.append([epoch_labels[beh_ep_i]] * st.data.shape[0])
+        epoch_i.append(np.tile(beh_ep_i, st.data.shape[0]))
 
         # get UID
         UID.append(cell_metrics.UID.values)
@@ -348,24 +353,24 @@ def run(
         deepSuperficialDistance.append(cell_metrics.deepSuperficialDistance.values)
         # get number of ripples and replays
         n_replays.append(
-            np.tile(all_replay[beh_ep].n_intervals, sta_placecells.data.shape[0])
+            np.tile(all_replay[beh_ep].n_intervals, st.data.shape[0])
         )
         n_forward_replays.append(
-            np.tile(forward_replay[beh_ep].n_intervals, sta_placecells.data.shape[0])
+            np.tile(forward_replay[beh_ep].n_intervals, st.data.shape[0])
         )
         n_reverse_replays.append(
-            np.tile(reverse_replay[beh_ep].n_intervals, sta_placecells.data.shape[0])
+            np.tile(reverse_replay[beh_ep].n_intervals, st.data.shape[0])
         )
 
         n_ripples.append(
             np.tile(
-                ripple_outside_replay[beh_ep].n_intervals, sta_placecells.data.shape[0]
+                ripple_outside_replay[beh_ep].n_intervals, st.data.shape[0]
             )
         )
 
         n_replay_canidates.append(
             np.tile(
-                canidate_non_replay[beh_ep].n_intervals, sta_placecells.data.shape[0]
+                canidate_non_replay[beh_ep].n_intervals, st.data.shape[0]
             )
         )
 
