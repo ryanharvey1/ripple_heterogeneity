@@ -1993,3 +1993,25 @@ def confidence_intervals(X:np.ndarray, conf:float=0.95):
     lower = interval[:, 0]
     upper = interval[:, 1]
     return lower, upper
+
+
+def reindex_df(df:pd.core.frame.DataFrame, weight_col:str) -> pd.core.frame.DataFrame:
+    """
+    reindex_df: expands dataframe by weights
+
+    expand the dataframe to prepare for resampling result is 1 row per count per sample
+
+    Helpful when making weighted proportion plots
+
+    Input:
+            df - pandas dataframe
+            weight_col - column name that contains weights (should be int)
+    Output:
+            df - new pandas dataframe with resampling
+    """
+
+    df = df.reindex(df.index.repeat(df[weight_col])).copy()
+
+    df.reset_index(drop=True, inplace=True)
+
+    return df
