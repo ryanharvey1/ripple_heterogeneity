@@ -17,6 +17,8 @@ library(DHARMa)
 library(ggplot2)
 library(effectsize)
 library(EMAtools)
+library(sjmisc)
+library(sjlabelled)
 
 ```
 
@@ -30,13 +32,33 @@ citation("DHARMa")
 data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/replay_participation_for_all_sessions_task_post.csv")
                   
 data <- data[data$deepSuperficial == "Deep" | data$deepSuperficial == "Superficial",]
-data <- data[data$n_replays > 40,]
+# data <- data[data$n_replays > 10,]
 # data <- data[!is.nan(data$replay_df_gain_avg_to_replay),]
 data <- data[!is.na(data$replay_par),]
 
-# data <- data[data$epoch == "linear_sleep",]
+data <- data[data$epoch == "linear_sleep",]
 
-data <- data[data$animal_id != "HMC2",]
+# data <- data[data$animal_id != "HMC2",]
+# 
+# data <- data[data$basepath == r"(Z:\\Data\\AYAold\\AB3\\AB3_38_41)" | 
+#           data$basepath == r"(Z:\\Data\\AYAold\\AYA6\\day17)" | 
+#           data$basepath == r"(Z:\\Data\\AYAold\\AYA6\\day19)" |
+#           data$basepath == r"(Z:\\Data\\Can\\OML22\\day19)" |
+#           data$basepath == r"(Z:\\Data\\Can\\OML22\\day8)" |
+#           data$basepath == r"(Z:\\Data\\GirardeauG\\Rat10\\Rat10-20140702)" |
+#           data$basepath == r"(Z:\\Data\\GirardeauG\\Rat11\\Rat11-20150310)" |
+#           data$basepath == r"(Z:\\Data\\GirardeauG\\Rat11\\Rat11-20150313)" |
+#           data$basepath == r"(Z:\\Data\\GirardeauG\\Rat11\\Rat11-20150314)" |
+#           data$basepath == r"(Z:\\Data\\GirardeauG\\Rat11\\Rat11-20150315)" |
+#           data$basepath == r"(Z:\\Data\\GrosmarkAD\\Cicero\\Cicero_09102014)" |
+#           data$basepath == r"(Z:\\Data\\HMC1\\day10)" |
+#           data$basepath == r"(Z:\\Data\\HMC1\\day14)" |
+#           data$basepath == r"(Z:\\Data\\HMC1\\day9)" |
+#           data$basepath == r"(Z:\\Data\\Kenji\\ec013.393_418)" |
+#           data$basepath == r"(Z:\\Data\\Kenji\\ec013.677_699)" |
+#           data$basepath == r"(Z:\\Data\\Kenji\\ec013.634_653)" |
+#           data$basepath == r"(Z:\\Data\\Kenji\\ec013.656_674)"
+#          ,]
 
 
 data$basepath = factor(data$basepath)
@@ -54,7 +76,7 @@ unique(data$animal_id)
 ```
 
 ```{r}
-m1 = glmer(replay_par ~ deepSuperficial + (1|animal_id/basepath), weights=n_replays, data=data,family="binomial")
+m1 = glmer(replay_par ~ deepSuperficial + (1|basepath), weights=n_replays, data=data,family="binomial")
 
 
 summary(m1)
@@ -71,8 +93,27 @@ plot(replay_par ~ deepSuperficial, data = data)
 # F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
 lme.dscore(m1,data=data,type="lme4")
+
+
+plot_model(m1,type = "re", value.size = .1)
+plot_model(m1,type = "diag", value.size = .1)
+
+# “est”, “re”, “eff”, “emm”, “pred”, “int”, “std”, “std2”, “slope”, “resid”, “diag”
 ```
 
+
+```{r}
+random_effects = ranef(m1)
+random_effects$animal_id
+
+# fixef(m1)
+```
+
+```{r}
+# random_effects$animal_id[order(random_effects[["animal_id"]][["(Intercept)"]]),]
+
+random_effects$animal_id %>% arrange(random_effects[["animal_id"]][["(Intercept)"]])
+```
 
 ```{r}
 data$y_trans <- data$replay_fr+2
@@ -94,7 +135,9 @@ a1 = anova(m1)
 F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
 
 lme.dscore(m1,data=data,type="lme4")
-plot(y_trans ~ deepSuperficial , data = data)
+plot(replay_fr ~ deepSuperficial , data = data)
+
+plot_model(m1,type = "re", value.size = .1)
 
 ```
 
