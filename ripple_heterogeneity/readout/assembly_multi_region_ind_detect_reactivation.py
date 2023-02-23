@@ -84,11 +84,9 @@ def run(
         # iter over deep and superficial cells
         for deepSuperficial in ["Deep", "Superficial"]:
             # check for deep sup cells
-            if (
-                not assembly_react.cell_metrics.deepSuperficial.str.contains(
-                    deepSuperficial
-                ).any()
-            ):
+            if not assembly_react.cell_metrics.deepSuperficial.str.contains(
+                deepSuperficial
+            ).any():
                 continue
 
             # subset cell label (deep or superficial and brain regions)
@@ -116,25 +114,39 @@ def run(
             keep_assembly = []
             n_ca1 = []
             n_cortex = []
-            _, _, keep_assembly_, is_member = find_sig_assembly.main(assembly_react.patterns)
+            _, _, keep_assembly_, is_member = find_sig_assembly.main(
+                assembly_react.patterns
+            )
             for assembly_i in range(assembly_react.n_assemblies()):
 
                 member_idx = is_member[assembly_i, :]
 
-                cortex_check = cell_metrics[member_idx].brainRegion.str.contains(cross_region[1]).sum()
-                ca1_check = cell_metrics[member_idx].brainRegion.str.contains(cross_region[0]).sum()
-                ca1_layer_check = (cell_metrics[member_idx].deepSuperficial == deepSuperficial).sum()
+                cortex_check = (
+                    cell_metrics[member_idx]
+                    .brainRegion.str.contains(cross_region[1])
+                    .sum()
+                )
+                ca1_check = (
+                    cell_metrics[member_idx]
+                    .brainRegion.str.contains(cross_region[0])
+                    .sum()
+                )
+                ca1_layer_check = (
+                    cell_metrics[member_idx].deepSuperficial == deepSuperficial
+                ).sum()
                 n_ca1.append(ca1_check)
                 n_cortex.append(cortex_check)
-                keep_assembly.append((cortex_check>0) & (ca1_check>0) & (ca1_layer_check>0))
+                keep_assembly.append(
+                    (cortex_check > 0) & (ca1_check > 0) & (ca1_layer_check > 0)
+                )
 
             # only keep assemblies with cross-region members
-            assembly_react.patterns = assembly_react.patterns[keep_assembly,:]
+            assembly_react.patterns = assembly_react.patterns[keep_assembly, :]
             n_ca1 = np.array(n_ca1)[keep_assembly]
             n_cortex = np.array(n_cortex)[keep_assembly]
 
             # to save time, calculate only during pre and post epochs
-            assembly_act = assembly_react.get_assembly_act()
+            assembly_act = assembly_react.get_assembly_act(epoch=pre + post)
 
             peth_avg_pre, time_lags = functions.event_triggered_average(
                 assembly_act.abscissa_vals,
@@ -173,11 +185,17 @@ def run(
             )
 
             response_df_temp["deepSuperficial"] = deepSuperficial
-            response_df_temp["cross_region_label"] = deepSuperficial + "_" + cross_region[1]
-            response_df_temp["n_ca1"] = np.tile(n_ca1,2)
-            response_df_temp["n_cortex"] = np.tile(n_cortex,2)
-            response_df_temp["n_ca1_total"] = cell_metrics.brainRegion.str.contains(cross_region[0]).sum()
-            response_df_temp["n_cortex_total"] = cell_metrics.brainRegion.str.contains(cross_region[1]).sum()
+            response_df_temp["cross_region_label"] = (
+                deepSuperficial + "_" + cross_region[1]
+            )
+            response_df_temp["n_ca1"] = np.tile(n_ca1, 2)
+            response_df_temp["n_cortex"] = np.tile(n_cortex, 2)
+            response_df_temp["n_ca1_total"] = cell_metrics.brainRegion.str.contains(
+                cross_region[0]
+            ).sum()
+            response_df_temp["n_cortex_total"] = cell_metrics.brainRegion.str.contains(
+                cross_region[1]
+            ).sum()
             response_df_temp["n_cells_total"] = assembly_react.st.n_active
 
             response_df = pd.concat([response_df, response_df_temp], ignore_index=True)
