@@ -147,7 +147,7 @@ def run(
 
             if assembly_react.n_assemblies() == 0:
                 continue
-            
+
             # to save time, calculate only during pre and post epochs
             assembly_act = assembly_react.get_assembly_act(epoch=pre + post)
 
@@ -261,6 +261,6 @@ def load_results(save_path: str, verbose: bool = False):
         if results_["peth"].shape[0] == 501:
             test = 0
         results = pd.concat([results, results_["results_df"]], ignore_index=True)
-        peth = pd.concat([peth, results_["peth"]], axis=1)
+        peth = pd.concat([peth, results_["peth"]], axis=1, ignore_index=True)
 
     return results, peth
