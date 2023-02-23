@@ -568,12 +568,12 @@ def event_triggered_average(
     window_starttime, window_stoptime = window
 
     if len(signal.shape) == 1:
-        signal = signal[:, np.newaxis]
+        signal = np.expand_dims(signal, -1)
 
-    num_signals = signal.shape[1]
+    _, num_signals = signal.shape
 
     if sampling_rate is None:
-        sampling_rate = 1 / stats.mode(np.diff(timestamps))[0][0]
+        sampling_rate = 1 / stats.mode(np.diff(timestamps), keepdims=True)[0][0]
 
     # window_bins: number of bins of the chosen averaging interval
     window_bins = int(np.ceil(((window_stoptime - window_starttime) * sampling_rate)))
@@ -589,22 +589,15 @@ def event_triggered_average(
     for i in range(num_signals):
         # summing over all respective signal intervals around spiketimes
         for event in events:
-            # checks for sufficient signal data around spiketime
-            if (
-                event + window_starttime >= timestamps[0]
-                and event + window_stoptime <= timestamps[-1]
-            ):
-                # calculating the startbin in the analog signal of the
-                # averaging window for event
-                startbin = int(
-                    np.floor(
-                        ((event + window_starttime - timestamps[0]) * sampling_rate)
-                    )
-                )
-                # adds the signal in selected interval relative to the spike
-                result_sta[:, i] += signal[startbin : startbin + window_bins, i]
-                # counting of the used event
-                used_events[i] += 1
+            # locate signal in time range
+            idx = (timestamps >= event + window_starttime) & (timestamps <= event + window_stoptime)
+            # for speed, instead of checking if we have enough time each iteration, just skip if we don't
+            try:
+                result_sta[:, i] += signal[idx,i] 
+            except:
+                continue
+            # counting of the used event
+            used_events[i] += 1
 
         # normalization
         result_sta[:, i] = result_sta[:, i] / used_events[i]
