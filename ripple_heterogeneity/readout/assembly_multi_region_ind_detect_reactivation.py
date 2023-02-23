@@ -145,6 +145,9 @@ def run(
             n_ca1 = np.array(n_ca1)[keep_assembly]
             n_cortex = np.array(n_cortex)[keep_assembly]
 
+            if assembly_react.n_assemblies() == 0:
+                continue
+            
             # to save time, calculate only during pre and post epochs
             assembly_act = assembly_react.get_assembly_act(epoch=pre + post)
 
