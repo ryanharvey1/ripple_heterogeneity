@@ -23,9 +23,12 @@ def Otsu(vector):
     for i in np.arange(n):
         p = (i + 1) / n
         p0 = 1 - p
-        intraClassVariance[i] = p * np.var(sorted[0 : i + 1]) + p0 * np.var(
-            sorted[i + 1 :]
-        )
+        if i + 1 == n:
+            intraClassVariance[i] = np.nan
+        else:
+            intraClassVariance[i] = p * np.var(sorted[0 : i + 1]) + p0 * np.var(
+                sorted[i + 1 :]
+            )
 
     minIntraVariance = np.nanmin(intraClassVariance)
     idx = np.nanargmin(intraClassVariance)
