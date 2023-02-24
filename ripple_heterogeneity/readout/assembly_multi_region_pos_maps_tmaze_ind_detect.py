@@ -182,7 +182,7 @@ def run(
     weight_dt=0.05,  # dt in seconds for binning st to get weights for each assembly
     z_mat_dt=0.03,  # dt in seconds for binning st to get activation strength
     verbose=False,  # print out progress
-    env="Mwheel|Tmaze|tmaze",  # enviroment you want to look at (current should only be linear)
+    env="Mwheel|Tmaze|tmaze",  # enviroment you want to look at (current should only be tmaze)
     s_binsize=3,  # spatial bin size
     smooth_sigma=3,  # smoothing sigma in cm
     smooth_window=10,  # smoothing window in cm

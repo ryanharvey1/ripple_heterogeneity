@@ -54,6 +54,27 @@ class AssemblyReact(object):
     n_assemblies: number of detected assemblies
     isempty: isempty (bool)
     copy: returns copy of class
+    plot: stem plot of assembly weights
+
+    *Usage*::
+        
+        >>> # create the object assembly_react
+        >>> assembly_react = assembly_reactivation.AssemblyReact(
+        ...    basepath=basepath,
+        ...    )
+
+        >>> # load need data (spikes, ripples, epochs)
+        >>> assembly_react.load_data()
+
+        >>> # detect assemblies 
+        >>> assembly_react.get_weights()
+
+        >>> # visually inspect weights for each assembly
+        >>> assembly_react.plot()
+
+        >>> # compute time resolved signal for each assembly
+        >>> assembly_act = assembly_react.get_assembly_act()
+            
     """
 
     def __init__(

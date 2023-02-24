@@ -133,7 +133,7 @@ def extractPatterns(actmat, significance, method):
         idxs = np.argsort(-significance.explained_variance_)[0:nassemblies]
         patterns = significance.components_[idxs, :]
     elif method == "ica":
-        ica = FastICA(n_components=nassemblies, random_state=0)
+        ica = FastICA(n_components=nassemblies, random_state=0, whiten="unit-variance")
         ica.fit(actmat.T)
         patterns = ica.components_
     else:
