@@ -549,7 +549,7 @@ def load_theta_cycles(basepath):
     df['theta_channel'] = data["thetacycles"]["detectorinfo"]["theta_channel"]
     return df
 
-def load_barrage_events(basepath,return_epoch_array=False,restrict_to_nrem=True):
+def load_barrage_events(basepath,return_epoch_array=False,restrict_to_nrem=True,file_name=None):
     """
     load info from barrage.events.mat and store within df
 
@@ -571,11 +571,10 @@ def load_barrage_events(basepath,return_epoch_array=False,restrict_to_nrem=True)
 
     # locate .mat file
     try:
-        filename = glob.glob(basepath+os.sep+
-            'Barrage_Files' +
-            os.sep +
-            os.path.basename(basepath) +
-            '.HSE.mat')[0]
+        if file_name is not None:
+            filename = glob.glob(basepath+os.sep+'Barrage_Files' + os.sep + file_name +'*.mat')[0]
+        else:
+            filename = glob.glob(basepath+os.sep+'Barrage_Files' + os.sep +'HSE.mat')[0]
     except:
         warnings.warn("file does not exist")
         if return_epoch_array:
