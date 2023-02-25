@@ -15,11 +15,17 @@ def run(
     ca1_layers=["Deep", "Superficial"],
     putativeCellType="Pyr",  # type of cells to load (can be multi ex. Pyr|Int)
     weight_dt=0.05,  # dt in seconds for binning st to get weights for each assembly
+    restrict_to_nrem=True, # to restrict sleep to nrem
+    z_mat_dt=0.005 # AssemblyReact default is 2ms, but 5ms is faster to run
 ):
 
     # initiate model
     assembly_react = assembly_reactivation.AssemblyReact(
-        basepath=basepath, brainRegion=regions, weight_dt=weight_dt
+        basepath=basepath,
+        brainRegion=regions,
+        weight_dt=weight_dt,
+        putativeCellType=putativeCellType,
+        z_mat_dt=z_mat_dt
     )
     assembly_react.load_data()
 
@@ -52,16 +58,16 @@ def run(
     #   restrict to first hour of sleep
     #   restrict task to theta epochs and sleep to nrem
     pre_start = assembly_react.epochs[0].start
-    pre = assembly_react.epochs[0][nel.EpochArray([pre_start, pre_start + 3600])][
-        nrem_epochs
-    ]
+    pre = assembly_react.epochs[0][nel.EpochArray([pre_start, pre_start + 3600])]
 
     task = assembly_react.epochs[1][theta_epochs]
 
     post_start = assembly_react.epochs[2].start
-    post = assembly_react.epochs[2][nel.EpochArray([post_start, post_start + 3600])][
-        nrem_epochs
-    ]
+    post = assembly_react.epochs[2][nel.EpochArray([post_start, post_start + 3600])]
+
+    if restrict_to_nrem:
+        pre = pre[nrem_epochs]
+        post = post[nrem_epochs]
 
     if pre.isempty | task.isempty | post.isempty:
         return None
@@ -82,7 +88,7 @@ def run(
             continue
 
         # iter over deep and superficial cells
-        for deepSuperficial in ["Deep", "Superficial"]:
+        for deepSuperficial in ca1_layers:
             # check for deep sup cells
             if not assembly_react.cell_metrics.deepSuperficial.str.contains(
                 deepSuperficial
@@ -254,12 +260,13 @@ def load_results(save_path: str, verbose: bool = False):
             print(session)
         with open(session, "rb") as f:
             results_ = pickle.load(f)
+            
         if results_ is None:
             continue
+
         if results_["results_df"].shape[0] == 0:
             continue
-        if results_["peth"].shape[0] == 501:
-            test = 0
+
         results = pd.concat([results, results_["results_df"]], ignore_index=True)
         peth = pd.concat([peth, results_["peth"]], axis=1, ignore_index=True)
 
