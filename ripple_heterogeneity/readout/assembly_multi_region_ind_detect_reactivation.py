@@ -10,16 +10,33 @@ import glob
 
 def run(
     basepath: str,
-    regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # brain regions to load
-    cross_regions=(("CA1", "PFC"), ("CA1", "EC1|EC2|EC3|EC4|EC5|MEC")),
-    ca1_layers=["Deep", "Superficial"],
-    putativeCellType="Pyr",  # type of cells to load (can be multi ex. Pyr|Int)
-    weight_dt=0.05,  # dt in seconds for binning st to get weights for each assembly
-    restrict_to_nrem=True, # to restrict sleep to nrem
-    z_mat_dt=0.005 # AssemblyReact default is 2ms, but 5ms is faster to run
+    regions:str="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # brain regions to load
+    cross_regions:tuple=(("CA1", "PFC"), ("CA1", "EC1|EC2|EC3|EC4|EC5|MEC")),
+    ca1_layers:list=["Deep", "Superficial"],
+    putativeCellType:str="Pyr",  # type of cells to load (can be multi ex. Pyr|Int)
+    weight_dt:float=0.05,  # dt in seconds for binning st to get weights for each assembly
+    restrict_to_nrem:bool=True, # to restrict sleep to nrem
+    z_mat_dt:float=0.005 # AssemblyReact default is 2ms, but 5ms is faster to run
 ):
+    """
+    Run assembly reactivation for a single session
+    Created for multi region analysis
+    Inputs:
+        basepath: str, path to session
+        regions: str, brain regions to load
+        cross_regions: tuple of tuples, regions to compare
+        ca1_layers: list of str, deep or superficial
+        putativeCellType: str, type of cells to load (can be multi ex. Pyr|Int)
+        weight_dt: float, dt in seconds for binning st to get weights for each assembly
+        restrict_to_nrem: bool, to restrict sleep to nrem
+        z_mat_dt: float, default is 5ms
+    Returns:
+        response_df: pd.DataFrame, response of each assembly to pre post ripples
+        peth: pd.DataFrame, peth of each assembly to pre post ripples
 
-    # initiate model
+    """
+
+    # initiate model and load data 
     assembly_react = assembly_reactivation.AssemblyReact(
         basepath=basepath,
         brainRegion=regions,
