@@ -252,7 +252,10 @@ def run(
                 z_mat_dt=z_mat_dt,
                 epoch=epochs[task_idx][theta_epochs],
             )
+            
             if assembly_act_ is None:
+                continue
+            if m1_.n_assemblies() == 0:
                 continue
 
             # make sure assembly members represent cross region label
