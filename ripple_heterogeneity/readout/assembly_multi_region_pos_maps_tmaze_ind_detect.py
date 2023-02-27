@@ -209,6 +209,10 @@ def run(
 
     task_idx = locate_task_epoch(epoch_df, env, position_df)
 
+    # load theta epochs for later restriction when detecting assemblies
+    state_dict = loading.load_SleepState_states(basepath)
+    theta_epochs = nel.EpochArray(state_dict["THETA"])
+
     # locate key points (TODO: fix the hard coded values)
     # FujisawaS/AYA10 and Mwheel data will have these reward zones
     if (
@@ -246,7 +250,7 @@ def run(
                 putativeCellType=putativeCellType,
                 weight_dt=weight_dt,
                 z_mat_dt=z_mat_dt,
-                epoch=epochs[task_idx],
+                epoch=epochs[task_idx][theta_epochs],
             )
             if assembly_act_ is None:
                 continue
