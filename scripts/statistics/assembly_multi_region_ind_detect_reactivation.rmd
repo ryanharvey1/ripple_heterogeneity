@@ -1,0 +1,152 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+library(sjmisc)
+library(sjlabelled)
+
+```
+
+
+```{r}
+# data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/replay_participation_for_v7_task_post.csv")
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/assembly_multi_region_ind_detect_react.csv")
+                  
+# data <- data[data$deepSuperficial == "Deep" | data$deepSuperficial == "Superficial",]
+
+
+data$basepath = factor(data$basepath)
+data$animal_id = factor(data$animal_id)
+data$cross_region_label = factor(data$cross_region_label)
+
+summary(data)
+```
+
+
+
+```{r}
+unique(data$animal_id)
+```
+
+
+```{r}
+
+temp_data <- data[data$cross_region_label == "CA1deep-MEC" | data$cross_region_label == "CA1sup-MEC",]
+temp_data$cross_region_label = factor(temp_data$cross_region_label)
+
+
+temp_data$y_trans <- temp_data$pre_post_ratio + 1
+
+mdl_boxcox <- boxcox(y_trans ~ cross_region_label, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$y_trans^max_lambda
+  
+# temp_data$y_trans <- log(temp_data$y_trans)
+
+m1 = lmer(y_trans ~ cross_region_label + (1 | basepath), data = temp_data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+plot(pre_post_ratio ~ cross_region_label , data = temp_data)
+
+plot_model(m1,type = "re", value.size = .1)
+```
+
+```{r}
+random_effects = ranef(m1)
+# random_effects$animal_id %>% arrange(random_effects[["basepath:animal_id"]][["(Intercept)"]])
+```
+
+```{r}
+max_lambda
+```
+
+```{r}
+temp_data <- data[data$cross_region_label == "CA1deep-PFC" | data$cross_region_label == "CA1sup-PFC",]
+temp_data$cross_region_label = factor(temp_data$cross_region_label)
+
+
+temp_data$y_trans <- temp_data$pre_post_ratio + 1
+
+mdl_boxcox <- boxcox(y_trans ~ cross_region_label, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$y_trans^max_lambda
+  
+# temp_data$y_trans <- log(temp_data$y_trans)
+
+m1 = lmer(y_trans ~ cross_region_label + (1 | basepath), data = temp_data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+
+lme.dscore(m1,data=temp_data,type="lme4")
+
+plot(pre_post_ratio ~ cross_region_label , data = temp_data)
+
+plot_model(m1,type = "re", value.size = .1)
+```
+
+```{r}
+random_effects = ranef(m1)
+```
+
+```{r}
+temp_data <- data[data$cross_region_label == "CA1deep-PFC" | data$cross_region_label == "CA1sup-PFC",]
+temp_data$cross_region_label = factor(temp_data$cross_region_label)
+
+
+temp_data$y_trans <- temp_data$pre_post_ratio + 1
+
+mdl_boxcox <- boxcox(y_trans ~ cross_region_label, data=temp_data, lambda = seq(-5, 10, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$y_trans^max_lambda
+
+m1 <- lm(y_trans ~ cross_region_label, data=temp_data)
+summary(m1)
+
+plot(m1)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+```{r}
+
+```
