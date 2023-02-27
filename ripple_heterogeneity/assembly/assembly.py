@@ -10,6 +10,7 @@ from scipy import stats
 import numpy as np
 import numpy.matlib
 from numba import jit
+import warnings
 
 __author__ = "Vítor Lopes dos Santos"
 __version__ = "2019.1"
@@ -206,8 +207,9 @@ def runPatterns(
         return
 
     if significance.nassemblies < 1:
-        print("WARNING !")
-        print("    no assembly detecded!")
+        
+        warnings.warn('no assembly detected')
+
         patterns = []
         zactmat = []
     else:
