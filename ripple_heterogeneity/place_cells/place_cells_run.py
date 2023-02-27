@@ -1,7 +1,7 @@
+import glob
+import pickle
 import warnings
 from ripple_heterogeneity.place_cells import place_cells_run, fields, maps
-
-warnings.filterwarnings("ignore")
 import pandas as pd
 import numpy as np
 from ripple_heterogeneity.utils import functions, loading
@@ -11,6 +11,10 @@ from scipy.ndimage import gaussian_filter
 from scipy.ndimage import rotate
 from skimage import measure
 from scipy.spatial.distance import pdist
+import os
+
+warnings.filterwarnings("ignore")
+
 
 def get_ratemap(ts, x, y, st, bin_width=3, smooth_sigma=1, add_nan_back=False):
 
@@ -374,4 +378,35 @@ def run(
     results["ts"] = tss
     results["st"] = st
 
+    return results
+
+
+def load_in_everything(save_path):
+
+    sessions = glob.glob(save_path + os.sep + "*.pkl")
+
+    results = pd.DataFrame()
+
+    for session in sessions:
+        with open(session, "rb") as f:
+            result = pickle.load(f)
+        if result is None:
+            continue
+        df1 = result["df"]
+
+        n_spikes = [len(st) for st in result["st"]]
+        df1["n_spikes"] = n_spikes
+
+        peak_rate = []
+        for map_ in result["ratemaps"]:
+            if len(map_) == 0:
+                peak_rate.append(0)
+            else:
+                peak_rate.append(map_.max())
+        if len(peak_rate) == 0:
+            df1["peak_rate"] = peak_rate
+        else:
+            df1["peak_rate"] = np.vstack(peak_rate)
+
+        results = results.append(df1, ignore_index=True)
     return results
