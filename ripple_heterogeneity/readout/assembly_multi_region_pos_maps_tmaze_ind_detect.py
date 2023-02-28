@@ -181,12 +181,12 @@ def run(
     putativeCellType="Pyr",  # type of cells to load (can be multi ex. Pyr|Int)
     weight_dt=0.05,  # dt in seconds for binning st to get weights for each assembly
     z_mat_dt=0.03,  # dt in seconds for binning st to get activation strength
-    verbose=False,  # print out progress
     env="Mwheel|Tmaze|tmaze",  # enviroment you want to look at (current should only be tmaze)
     s_binsize=3,  # spatial bin size
     smooth_sigma=3,  # smoothing sigma in cm
     smooth_window=10,  # smoothing window in cm
     speed_thres=4,  # speed threshold for ratemap in cm/sec
+    restrict_to_theta=False,  # restrict to theta epochs
 ):
 
     # locate and load linearization file to get key maze locations
@@ -208,6 +208,14 @@ def run(
     position_df = loading.load_animal_behavior(basepath)
 
     task_idx = locate_task_epoch(epoch_df, env, position_df)
+
+    # load theta epochs for later restriction when detecting assemblies
+    state_dict = loading.load_SleepState_states(basepath)
+    theta_epochs = nel.EpochArray(state_dict["THETA"])
+    if restrict_to_theta:
+        epoch = epochs[task_idx][theta_epochs]
+    else:
+        epoch = epochs[task_idx]
 
     # locate key points (TODO: fix the hard coded values)
     # FujisawaS/AYA10 and Mwheel data will have these reward zones
@@ -246,9 +254,12 @@ def run(
                 putativeCellType=putativeCellType,
                 weight_dt=weight_dt,
                 z_mat_dt=z_mat_dt,
-                epoch=epochs[task_idx],
+                epoch=epoch,
             )
+
             if assembly_act_ is None:
+                continue
+            if m1_.n_assemblies() == 0:
                 continue
 
             # make sure assembly members represent cross region label
@@ -285,7 +296,7 @@ def run(
         data=np.vstack(assembly_act),
         timestamps=abscissa_vals[0],
     )
-    
+
     if assembly_act.isempty:
         return None
 
@@ -371,10 +382,26 @@ def run(
             tsdframe, feature, nb_bins=n_extern, minmax=[ext_xmin, ext_xmax]
         )
 
-        # smooth
-        tc_ = tc_.rolling(
+        # circularly smooth tuning curves (to account for tmaze track)
+        # create padded series
+        tc_padded = pd.Series(
+            index=np.hstack(
+                [
+                    tc_.index.values - tc_.index.values.max(),
+                    tc_.index.values,
+                    tc_.index.values + tc_.index.values.max(),
+                ]
+            ),
+            data=np.vstack([tc_.values, tc_.values, tc_.values]).squeeze(),
+        )
+
+        # smooth padded series
+        tc_smoothed = tc_padded.rolling(
             window=smooth_window, win_type="gaussian", center=True, min_periods=1
         ).mean(std=smooth_sigma)
+
+        # extract smoothed series
+        tc_ = tc_smoothed[tc_.index]
 
         # store tuning curves
         tc = pd.concat([tc, tc_], axis=1, ignore_index=True)

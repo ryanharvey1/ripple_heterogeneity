@@ -879,9 +879,13 @@ def load_epoch(basepath):
     data = sio.loadmat(filename,simplify_cells=True)
 
     try:
-        return pd.DataFrame(data["session"]["epochs"])
+        epoch_df = pd.DataFrame(data["session"]["epochs"])
+        epoch_df["basepath"] = basepath
+        return epoch_df
     except:
-        return pd.DataFrame([data["session"]["epochs"]])
+        epoch_df = pd.DataFrame([data["session"]["epochs"]])
+        epoch_df["basepath"] = basepath
+        return epoch_df
 
 def load_trials(basepath):
     """
