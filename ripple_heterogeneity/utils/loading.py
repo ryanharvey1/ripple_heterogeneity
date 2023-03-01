@@ -425,7 +425,7 @@ def add_manual_events(df,added_ts):
 
     return df
 
-def load_ripples_events(basepath,return_epoch_array=False, manual_events=True):
+def load_ripples_events(basepath:str, return_epoch_array:bool=False, manual_events:bool=True):
     """
     load info from ripples.events.mat and store within df
 
