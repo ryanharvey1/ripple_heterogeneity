@@ -1,5 +1,5 @@
 from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
-from ripple_heterogeneity.assembly import assembly_reactivation
+from ripple_heterogeneity.assembly import assembly_reactivation,find_sig_assembly
 from ripple_heterogeneity.readout import assembly_multi_region
 import pandas as pd
 import numpy as np
@@ -21,7 +21,12 @@ def locate_task_epoch(epoch_df, env):
 
 
 def get_pos(basepath, epochs, epoch_df, task_idx):
+
     position_df = loading.load_animal_behavior(basepath)
+
+    if "linearized" not in position_df.columns:
+        return None, None, None, None
+    
     position_df_no_nan = position_df.query(
         "not x.isnull() & not y.isnull() & not linearized.isnull()"
     )
@@ -143,8 +148,30 @@ def run(
             )
             if assembly_act_ is None:
                 continue
+            if m1_.n_assemblies() == 0:
+                continue
 
-            assembly_act.append(assembly_act_.data)
+            # make sure assembly members represent cross region label
+            keep_assembly = []
+            _, _, keep_assembly_, is_member = find_sig_assembly.main(m1_.patterns)
+            for assembly_i in range(m1_.n_assemblies()):
+                member_idx = is_member[assembly_i, :]
+                cortex_check = (
+                    m1_.cell_metrics[member_idx]
+                    .brainRegion.str.contains(cross_region[1])
+                    .any()
+                )
+                ca1_check = (
+                    m1_.cell_metrics[member_idx]
+                    .brainRegion.str.contains(cross_region[0])
+                    .any()
+                )
+                ca1_layer_check = (
+                    m1_.cell_metrics[member_idx].deepSuperficial == deepSuperficial
+                ).any()
+                keep_assembly.append(cortex_check & ca1_check & ca1_layer_check)
+
+            assembly_act.append(assembly_act_.data[keep_assembly, :])
             abscissa_vals.append(assembly_act_.abscissa_vals)
             assem_labels.append(
                 [deepSuperficial + "_" + cross_region[1]] * assembly_act_.n_signals
