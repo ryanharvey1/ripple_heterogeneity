@@ -176,18 +176,17 @@ def locate_t_maze_key_locations(current_pos):
 
 def run(
     basepath,
-    regions="CA1|PFC|EC1|EC2|EC3|EC4|EC5|MEC",  # brain regions to load
-    cross_regions=(("CA1", "PFC"), ("CA1", "EC1|EC2|EC3|EC4|EC5|MEC")),
-    putativeCellType="Pyr",  # type of cells to load (can be multi ex. Pyr|Int)
-    weight_dt=0.05,  # dt in seconds for binning st to get weights for each assembly
-    z_mat_dt=0.03,  # dt in seconds for binning st to get activation strength
-    env="Mwheel|Tmaze|tmaze",  # enviroment you want to look at (current should only be tmaze)
-    s_binsize=3,  # spatial bin size
-    smooth_sigma=3,  # smoothing sigma in cm
-    smooth_window=10,  # smoothing window in cm
-    speed_thres=4,  # speed threshold for ratemap in cm/sec
-    restrict_to_theta=False,  # restrict to theta epochs
-):
+    cross_regions: tuple = (("CA1", "PFC"), ("CA1", "EC1|EC2|EC3|EC4|EC5|MEC")),
+    putativeCellType: str = "Pyr",  # type of cells to load (can be multi ex. Pyr|Int)
+    weight_dt: float = 0.05,  # dt in seconds for binning st to get weights for each assembly
+    z_mat_dt: float = 0.03,  # dt in seconds for binning st to get activation strength
+    env: str = "Mwheel|Tmaze|tmaze",  # enviroment you want to look at (current should only be tmaze)
+    s_binsize: int = 3,  # spatial bin size
+    smooth_sigma: int = 3,  # smoothing sigma in cm
+    smooth_window: int = 10,  # smoothing window in cm
+    speed_thres: int = 4,  # speed threshold for ratemap in cm/sec
+    restrict_to_theta: bool = False,  # restrict to theta epochs
+) -> dict:
 
     # locate and load linearization file to get key maze locations
     linearization_file = os.path.join(basepath, "linearization_nodes_edges.pkl")
