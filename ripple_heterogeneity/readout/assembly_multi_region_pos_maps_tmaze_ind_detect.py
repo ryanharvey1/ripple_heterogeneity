@@ -384,7 +384,7 @@ def run(
 
         # circularly smooth tuning curves (to account for tmaze track)
         # create padded series
-        tc_padded = pd.Series(
+        tc_padded = pd.DataFrame(
             index=np.hstack(
                 [
                     tc_.index.values - tc_.index.values.max(),
@@ -401,7 +401,7 @@ def run(
         ).mean(std=smooth_sigma)
 
         # extract smoothed series
-        tc_ = tc_smoothed[tc_.index]
+        tc_ = tc_smoothed.loc[tc_.index]
 
         # store tuning curves
         tc = pd.concat([tc, tc_], axis=1, ignore_index=True)
