@@ -287,7 +287,7 @@ def pairwise_spatial_corr(X, return_index=False, pairs=None):
         # Calling the crossCorr function
         x1 = X[s[0], :, :].flatten()
         x2 = X[s[1], :, :].flatten()
-        bad_idx = np.isnan(x1) | np.isnan(x1)
+        bad_idx = np.isnan(x1) | np.isnan(x2)
         spatial_corr.append(np.corrcoef(x1[~bad_idx], x2[~bad_idx])[0, 1])
 
     if return_index:
