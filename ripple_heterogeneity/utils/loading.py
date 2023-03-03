@@ -1,6 +1,6 @@
 from logging import exception
 import scipy.io as sio
-import sys,os
+import sys, os
 import pandas as pd
 import numpy as np
 import glob
@@ -8,7 +8,9 @@ import nelpy as nel
 import warnings
 from ripple_heterogeneity.utils import functions
 from warnings import simplefilter
+
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
+
 
 def loadXML(basepath):
     """
@@ -23,21 +25,34 @@ def loadXML(basepath):
     Returns:
         int, int, dict
 
-    by Guillaume Viejo    
+    by Guillaume Viejo
     """
     # check if saved file exists
     try:
         basename = os.path.basename(basepath)
-        filename = glob.glob(os.path.join(basepath,basename+'.xml'))[0]
+        filename = glob.glob(os.path.join(basepath, basename + ".xml"))[0]
     except:
         warnings.warn("xml file does not exist")
-        return 
+        return
 
     from xml.dom import minidom
+
     xmldoc = minidom.parse(filename)
-    nChannels = xmldoc.getElementsByTagName('acquisitionSystem')[0].getElementsByTagName('nChannels')[0].firstChild.data
-    fs_dat = xmldoc.getElementsByTagName('acquisitionSystem')[0].getElementsByTagName('samplingRate')[0].firstChild.data
-    fs = xmldoc.getElementsByTagName('fieldPotentials')[0].getElementsByTagName('lfpSamplingRate')[0].firstChild.data
+    nChannels = (
+        xmldoc.getElementsByTagName("acquisitionSystem")[0]
+        .getElementsByTagName("nChannels")[0]
+        .firstChild.data
+    )
+    fs_dat = (
+        xmldoc.getElementsByTagName("acquisitionSystem")[0]
+        .getElementsByTagName("samplingRate")[0]
+        .firstChild.data
+    )
+    fs = (
+        xmldoc.getElementsByTagName("fieldPotentials")[0]
+        .getElementsByTagName("lfpSamplingRate")[0]
+        .firstChild.data
+    )
 
     shank_to_channel = {}
     groups = (
@@ -46,66 +61,79 @@ def loadXML(basepath):
         .getElementsByTagName("group")
     )
     for i in range(len(groups)):
-        shank_to_channel[i] = [int(child.firstChild.data) for child in groups[i].getElementsByTagName('channel')]
+        shank_to_channel[i] = [
+            int(child.firstChild.data)
+            for child in groups[i].getElementsByTagName("channel")
+        ]
     return int(nChannels), int(fs), int(fs_dat), shank_to_channel
 
-def loadLFP(basepath, n_channels=90, channel=64, frequency=1250.0, precision='int16',ext='lfp'):
-    if ext == 'lfp':
+
+def loadLFP(
+    basepath, n_channels=90, channel=64, frequency=1250.0, precision="int16", ext="lfp"
+):
+    if ext == "lfp":
         try:
-            path = glob.glob(os.path.join(basepath,os.path.basename(basepath)+'*.lfp'))[0]
+            path = glob.glob(
+                os.path.join(basepath, os.path.basename(basepath) + "*.lfp")
+            )[0]
         except:
-            path = glob.glob(os.path.join(basepath,os.path.basename(basepath)+'*.eeg'))[0]
-    if ext == 'dat':
-            path = glob.glob(os.path.join(basepath,os.path.basename(basepath)+'*.dat'))[0]
+            path = glob.glob(
+                os.path.join(basepath, os.path.basename(basepath) + "*.eeg")
+            )[0]
+    if ext == "dat":
+        path = glob.glob(os.path.join(basepath, os.path.basename(basepath) + "*.dat"))[
+            0
+        ]
 
     # check if saved file exists
     if not os.path.exists(path):
         warnings.warn("file does not exist")
-        return 
+        return
 
     if type(channel) is not list:
-        f = open(path, 'rb')
+        f = open(path, "rb")
         startoffile = f.seek(0, 0)
         endoffile = f.seek(0, 2)
         bytes_size = 2
-        n_samples = int((endoffile-startoffile)/n_channels/bytes_size)
-        duration = n_samples/frequency
-        interval = 1/frequency
+        n_samples = int((endoffile - startoffile) / n_channels / bytes_size)
+        duration = n_samples / frequency
+        interval = 1 / frequency
         f.close()
-        with open(path, 'rb') as f:
-            data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:,channel]
-            timestep = np.arange(0, len(data))/frequency
+        with open(path, "rb") as f:
+            data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:, channel]
+            timestep = np.arange(0, len(data)) / frequency
             # check if lfp time stamps exist
-            lfp_ts_path = os.path.join(os.path.dirname(os.path.abspath(path)),'lfp_ts.npy')
+            lfp_ts_path = os.path.join(
+                os.path.dirname(os.path.abspath(path)), "lfp_ts.npy"
+            )
             if os.path.exists(lfp_ts_path):
                 timestep = np.load(lfp_ts_path).reshape(-1)
 
-            return data, timestep # nts.Tsd(timestep, data, time_units = 's')
-        
+            return data, timestep  # nts.Tsd(timestep, data, time_units = 's')
+
     elif type(channel) is list:
-        f = open(path, 'rb')
+        f = open(path, "rb")
         startoffile = f.seek(0, 0)
         endoffile = f.seek(0, 2)
         bytes_size = 2
 
-        n_samples = int((endoffile-startoffile)/n_channels/bytes_size)
-        duration = n_samples/frequency
+        n_samples = int((endoffile - startoffile) / n_channels / bytes_size)
+        duration = n_samples / frequency
         f.close()
-        with open(path, 'rb') as f:
-            data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:,channel]
-            timestep = np.arange(0, len(data))/frequency
+        with open(path, "rb") as f:
+            data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:, channel]
+            timestep = np.arange(0, len(data)) / frequency
             # check if lfp time stamps exist
-            lfp_ts_path = os.path.join(os.path.dirname(os.path.abspath(path)),'lfp_ts.npy')
+            lfp_ts_path = os.path.join(
+                os.path.dirname(os.path.abspath(path)), "lfp_ts.npy"
+            )
             if os.path.exists(lfp_ts_path):
                 timestep = np.load(lfp_ts_path).reshape(-1)
-            return data,timestep # nts.TsdFrame(timestep, data, time_units = 's')
+            return data, timestep  # nts.TsdFrame(timestep, data, time_units = 's')
+
 
 class LoadLfp(object):
-    def __init__(
-        self,
-        basepath,
-        channels
-    ):
+    def __init__(self, basepath, channels):
         self.basepath = basepath
         self.channels = channels
         self.get_xml_data()
@@ -133,25 +161,27 @@ class LoadLfp(object):
             support=nel.EpochArray(np.array([min(timestep), max(timestep)])),
         )
 
-def load_position(basepath,fs=39.0625):
+
+def load_position(basepath, fs=39.0625):
     if not os.path.exists(basepath):
-        print("The path "+basepath+" doesn't exist; Exiting ...")
+        print("The path " + basepath + " doesn't exist; Exiting ...")
         sys.exit()
     listdir = os.listdir(basepath)
-    whlfiles = [f for f in listdir if f.endswith('.whl')]
+    whlfiles = [f for f in listdir if f.endswith(".whl")]
     if not len(whlfiles):
         print("Folder contains no whl files; Exiting ...")
         sys.exit()
     new_path = os.path.join(basepath, whlfiles[0])
-    df = pd.read_csv(new_path,delimiter="\t",header=0,names=['x1','y1','x2','y2'])
-    df[df==-1] = np.nan
-    return df,fs
+    df = pd.read_csv(new_path, delimiter="\t", header=0, names=["x1", "y1", "x2", "y2"])
+    df[df == -1] = np.nan
+    return df, fs
+
 
 def load_all_cell_metrics(basepaths):
     """
     load cell metrics from multiple sessions
 
-    Input: 
+    Input:
             basepaths: list of basepths, can be pandas column
     Output:
             cell_metrics: concatenated pandas df with metrics
@@ -162,47 +192,62 @@ def load_all_cell_metrics(basepaths):
     from joblib import Parallel, delayed
 
     # to speed up, use parallel
-    num_cores = multiprocessing.cpu_count()   
+    num_cores = multiprocessing.cpu_count()
     cell_metrics = Parallel(n_jobs=num_cores)(
-            delayed(load_cell_metrics)(basepath,True) for basepath in basepaths
-        )
+        delayed(load_cell_metrics)(basepath, True) for basepath in basepaths
+    )
 
-    return pd.concat(cell_metrics,ignore_index=True)
+    return pd.concat(cell_metrics, ignore_index=True)
 
 
-def load_cell_metrics(basepath:str,only_metrics:bool=False)-> tuple:
-    """ 
+def load_cell_metrics(basepath: str, only_metrics: bool = False) -> tuple:
+    """
     loader of cell-explorer cell_metrics.cellinfo.mat
 
     Inputs: basepath: path to folder with cell_metrics.cellinfo.mat
     outputs: df: data frame of single unit features
     data_: dict with data that does not fit nicely into a dataframe (waveforms, acgs, epochs, etc.)
-    
+
     See https://cellexplorer.org/datastructure/standard-cell-metrics/ for details
 
     TODO: extract all fields from cell_metrics.cellinfo. There are more items that can be extracted
 
     - Ryan H
     """
+
     def extract_epochs(data):
-        startTime = [ep['startTime'][0][0][0][0] for ep in data['cell_metrics']['general'][0][0]['epochs'][0][0][0]]
-        stopTime = [ep['stopTime'][0][0][0][0] for ep in data['cell_metrics']['general'][0][0]['epochs'][0][0][0]]
-        name = [ep['name'][0][0][0] for ep in data['cell_metrics']['general'][0][0]['epochs'][0][0][0]]
+        startTime = [
+            ep["startTime"][0][0][0][0]
+            for ep in data["cell_metrics"]["general"][0][0]["epochs"][0][0][0]
+        ]
+        stopTime = [
+            ep["stopTime"][0][0][0][0]
+            for ep in data["cell_metrics"]["general"][0][0]["epochs"][0][0][0]
+        ]
+        name = [
+            ep["name"][0][0][0]
+            for ep in data["cell_metrics"]["general"][0][0]["epochs"][0][0][0]
+        ]
 
         epochs = pd.DataFrame()
-        epochs['name'] = name
-        epochs['startTime'] = startTime
-        epochs['stopTime'] = stopTime
+        epochs["name"] = name
+        epochs["startTime"] = startTime
+        epochs["stopTime"] = stopTime
         return epochs
 
     def extract_general(data):
         # extract fr per unit with lag zero to ripple
         try:
-            ripple_fr = [ev.T[0] for ev in data['cell_metrics']['events'][0][0]['ripples'][0][0][0]]
+            ripple_fr = [
+                ev.T[0]
+                for ev in data["cell_metrics"]["events"][0][0]["ripples"][0][0][0]
+            ]
         except:
             ripple_fr = []
         # extract spikes times
-        spikes = [spk.T[0] for spk in data['cell_metrics']['spikes'][0][0]['times'][0][0][0]]
+        spikes = [
+            spk.T[0] for spk in data["cell_metrics"]["spikes"][0][0]["times"][0][0][0]
+        ]
         # extract epochs
         try:
             epochs = extract_epochs(data)
@@ -210,38 +255,46 @@ def load_cell_metrics(basepath:str,only_metrics:bool=False)-> tuple:
             epochs = []
         # extract avg waveforms
         try:
-            waveforms = np.vstack(data['cell_metrics']['waveforms'][0][0]["filt"][0][0][0])
+            waveforms = np.vstack(
+                data["cell_metrics"]["waveforms"][0][0]["filt"][0][0][0]
+            )
         except:
             try:
-                waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0][0][0][0]]
+                waveforms = [
+                    w.T for w in data["cell_metrics"]["waveforms"][0][0][0][0][0][0]
+                ]
             except:
-                waveforms = [w.T for w in data['cell_metrics']['waveforms'][0][0][0]]
+                waveforms = [w.T for w in data["cell_metrics"]["waveforms"][0][0][0]]
         # extract chanCoords
         try:
-            chanCoords_x = data['cell_metrics']['general'][0][0]['chanCoords'][0][0][0][0]['x'].T[0]
-            chanCoords_y = data['cell_metrics']['general'][0][0]['chanCoords'][0][0][0][0]['y'].T[0]
+            chanCoords_x = data["cell_metrics"]["general"][0][0]["chanCoords"][0][0][0][
+                0
+            ]["x"].T[0]
+            chanCoords_y = data["cell_metrics"]["general"][0][0]["chanCoords"][0][0][0][
+                0
+            ]["y"].T[0]
         except:
             chanCoords_x = []
             chanCoords_y = []
 
-        # add to dictionary 
+        # add to dictionary
         data_ = {
-            "acg_wide": data['cell_metrics']['acg'][0][0]['wide'][0][0],
-            "acg_narrow": data['cell_metrics']['acg'][0][0]['narrow'][0][0],
-            "acg_log10": data['cell_metrics']['acg'][0][0]['log10'][0][0],
+            "acg_wide": data["cell_metrics"]["acg"][0][0]["wide"][0][0],
+            "acg_narrow": data["cell_metrics"]["acg"][0][0]["narrow"][0][0],
+            "acg_log10": data["cell_metrics"]["acg"][0][0]["log10"][0][0],
             "ripple_fr": ripple_fr,
             "chanCoords_x": chanCoords_x,
             "chanCoords_y": chanCoords_y,
             "epochs": epochs,
             "spikes": spikes,
-            "waveforms": waveforms
-            }
-        return data_ 
+            "waveforms": waveforms,
+        }
+        return data_
 
     def un_nest_df(df):
         # Un-nest some strings are nested within brackets (a better solution exists...)
         # locate and iterate objects in df
-        for item in df.keys()[df.dtypes =="object"]:
+        for item in df.keys()[df.dtypes == "object"]:
             # if you can get the size of the first item with [0], it is nested
             # otherwise it fails and is not nested
             try:
@@ -252,12 +305,12 @@ def load_cell_metrics(basepath:str,only_metrics:bool=False)-> tuple:
                 continue
         return df
 
-    filename = glob.glob(os.path.join(basepath,'*.cell_metrics.cellinfo.mat'))[0]
+    filename = glob.glob(os.path.join(basepath, "*.cell_metrics.cellinfo.mat"))[0]
 
     # check if saved file exists
     if not os.path.exists(filename):
         warnings.warn("file does not exist")
-        return 
+        return
 
     # load cell_metrics file
     data = sio.loadmat(filename)
@@ -265,69 +318,77 @@ def load_cell_metrics(basepath:str,only_metrics:bool=False)-> tuple:
     # construct data frame with features per neuron
     df = pd.DataFrame()
     # count units
-    n_cells = data['cell_metrics']['UID'][0][0][0].size
-    dt = data['cell_metrics'].dtype
+    n_cells = data["cell_metrics"]["UID"][0][0][0].size
+    dt = data["cell_metrics"].dtype
     for dn in dt.names:
         # check if var has the right n of units and is a vector
         try:
-            if ((data['cell_metrics'][dn][0][0][0][0].size == 1) &
-                    (data['cell_metrics'][dn][0][0][0].size == n_cells)):
-                    
-                df[dn] = data['cell_metrics'][dn][0][0][0]
+            if (data["cell_metrics"][dn][0][0][0][0].size == 1) & (
+                data["cell_metrics"][dn][0][0][0].size == n_cells
+            ):
+
+                df[dn] = data["cell_metrics"][dn][0][0][0]
         except:
             continue
-        
-    # add column for bad label tag 
-    # have dedicated var as this tag is important   
+
+    # add column for bad label tag
+    # have dedicated var as this tag is important
     try:
-        df['bad_unit'] = [False]*df.shape[0]
-        bad_units = data['cell_metrics']['tags'][0][0]['Bad'][0][0][0]
-        df['bad_unit'] = [False]*df.shape[0]
+        df["bad_unit"] = [False] * df.shape[0]
+        bad_units = data["cell_metrics"]["tags"][0][0]["Bad"][0][0][0]
+        df["bad_unit"] = [False] * df.shape[0]
         for uid in bad_units:
-            df.loc[df.UID == uid,'bad_unit'] = True
+            df.loc[df.UID == uid, "bad_unit"] = True
     except:
         pass
 
     # load in tag
     try:
-        dt = data['cell_metrics']['tags'][0][0].dtype
+        dt = data["cell_metrics"]["tags"][0][0].dtype
         if len(dt) > 0:
             # iter through each tag
             for dn in dt.names:
                 # set up column for tag
-                df['tags_'+dn] = [False]*df.shape[0]
-                # iter through uid 
-                for uid in data['cell_metrics']['tags'][0][0][dn][0][0][0]:
-                    df.loc[df.UID == uid,'tags_'+dn] = True 
+                df["tags_" + dn] = [False] * df.shape[0]
+                # iter through uid
+                for uid in data["cell_metrics"]["tags"][0][0][dn][0][0][0]:
+                    df.loc[df.UID == uid, "tags_" + dn] = True
     except:
         pass
-    
-    # add data from general metrics        
-    df['basename'] = data['cell_metrics']['general'][0][0]['basename'][0][0][0]
-    df['basepath'] = basepath
-    df['sex'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['sex'][0][0][0]
-    df['species'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['species'][0][0][0]
-    df['strain'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['strain'][0][0][0]
+
+    # add data from general metrics
+    df["basename"] = data["cell_metrics"]["general"][0][0]["basename"][0][0][0]
+    df["basepath"] = basepath
+    df["sex"] = data["cell_metrics"]["general"][0][0]["animal"][0][0]["sex"][0][0][0]
+    df["species"] = data["cell_metrics"]["general"][0][0]["animal"][0][0]["species"][0][
+        0
+    ][0]
+    df["strain"] = data["cell_metrics"]["general"][0][0]["animal"][0][0]["strain"][0][
+        0
+    ][0]
     try:
-        df['geneticLine'] = data['cell_metrics']['general'][0][0]['animal'][0][0]['geneticLine'][0][0][0]
+        df["geneticLine"] = data["cell_metrics"]["general"][0][0]["animal"][0][0][
+            "geneticLine"
+        ][0][0][0]
     except:
         pass
-    df['cellCount'] = data['cell_metrics']['general'][0][0]['cellCount'][0][0][0][0]
+    df["cellCount"] = data["cell_metrics"]["general"][0][0]["cellCount"][0][0][0][0]
 
     # fix nesting issue for strings
     df = un_nest_df(df)
 
     # convert nans within tags columns to false
-    cols = df.filter(regex='tags_').columns
-    df[cols] = df[cols].replace({np.nan:False})
-    
+    cols = df.filter(regex="tags_").columns
+    df[cols] = df[cols].replace({np.nan: False})
+
     if only_metrics:
         return df
 
-    # extract other general data and put into dict    
+    # extract other general data and put into dict
     data_ = extract_general(data)
 
-    return df,data_
+    return df, data_
+
 
 def load_SWRunitMetrics(basepath):
     """
@@ -342,9 +403,9 @@ def load_SWRunitMetrics(basepath):
         epoch: behavioral epoch label
     """
 
-    def extract_swr_epoch_data(data,epoch):
+    def extract_swr_epoch_data(data, epoch):
         # get var names
-        dt = data['SWRunitMetrics'][epoch][0][0].dtype
+        dt = data["SWRunitMetrics"][epoch][0][0].dtype
 
         df2 = pd.DataFrame()
 
@@ -352,87 +413,90 @@ def load_SWRunitMetrics(basepath):
         # there might be other fields within here like the epoch timestamps
         # skip those by returning empty df
         try:
-            n_cells = data['SWRunitMetrics'][epoch][0][0][0]['particip'][0].shape[0]
+            n_cells = data["SWRunitMetrics"][epoch][0][0][0]["particip"][0].shape[0]
         except:
             return df2
 
         for dn in dt.names:
-            if (
-                (data['SWRunitMetrics'][epoch][0][0][0][dn][0].shape[1] == 1) &
-                (data['SWRunitMetrics'][epoch][0][0][0][dn][0].shape[0] == n_cells)
-                ):
-                df2[dn] = data['SWRunitMetrics'][epoch][0][0][0][dn][0].T[0]
-        df2['epoch'] = epoch
+            if (data["SWRunitMetrics"][epoch][0][0][0][dn][0].shape[1] == 1) & (
+                data["SWRunitMetrics"][epoch][0][0][0][dn][0].shape[0] == n_cells
+            ):
+                df2[dn] = data["SWRunitMetrics"][epoch][0][0][0][dn][0].T[0]
+        df2["epoch"] = epoch
         return df2
 
     try:
-        filename = glob.glob(os.path.join(basepath,'*.SWRunitMetrics.mat'))[0]
+        filename = glob.glob(os.path.join(basepath, "*.SWRunitMetrics.mat"))[0]
     except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
-        
+
     # load file
     data = sio.loadmat(filename)
 
     df2 = pd.DataFrame()
     # loop through each available epoch and pull out contents
-    for epoch in data['SWRunitMetrics'].dtype.names:
-        if data['SWRunitMetrics'][epoch][0][0].size>0: # not empty
-            
-            # call content extractor 
-            df_ = extract_swr_epoch_data(data,epoch)
+    for epoch in data["SWRunitMetrics"].dtype.names:
+        if data["SWRunitMetrics"][epoch][0][0].size > 0:  # not empty
+
+            # call content extractor
+            df_ = extract_swr_epoch_data(data, epoch)
 
             # append conents to overall data frame
-            if df_.size>0:
-                df2 = pd.concat([df2,df_],ignore_index=True)
+            if df_.size > 0:
+                df2 = pd.concat([df2, df_], ignore_index=True)
 
     return df2
 
-def add_manual_events(df,added_ts):
+
+def add_manual_events(df, added_ts):
     """
-    Add new rows to a dataframe representing manual events (from Neuroscope2) 
+    Add new rows to a dataframe representing manual events (from Neuroscope2)
     with durations equal to the mean duration of the existing events.
 
     Parameters:
     df (pandas DataFrame): The input dataframe, with at least two columns called
         'start' and 'stop', representing the start and stop times of the events
 
-    added_ts (list): A list of timestamps representing the peaks of the new 
+    added_ts (list): A list of timestamps representing the peaks of the new
         events to be added to the dataframe.
 
     Returns:
     pandas DataFrame: The modified dataframe with the new rows added and sorted by the 'peaks' column.
     """
     # Calculate the mean duration of the existing events
-    mean_duration = (df['stop'] - df['start']).mean()
+    mean_duration = (df["stop"] - df["start"]).mean()
 
     # Create a new dataframe with a 'peaks' column equal to the added_ts values
     df_added = pd.DataFrame()
-    df_added['peaks'] = added_ts
+    df_added["peaks"] = added_ts
 
     # Calculate the start and stop times of the new events based on the mean duration
-    df_added['start'] = added_ts - mean_duration / 2
-    df_added['stop'] = added_ts + mean_duration / 2
+    df_added["start"] = added_ts - mean_duration / 2
+    df_added["stop"] = added_ts + mean_duration / 2
 
     # Calculate the duration of the new events as the mean duration
-    df_added['duration'] = df_added.stop.values - df_added.start.values
+    df_added["duration"] = df_added.stop.values - df_added.start.values
 
     # Append the new events to the original dataframe
     df = pd.concat([df, df_added], ignore_index=True)
 
     # Sort the dataframe by the 'peaks' column
-    df.sort_values(by=['peaks'], ignore_index=True, inplace=True)
+    df.sort_values(by=["peaks"], ignore_index=True, inplace=True)
 
     return df
 
-def load_ripples_events(basepath:str, return_epoch_array:bool=False, manual_events:bool=True):
+
+def load_ripples_events(
+    basepath: str, return_epoch_array: bool = False, manual_events: bool = True
+):
     """
     load info from ripples.events.mat and store within df
 
     args:
         basepath: path to your session where ripples.events.mat is
         return_epoch_array: if you want the output in an EpochArray
-        manual_events: add manually added events from Neuroscope2 
+        manual_events: add manually added events from Neuroscope2
             (interval will be calculated from mean event duration)
 
     returns pandas dataframe with the following fields
@@ -443,18 +507,18 @@ def load_ripples_events(basepath:str, return_epoch_array:bool=False, manual_even
         duration: ripple duration
         frequency: insta frequency at peak
         detectorName: the name of ripple detector used
-        event_spk_thres: 1 or 0 for if a mua thres was used 
+        event_spk_thres: 1 or 0 for if a mua thres was used
         basepath: path name
         basename: session id
         animal: animal id *
 
-        * Note that basepath/basename/animal relies on specific folder 
+        * Note that basepath/basename/animal relies on specific folder
         structure and may be incorrect for some data structures
     """
 
     # locate .mat file
     try:
-        filename = glob.glob(basepath+os.sep+'*ripples.events.mat')[0]
+        filename = glob.glob(basepath + os.sep + "*ripples.events.mat")[0]
     except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
@@ -462,48 +526,63 @@ def load_ripples_events(basepath:str, return_epoch_array:bool=False, manual_even
     # load matfile
     data = sio.loadmat(filename)
 
-    # make data frame of known fields 
+    # make data frame of known fields
     df = pd.DataFrame()
     try:
-        df['start'] = data['ripples']['timestamps'][0][0][:,0]
-        df['stop'] = data['ripples']['timestamps'][0][0][:,1]
+        df["start"] = data["ripples"]["timestamps"][0][0][:, 0]
+        df["stop"] = data["ripples"]["timestamps"][0][0][:, 1]
     except:
-        df['start'] = data['ripples']['times'][0][0][:,0]
-        df['stop'] = data['ripples']['times'][0][0][:,1]
+        df["start"] = data["ripples"]["times"][0][0][:, 0]
+        df["stop"] = data["ripples"]["times"][0][0][:, 1]
 
-    for name in ['peaks','amplitude','duration','frequency','peakNormedPower']:
+    for name in ["peaks", "amplitude", "duration", "frequency", "peakNormedPower"]:
         try:
-            df[name] = data['ripples'][name][0][0]
+            df[name] = data["ripples"][name][0][0]
         except:
             df[name] = np.nan
 
     if df.duration.isna().all():
-        df['duration'] = df.stop - df.start
+        df["duration"] = df.stop - df.start
 
     try:
-        df['detectorName'] = data['ripples']['detectorinfo'][0][0]['detectorname'][0][0][0]
+        df["detectorName"] = data["ripples"]["detectorinfo"][0][0]["detectorname"][0][
+            0
+        ][0]
     except:
-        df['detectorName'] = data['ripples']['detectorName'][0][0][0]
+        df["detectorName"] = data["ripples"]["detectorName"][0][0][0]
 
     # find ripple channel (this can be in several places depending on the file)
     try:
-        df['ripple_channel'] = data['ripples']['detectorinfo'][0][0]['detectionparms'][0][0]['Channels'][0][0][0][0]
+        df["ripple_channel"] = data["ripples"]["detectorinfo"][0][0]["detectionparms"][
+            0
+        ][0]["Channels"][0][0][0][0]
     except:
         try:
-            df['ripple_channel'] = data['ripples']['detectorParams'][0][0]['channel'][0][0][0][0]
+            df["ripple_channel"] = data["ripples"]["detectorParams"][0][0]["channel"][
+                0
+            ][0][0][0]
         except:
             try:
-                df['ripple_channel'] = data['ripples']['detectorinfo'][0][0]['detectionparms'][0][0]['channel'][0][0][0][0]
+                df["ripple_channel"] = data["ripples"]["detectorinfo"][0][0][
+                    "detectionparms"
+                ][0][0]["channel"][0][0][0][0]
             except:
                 try:
-                    df['ripple_channel'] = data['ripples']['detectorinfo'][0][0]['detectionparms'][0][0]['ripple_channel'][0][0][0][0]
+                    df["ripple_channel"] = data["ripples"]["detectorinfo"][0][0][
+                        "detectionparms"
+                    ][0][0]["ripple_channel"][0][0][0][0]
                 except:
-                    df['ripple_channel'] = data['ripples']['detectorinfo'][0][0]['detectionchannel1'][0][0][0][0]
-
+                    df["ripple_channel"] = data["ripples"]["detectorinfo"][0][0][
+                        "detectionchannel1"
+                    ][0][0][0][0]
 
     # remove flagged ripples, if exist
     try:
-        df.drop(labels=np.array(data['ripples']["flagged"][0][0]).T[0] - 1, axis=0, inplace=True)
+        df.drop(
+            labels=np.array(data["ripples"]["flagged"][0][0]).T[0] - 1,
+            axis=0,
+            inplace=True,
+        )
         df.reset_index(inplace=True)
     except:
         pass
@@ -511,45 +590,49 @@ def load_ripples_events(basepath:str, return_epoch_array:bool=False, manual_even
     # adding manual events
     if manual_events:
         try:
-            df = add_manual_events(df,data['ripples']["added"][0][0].T[0])
+            df = add_manual_events(df, data["ripples"]["added"][0][0].T[0])
         except:
             pass
 
     # adding if ripples were restricted by spikes
-    dt = data['ripples'].dtype
+    dt = data["ripples"].dtype
     if "eventSpikingParameters" in dt.names:
-        df['event_spk_thres'] = 1
+        df["event_spk_thres"] = 1
     else:
-        df['event_spk_thres'] = 0
+        df["event_spk_thres"] = 0
 
     # get basename and animal
     normalized_path = os.path.normpath(filename)
     path_components = normalized_path.split(os.sep)
-    df['basepath'] = basepath  
-    df['basename'] = path_components[-2]
-    df['animal'] = path_components[-3]
+    df["basepath"] = basepath
+    df["basename"] = path_components[-2]
+    df["animal"] = path_components[-3]
 
     if return_epoch_array:
         return nel.EpochArray([np.array([df.start, df.stop]).T], label="ripples")
 
     return df
 
+
 def load_theta_cycles(basepath):
     """
     load theta cycles calculated from auto_theta_cycles.m
     """
-    filename = glob.glob(os.path.join(basepath,'*.thetacycles.events.mat'))[0]
-    data = sio.loadmat(filename,simplify_cells=True)
+    filename = glob.glob(os.path.join(basepath, "*.thetacycles.events.mat"))[0]
+    data = sio.loadmat(filename, simplify_cells=True)
     df = pd.DataFrame()
-    df['start'] = data["thetacycles"]["timestamps"][:,0]
-    df['stop'] = data["thetacycles"]["timestamps"][:,1]
-    df['duration'] = data["thetacycles"]["duration"]
-    df['center'] = data["thetacycles"]["center"]
-    df['trough'] = data["thetacycles"]["peaks"]
-    df['theta_channel'] = data["thetacycles"]["detectorinfo"]["theta_channel"]
+    df["start"] = data["thetacycles"]["timestamps"][:, 0]
+    df["stop"] = data["thetacycles"]["timestamps"][:, 1]
+    df["duration"] = data["thetacycles"]["duration"]
+    df["center"] = data["thetacycles"]["center"]
+    df["trough"] = data["thetacycles"]["peaks"]
+    df["theta_channel"] = data["thetacycles"]["detectorinfo"]["theta_channel"]
     return df
 
-def load_barrage_events(basepath,return_epoch_array=False,restrict_to_nrem=True,file_name=None):
+
+def load_barrage_events(
+    basepath, return_epoch_array=False, restrict_to_nrem=True, file_name=None
+):
     """
     load info from barrage.events.mat and store within df
 
@@ -565,16 +648,20 @@ def load_barrage_events(basepath,return_epoch_array=False,restrict_to_nrem=True,
         basename: session id
         animal: animal id *
 
-        * Note that basepath/basename/animal relies on specific folder 
+        * Note that basepath/basename/animal relies on specific folder
         structure and may be incorrect for some data structures
     """
 
     # locate .mat file
     try:
         if file_name is not None:
-            filename = glob.glob(basepath+os.sep+'Barrage_Files' + os.sep + file_name +'*.mat')[0]
+            filename = glob.glob(
+                basepath + os.sep + "Barrage_Files" + os.sep + file_name + "*.mat"
+            )[0]
         else:
-            filename = glob.glob(basepath+os.sep+'Barrage_Files' + os.sep +'HSE.mat')[0]
+            filename = glob.glob(
+                basepath + os.sep + "Barrage_Files" + os.sep + "HSE.mat"
+            )[0]
     except:
         warnings.warn("file does not exist")
         if return_epoch_array:
@@ -584,36 +671,37 @@ def load_barrage_events(basepath,return_epoch_array=False,restrict_to_nrem=True,
     # load matfile
     data = sio.loadmat(filename)
 
-    # make data frame of known fields 
+    # make data frame of known fields
     df = pd.DataFrame()
-    df['start'] = data['HSE']['timestamps'][0][0][:,0]
-    df['stop'] = data['HSE']['timestamps'][0][0][:,1]
-    df['peaks'] = data['HSE']['peaks'][0][0]
+    df["start"] = data["HSE"]["timestamps"][0][0][:, 0]
+    df["stop"] = data["HSE"]["timestamps"][0][0][:, 1]
+    df["peaks"] = data["HSE"]["peaks"][0][0]
     try:
-        df['amplitude'] = data['HSE']['amplitudes'][0][0]
+        df["amplitude"] = data["HSE"]["amplitudes"][0][0]
     except:
-        df['amplitude'] = np.nan
+        df["amplitude"] = np.nan
     try:
-        df['duration'] = data['HSE']['duration'][0][0]
+        df["duration"] = data["HSE"]["duration"][0][0]
     except:
-        df['duration'] = df['stop'] - df['start']
+        df["duration"] = df["stop"] - df["start"]
 
     # get basename and animal
     normalized_path = os.path.normpath(filename)
     path_components = normalized_path.split(os.sep)
-    df['basepath'] = basepath  
-    df['basename'] = path_components[-2]
-    df['animal'] = path_components[-3]
+    df["basepath"] = basepath
+    df["basename"] = path_components[-2]
+    df["animal"] = path_components[-3]
 
-    df = df.loc[np.array(data['HSE']['keep'][0][0]).T[0] - 1].reset_index(drop=True)
+    df = df.loc[np.array(data["HSE"]["keep"][0][0]).T[0] - 1].reset_index(drop=True)
 
     if restrict_to_nrem:
-        df = df.loc[np.array(data['HSE']['NREM'][0][0]).T[0] - 1].reset_index(drop=True)
+        df = df.loc[np.array(data["HSE"]["NREM"][0][0]).T[0] - 1].reset_index(drop=True)
 
     if return_epoch_array:
         return nel.EpochArray([np.array([df.start, df.stop]).T], label="barrage")
 
     return df
+
 
 def load_ied_events(basepath, return_epoch_array=False):
     """
@@ -650,6 +738,7 @@ def load_ied_events(basepath, return_epoch_array=False):
         return nel.EpochArray([np.array([df.start, df.stop]).T], label="ied")
 
     return df
+
 
 def load_dentate_spike(basepath):
     """
@@ -693,9 +782,9 @@ def load_dentate_spike(basepath):
             continue
         # load matfile
         filename = filename[0]
-        data = sio.loadmat(filename,simplify_cells=True)
+        data = sio.loadmat(filename, simplify_cells=True)
         # pull out data
-        df = pd.concat([df,extract_data(s_type, data)], ignore_index=True)
+        df = pd.concat([df, extract_data(s_type, data)], ignore_index=True)
 
     if df.shape[0] == 0:
         return df
@@ -708,66 +797,84 @@ def load_dentate_spike(basepath):
     df["animal"] = path_components[-3]
 
     return df
-    
+
+
 def load_theta_rem_shift(basepath):
     """
     load_theta_rem_shift: loads matlab structure from get_rem_shift.m
     """
     try:
-        filename = glob.glob(basepath+os.sep+'*theta_rem_shift.mat')[0]
+        filename = glob.glob(basepath + os.sep + "*theta_rem_shift.mat")[0]
     except:
         warnings.warn("file does not exist")
-        return pd.DataFrame(),np.nan
+        return pd.DataFrame(), np.nan
 
     data = sio.loadmat(filename)
 
     df = pd.DataFrame()
 
-    df["UID"] = data['rem_shift_data']['UID'][0][0][0]
-    df["circ_dist"] = data['rem_shift_data']['circ_dist'][0][0][0]
-    df["rem_shift"] = data['rem_shift_data']['rem_shift'][0][0][0]
-    df["non_rem_shift"] = data['rem_shift_data']['non_rem_shift'][0][0][0]
-    
+    df["UID"] = data["rem_shift_data"]["UID"][0][0][0]
+    df["circ_dist"] = data["rem_shift_data"]["circ_dist"][0][0][0]
+    df["rem_shift"] = data["rem_shift_data"]["rem_shift"][0][0][0]
+    df["non_rem_shift"] = data["rem_shift_data"]["non_rem_shift"][0][0][0]
+
     # rem metrics
-    df["m_rem"] = data['rem_shift_data']['PhaseLockingData_rem'][0][0]['phasestats'][0][0]['m'][0][0][0]
-    df["r_rem"] = data['rem_shift_data']['PhaseLockingData_rem'][0][0]['phasestats'][0][0]['r'][0][0][0]
-    df["k_rem"] = data['rem_shift_data']['PhaseLockingData_rem'][0][0]['phasestats'][0][0]['k'][0][0][0]
-    df["p_rem"] = data['rem_shift_data']['PhaseLockingData_rem'][0][0]['phasestats'][0][0]['p'][0][0][0]
-    df["mode_rem"] = data['rem_shift_data']['PhaseLockingData_rem'][0][0]['phasestats'][0][0]['mode'][0][0][0]
-    
+    df["m_rem"] = data["rem_shift_data"]["PhaseLockingData_rem"][0][0]["phasestats"][0][
+        0
+    ]["m"][0][0][0]
+    df["r_rem"] = data["rem_shift_data"]["PhaseLockingData_rem"][0][0]["phasestats"][0][
+        0
+    ]["r"][0][0][0]
+    df["k_rem"] = data["rem_shift_data"]["PhaseLockingData_rem"][0][0]["phasestats"][0][
+        0
+    ]["k"][0][0][0]
+    df["p_rem"] = data["rem_shift_data"]["PhaseLockingData_rem"][0][0]["phasestats"][0][
+        0
+    ]["p"][0][0][0]
+    df["mode_rem"] = data["rem_shift_data"]["PhaseLockingData_rem"][0][0]["phasestats"][
+        0
+    ][0]["mode"][0][0][0]
+
     # wake metrics
-    df["m_wake"] = data['rem_shift_data']['PhaseLockingData_wake'][0][0]['phasestats'][0][0]['m'][0][0][0]
-    df["r_wake"] = data['rem_shift_data']['PhaseLockingData_wake'][0][0]['phasestats'][0][0]['r'][0][0][0]
-    df["k_wake"] = data['rem_shift_data']['PhaseLockingData_wake'][0][0]['phasestats'][0][0]['k'][0][0][0]
-    df["p_wake"] = data['rem_shift_data']['PhaseLockingData_wake'][0][0]['phasestats'][0][0]['p'][0][0][0]
-    df["mode_wake"] = data['rem_shift_data']['PhaseLockingData_wake'][0][0]['phasestats'][0][0]['mode'][0][0][0]
+    df["m_wake"] = data["rem_shift_data"]["PhaseLockingData_wake"][0][0]["phasestats"][
+        0
+    ][0]["m"][0][0][0]
+    df["r_wake"] = data["rem_shift_data"]["PhaseLockingData_wake"][0][0]["phasestats"][
+        0
+    ][0]["r"][0][0][0]
+    df["k_wake"] = data["rem_shift_data"]["PhaseLockingData_wake"][0][0]["phasestats"][
+        0
+    ][0]["k"][0][0][0]
+    df["p_wake"] = data["rem_shift_data"]["PhaseLockingData_wake"][0][0]["phasestats"][
+        0
+    ][0]["p"][0][0][0]
+    df["mode_wake"] = data["rem_shift_data"]["PhaseLockingData_wake"][0][0][
+        "phasestats"
+    ][0][0]["mode"][0][0][0]
 
+    def get_distros(data, state):
+        return np.vstack(data["rem_shift_data"][state][0][0]["phasedistros"][0][0].T)
 
-    def get_distros(data,state):
-        return np.vstack(data['rem_shift_data'][state][0][0]['phasedistros'][0][0].T)
+    def get_spikephases(data, state):
+        return data["rem_shift_data"][state][0][0]["spkphases"][0][0][0]
 
-    def get_spikephases(data,state):
-        return data['rem_shift_data'][state][0][0]['spkphases'][0][0][0]
-
-    # add to dictionary 
+    # add to dictionary
     data_dict = {
-                    "rem": 
-                    {
-                        "phasedistros": get_distros(data,'PhaseLockingData_rem'),
-                        "spkphases":get_spikephases(data,'PhaseLockingData_rem')
-                    },
-                    "wake":
-                    {
-                        'phasedistros': get_distros(data,'PhaseLockingData_wake'),
-                        "spkphases":get_spikephases(data,'PhaseLockingData_wake')
-                    }
-                }
+        "rem": {
+            "phasedistros": get_distros(data, "PhaseLockingData_rem"),
+            "spkphases": get_spikephases(data, "PhaseLockingData_rem"),
+        },
+        "wake": {
+            "phasedistros": get_distros(data, "PhaseLockingData_wake"),
+            "spkphases": get_spikephases(data, "PhaseLockingData_wake"),
+        },
+    }
 
-    return df,data_dict
+    return df, data_dict
 
 
 def load_SleepState_states(basepath):
-    """ 
+    """
     loader of SleepState.states.mat
 
     returns dict of structures contents.
@@ -776,35 +883,50 @@ def load_SleepState_states(basepath):
 
     """
     try:
-        filename = glob.glob(os.path.join(basepath,'*.SleepState.states.mat'))[0]
+        filename = glob.glob(os.path.join(basepath, "*.SleepState.states.mat"))[0]
     except:
         warnings.warn("file does not exist")
-        return 
+        return
 
     # load cell_metrics file
     data = sio.loadmat(filename)
 
     # get epoch id
-    wake_id = np.where(data["SleepState"]["idx"][0][0]["statenames"][0][0][0] == "WAKE")[0][0]+1
-    rem_id = np.where(data["SleepState"]["idx"][0][0]["statenames"][0][0][0] == "REM")[0][0]+1
-    nrem_id = np.where(data["SleepState"]["idx"][0][0]["statenames"][0][0][0] == "NREM")[0][0]+1
+    wake_id = (
+        np.where(data["SleepState"]["idx"][0][0]["statenames"][0][0][0] == "WAKE")[0][0]
+        + 1
+    )
+    rem_id = (
+        np.where(data["SleepState"]["idx"][0][0]["statenames"][0][0][0] == "REM")[0][0]
+        + 1
+    )
+    nrem_id = (
+        np.where(data["SleepState"]["idx"][0][0]["statenames"][0][0][0] == "NREM")[0][0]
+        + 1
+    )
 
     # get states and timestamps vectors
     states = data["SleepState"]["idx"][0][0]["states"][0][0]
     timestamps = data["SleepState"]["idx"][0][0]["timestamps"][0][0]
 
     # set up dict
-    dict_ = {"wake_id": wake_id, "rem_id": rem_id, "nrem_id": nrem_id,
-        "states": states, "timestamps": timestamps}
+    dict_ = {
+        "wake_id": wake_id,
+        "rem_id": rem_id,
+        "nrem_id": nrem_id,
+        "states": states,
+        "timestamps": timestamps,
+    }
 
-    # iter through states and add to dict   
+    # iter through states and add to dict
     dt = data["SleepState"]["ints"][0][0].dtype
     for dn in dt.names:
         dict_[dn] = data["SleepState"]["ints"][0][0][dn][0][0]
 
     return dict_
 
-def load_animal_behavior(basepath,alternative_file=None):
+
+def load_animal_behavior(basepath, alternative_file=None):
     """
     load_animal_behavior loads basename.animal.behavior.mat files created by general_behavior_file.m
     The output is a pandas data frame with [time,x,y,z,linerized,speed,acceleration,trials,epochs]
@@ -814,69 +936,74 @@ def load_animal_behavior(basepath,alternative_file=None):
 
     if alternative_file is None:
         try:
-            filename = glob.glob(os.path.join(basepath,'*.animal.behavior.mat'))[0]
+            filename = glob.glob(os.path.join(basepath, "*.animal.behavior.mat"))[0]
         except:
             warnings.warn("file does not exist")
-            return 
+            return
     else:
         try:
-            filename = glob.glob(os.path.join(basepath,'*'+alternative_file+'.mat'))[0]
+            filename = glob.glob(
+                os.path.join(basepath, "*" + alternative_file + ".mat")
+            )[0]
         except:
             warnings.warn("file does not exist")
-            return 
+            return
     data = []
     data = sio.loadmat(filename, simplify_cells=True)
 
     df = pd.DataFrame()
     # add timestamps first which provide the correct shape of df
     # here, I'm naming them time, but this should be depreciated
-    df['time'] = data['behavior']['timestamps']
+    df["time"] = data["behavior"]["timestamps"]
 
     # add all other position coordinates to df (will add everything it can within position)
-    for key in data['behavior']["position"].keys():
+    for key in data["behavior"]["position"].keys():
         try:
-            df[key] = data['behavior']["position"][key]
+            df[key] = data["behavior"]["position"][key]
         except:
             pass
     # add other fields from behavior to df (acceleration,speed,states)
-    for key in data['behavior'].keys():
+    for key in data["behavior"].keys():
         try:
-            df[key] = data['behavior'][key]
+            df[key] = data["behavior"][key]
         except:
             pass
-    # add speed and acceleration 
+    # add speed and acceleration
     if "speed" not in df.columns:
-        df["speed"] = functions.get_speed(df[["x","y"]].values, df.time.values)
+        df["speed"] = functions.get_speed(df[["x", "y"]].values, df.time.values)
     if "acceleration" not in df.columns:
-        df.loc[1:,"acceleration"] = np.diff(df["speed"])
+        df.loc[1:, "acceleration"] = np.diff(df["speed"])
 
-    trials = data['behavior']['trials']
+    trials = data["behavior"]["trials"]
     try:
         for t in range(trials.shape[0]):
-            idx = (df.time >= trials[t,0]) & (df.time <= trials[t,1])
-            df.loc[idx,'trials'] = t
+            idx = (df.time >= trials[t, 0]) & (df.time <= trials[t, 1])
+            df.loc[idx, "trials"] = t
     except:
         pass
-    
+
     epochs = load_epoch(basepath)
     for t in range(epochs.shape[0]):
-        idx = (df.time >= epochs.startTime.iloc[t]) & (df.time <= epochs.stopTime.iloc[t])
-        df.loc[idx,'epochs'] = epochs.name.iloc[t] 
-        df.loc[idx,'environment'] = epochs.environment.iloc[t] 
+        idx = (df.time >= epochs.startTime.iloc[t]) & (
+            df.time <= epochs.stopTime.iloc[t]
+        )
+        df.loc[idx, "epochs"] = epochs.name.iloc[t]
+        df.loc[idx, "environment"] = epochs.environment.iloc[t]
     return df
+
 
 def load_epoch(basepath):
     """
     Loads epoch info from cell explorer basename.session and stores in df
     """
     try:
-        filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
+        filename = glob.glob(os.path.join(basepath, "*.session.mat"))[0]
     except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
 
     # load file
-    data = sio.loadmat(filename,simplify_cells=True)
+    data = sio.loadmat(filename, simplify_cells=True)
 
     try:
         epoch_df = pd.DataFrame(data["session"]["epochs"])
@@ -887,30 +1014,32 @@ def load_epoch(basepath):
         epoch_df["basepath"] = basepath
         return epoch_df
 
+
 def load_trials(basepath):
     """
     Loads trials from cell explorer basename.session.behavioralTracking and stores in df
     """
     try:
-        filename = glob.glob(os.path.join(basepath,'*.animal.behavior.mat'))[0]
+        filename = glob.glob(os.path.join(basepath, "*.animal.behavior.mat"))[0]
     except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
 
     # load file
-    data = sio.loadmat(filename,simplify_cells=True)
+    data = sio.loadmat(filename, simplify_cells=True)
 
     try:
-        df = pd.DataFrame(data = data["behavior"]["trials"])
-        df.columns = ['startTime','stopTime']
+        df = pd.DataFrame(data=data["behavior"]["trials"])
+        df.columns = ["startTime", "stopTime"]
         df["trialsID"] = data["behavior"]["trialsID"]
         return df
     except:
-        df = pd.DataFrame(data = [data["behavior"]["trials"]])
-        df.columns = ['startTime','stopTime']
+        df = pd.DataFrame(data=[data["behavior"]["trials"]])
+        df.columns = ["startTime", "stopTime"]
         df["trialsID"] = data["behavior"]["trialsID"]
         return df
-    
+
+
 def load_brain_regions(basepath):
     """
     Loads brain region info from cell explorer basename.session and stores in dict
@@ -943,17 +1072,19 @@ def load_brain_regions(basepath):
 
     return brainRegions
 
+
 def get_animal_id(basepath):
-    """ return animal ID from basepath using basename.session.mat"""
+    """return animal ID from basepath using basename.session.mat"""
     try:
-        filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
+        filename = glob.glob(os.path.join(basepath, "*.session.mat"))[0]
     except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
 
     # load file
     data = sio.loadmat(filename)
-    return data['session'][0][0]['animal'][0][0]['name'][0]
+    return data["session"][0][0]["animal"][0][0]["name"][0]
+
 
 def load_basic_data(basepath):
 
@@ -967,16 +1098,18 @@ def load_basic_data(basepath):
 
     return cell_metrics, data, ripples, fs_dat
 
-def load_spikes(basepath,
-                putativeCellType=[], # restrict spikes to putativeCellType
-                brainRegion=[], # restrict spikes to brainRegion
-                remove_bad_unit=True, # true for not loading bad cells (tagged in CE)
-                brain_state=[], # restrict spikes to brainstate
-                other_metric=None, # restrict spikes to other_metric
-                other_metric_value=None, # restrict spikes to other_metric_value
-                support=None # provide time support
-                ):
-    """ 
+
+def load_spikes(
+    basepath,
+    putativeCellType=[],  # restrict spikes to putativeCellType
+    brainRegion=[],  # restrict spikes to brainRegion
+    remove_bad_unit=True,  # true for not loading bad cells (tagged in CE)
+    brain_state=[],  # restrict spikes to brainstate
+    other_metric=None,  # restrict spikes to other_metric
+    other_metric_value=None,  # restrict spikes to other_metric_value
+    support=None,  # provide time support
+):
+    """
     Load specific cells' spike times
     """
     if not isinstance(putativeCellType, list):
@@ -986,30 +1119,34 @@ def load_spikes(basepath,
 
     # get sample rate from xml or session
     try:
-        _,_,fs_dat,_ = loadXML(basepath)
+        _, _, fs_dat, _ = loadXML(basepath)
     except:
         fs_dat = load_extracellular_metadata(basepath).get("sr")
 
     # load cell metrics and spike data
-    cell_metrics,data = load_cell_metrics(basepath)
+    cell_metrics, data = load_cell_metrics(basepath)
 
     # put spike data into array st
-    st = np.array(data['spikes'], dtype=object)
+    st = np.array(data["spikes"], dtype=object)
 
-    # restrict cell metrics                      
+    # restrict cell metrics
     if len(putativeCellType) > 0:
         restrict_idx = []
         for cell_type in putativeCellType:
-            restrict_idx.append(cell_metrics.putativeCellType.str.contains(cell_type).values) 
-        restrict_idx = np.any(restrict_idx,axis=0)
+            restrict_idx.append(
+                cell_metrics.putativeCellType.str.contains(cell_type).values
+            )
+        restrict_idx = np.any(restrict_idx, axis=0)
         cell_metrics = cell_metrics[restrict_idx]
         st = st[restrict_idx]
 
     if len(brainRegion) > 0:
         restrict_idx = []
         for brain_region in brainRegion:
-            restrict_idx.append(cell_metrics.brainRegion.str.contains(brain_region).values) 
-        restrict_idx = np.any(restrict_idx,axis=0)
+            restrict_idx.append(
+                cell_metrics.brainRegion.str.contains(brain_region).values
+            )
+        restrict_idx = np.any(restrict_idx, axis=0)
         cell_metrics = cell_metrics[restrict_idx]
         st = st[restrict_idx]
 
@@ -1022,12 +1159,14 @@ def load_spikes(basepath,
             other_metric_value = [other_metric_value]
         # check that other_metric_value is the same length as other_metric
         if len(other_metric) != len(other_metric_value):
-            raise ValueError('other_metric and other_metric_value must be of same length')
+            raise ValueError(
+                "other_metric and other_metric_value must be of same length"
+            )
 
         restrict_idx = []
-        for metric,value in zip(other_metric,other_metric_value):
-            restrict_idx.append(cell_metrics[metric].str.contains(value).values) 
-        restrict_idx = np.any(restrict_idx,axis=0)
+        for metric, value in zip(other_metric, other_metric_value):
+            restrict_idx.append(cell_metrics[metric].str.contains(value).values)
+        restrict_idx = np.any(restrict_idx, axis=0)
         cell_metrics = cell_metrics[restrict_idx]
         st = st[restrict_idx]
 
@@ -1043,28 +1182,29 @@ def load_spikes(basepath,
             st = nel.SpikeTrainArray(timestamps=st, fs=fs_dat, support=support)
         else:
             st = nel.SpikeTrainArray(timestamps=st, fs=fs_dat)
-    except: # if only single cell... should prob just skip session
+    except:  # if only single cell... should prob just skip session
         if support is not None:
             st = nel.SpikeTrainArray(timestamps=st[0], fs=fs_dat, support=support)
         else:
             st = nel.SpikeTrainArray(timestamps=st[0], fs=fs_dat)
 
     if len(brain_state) > 0:
-        # get brain states        
-        brain_states = ['WAKEstate', 'NREMstate', 'REMstate', 'THETA', 'nonTHETA']
+        # get brain states
+        brain_states = ["WAKEstate", "NREMstate", "REMstate", "THETA", "nonTHETA"]
         if brain_state not in brain_states:
-            assert print('not correct brain state. Pick one',brain_states) 
-        else:                                    
+            assert print("not correct brain state. Pick one", brain_states)
+        else:
             state_dict = load_SleepState_states(basepath)
             state_epoch = nel.EpochArray(state_dict[brain_state])
             st = st[state_epoch]
 
-    return st,cell_metrics
+    return st, cell_metrics
 
-def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
+
+def load_deepSuperficialfromRipple(basepath, bypass_mismatch_exception=False):
     """
     Load deepSuperficialfromRipple file created by classification_DeepSuperficial.m
-    
+
     """
     # locate .mat file
     file_type = "*.deepSuperficialfromRipple.channelinfo.mat"
@@ -1077,20 +1217,25 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
     name = "deepSuperficialfromRipple"
 
     # sometimes more channels positons will be in deepSuperficialfromRipple than in xml
-    #   this is because they used channel id as an index. 
+    #   this is because they used channel id as an index.
     channel_df = pd.DataFrame()
-    channels = np.hstack(data[name]["channel"][0][0])*np.nan
-    shanks = np.hstack(data[name]["channel"][0][0])*np.nan
+    channels = np.hstack(data[name]["channel"][0][0]) * np.nan
+    shanks = np.hstack(data[name]["channel"][0][0]) * np.nan
 
     channels_, shanks_ = zip(
-        *[(values[0], np.tile(shank, len(values[0]))) for shank, values in enumerate(data[name]["ripple_channels"][0][0][0])]
+        *[
+            (values[0], np.tile(shank, len(values[0])))
+            for shank, values in enumerate(data[name]["ripple_channels"][0][0][0])
+        ]
     )
-    channel_sort_idx = np.hstack(channels_)-1
+    channel_sort_idx = np.hstack(channels_) - 1
     channels[channel_sort_idx] = np.hstack(channels_)
     shanks[channel_sort_idx] = np.hstack(shanks_) + 1
 
     channel_df["channel"] = channels
-    channel_df.loc[np.arange(len(channel_sort_idx)),"channel_sort_idx"] = channel_sort_idx
+    channel_df.loc[
+        np.arange(len(channel_sort_idx)), "channel_sort_idx"
+    ] = channel_sort_idx
     channel_df["shank"] = shanks
 
     # add distance from pyr layer (will only be accurate if polarity rev)
@@ -1112,45 +1257,51 @@ def load_deepSuperficialfromRipple(basepath,bypass_mismatch_exception=False):
         else:
             channel_df.loc[channel_df.shank == shank, "polarity_reversal"] = False
 
-    # add ripple and sharp wave features        
+    # add ripple and sharp wave features
     labels = ["ripple_power", "ripple_amplitude", "SWR_diff", "SWR_amplitude"]
-    for label in labels: 
+    for label in labels:
         try:
-            channel_df.loc[channel_sort_idx,label] = np.hstack(data[name][label][0][0][0])[0]
+            channel_df.loc[channel_sort_idx, label] = np.hstack(
+                data[name][label][0][0][0]
+            )[0]
         except:
-            x = np.arange(len(channel_sort_idx))*np.nan
-            x[0:len(np.hstack(data[name][label][0][0][0])[0])] = np.hstack(data[name][label][0][0][0])[0]
-            channel_df.loc[channel_sort_idx,label] = x
+            x = np.arange(len(channel_sort_idx)) * np.nan
+            x[0 : len(np.hstack(data[name][label][0][0][0])[0])] = np.hstack(
+                data[name][label][0][0][0]
+            )[0]
+            channel_df.loc[channel_sort_idx, label] = x
 
     # pull put avg ripple traces and ts
     ripple_time_axis = data[name]["ripple_time_axis"][0][0][0]
-    ripple_average = np.ones([channel_df.shape[0],len(ripple_time_axis)])*np.nan
+    ripple_average = np.ones([channel_df.shape[0], len(ripple_time_axis)]) * np.nan
 
     rip_map = []
-    for ch,values in zip(channels_,data[name]["ripple_average"][0][0][0]):
-        if values.shape[1]>0:
+    for ch, values in zip(channels_, data[name]["ripple_average"][0][0][0]):
+        if values.shape[1] > 0:
             rip_map.append(values)
         else:
-            rip_map.append(np.zeros([len(ripple_time_axis),len(ch)])*np.nan)
-    
+            rip_map.append(np.zeros([len(ripple_time_axis), len(ch)]) * np.nan)
+
     ripple_average[channel_sort_idx] = np.hstack(rip_map).T
 
     brainRegions = load_brain_regions(basepath)
     for key, value in brainRegions.items():
-        if ('ca1' in key.lower()) | ('ca2' in key.lower()):
-            for shank in value['electrodeGroups']:
-                channel_df.loc[channel_df.shank == shank,"ca1_shank"] = True
+        if ("ca1" in key.lower()) | ("ca2" in key.lower()):
+            for shank in value["electrodeGroups"]:
+                channel_df.loc[channel_df.shank == shank, "ca1_shank"] = True
 
     if (ripple_average.shape[0] != channel_df.shape[0]) & (~bypass_mismatch_exception):
-        raise Exception('size mismatch '+
-                        str(np.hstack(ripple_average).shape[1]) +
-                        ' and ' +
-                        str(channel_df.shape[0])
+        raise Exception(
+            "size mismatch "
+            + str(np.hstack(ripple_average).shape[1])
+            + " and "
+            + str(channel_df.shape[0])
         )
 
-    channel_df['basepath'] = basepath
+    channel_df["basepath"] = basepath
 
     return channel_df, ripple_average, ripple_time_axis
+
 
 def load_mua_events(basepath):
     """
@@ -1169,7 +1320,7 @@ def load_mua_events(basepath):
 
     # locate .mat file
     try:
-        filename = glob.glob(basepath+os.sep+'*mua_ca1_pyr.events.mat')[0]
+        filename = glob.glob(basepath + os.sep + "*mua_ca1_pyr.events.mat")[0]
     except:
         warnings.warn("file does not exist")
         return pd.DataFrame()
@@ -1179,14 +1330,14 @@ def load_mua_events(basepath):
 
     # pull out and package data
     df = pd.DataFrame()
-    df["start"] = data['HSE']["timestamps"][0][0][:, 0]
-    df["stop"] = data['HSE']["timestamps"][0][0][:, 1]
-    df["peaks"] = data['HSE']["peaks"][0][0]
-    df["center"] = data['HSE']["center"][0][0]
-    df["duration"] = data['HSE']["duration"][0][0]
-    df["amplitude"] = data['HSE']["amplitudes"][0][0]
-    df["amplitudeUnits"] = data['HSE']["amplitudeUnits"][0][0][0]
-    df["detectorName"] = data['HSE']["detectorinfo"][0][0]["detectorname"][0][0][0]
+    df["start"] = data["HSE"]["timestamps"][0][0][:, 0]
+    df["stop"] = data["HSE"]["timestamps"][0][0][:, 1]
+    df["peaks"] = data["HSE"]["peaks"][0][0]
+    df["center"] = data["HSE"]["center"][0][0]
+    df["duration"] = data["HSE"]["duration"][0][0]
+    df["amplitude"] = data["HSE"]["amplitudes"][0][0]
+    df["amplitudeUnits"] = data["HSE"]["amplitudeUnits"][0][0][0]
+    df["detectorName"] = data["HSE"]["detectorinfo"][0][0]["detectorname"][0][0][0]
 
     # get basename and animal
     normalized_path = os.path.normpath(filename)
@@ -1196,6 +1347,7 @@ def load_mua_events(basepath):
     df["animal"] = path_components[-3]
 
     return df
+
 
 def load_manipulation(
     basepath, struct_name=None, return_epoch_array=True, merge_gap=None
@@ -1272,9 +1424,9 @@ def load_manipulation(
 
     # extract numeric category labels associated with label names
     eventID = np.array(data[struct_name]["eventID"][0][0]).ravel()
-    
+
     # add eventIDlabels and eventID to df
-    for ev_label, ev_num in zip(eventIDlabels,np.unique(eventID)):
+    for ev_label, ev_num in zip(eventIDlabels, np.unique(eventID)):
         df.loc[eventID == ev_num, "ev_label"] = ev_label
 
     if return_epoch_array:
@@ -1289,13 +1441,18 @@ def load_manipulation(
             manipulation_epoch = {}
             for label in df.ev_label.unique():
                 manipulation_epoch_ = nel.EpochArray(
-                    np.array([df[df.ev_label == label]["start"], df[df.ev_label == label]["stop"]]).T, 
-                    domain=session_bounds
+                    np.array(
+                        [
+                            df[df.ev_label == label]["start"],
+                            df[df.ev_label == label]["stop"],
+                        ]
+                    ).T,
+                    domain=session_bounds,
                 )
                 if merge_gap is not None:
                     manipulation_epoch_ = manipulation_epoch_.merge(gap=merge_gap)
 
-                manipulation_epoch[label] = manipulation_epoch_       
+                manipulation_epoch[label] = manipulation_epoch_
         else:
             manipulation_epoch = nel.EpochArray(
                 np.array([df["start"], df["stop"]]).T, domain=session_bounds
@@ -1307,20 +1464,21 @@ def load_manipulation(
     else:
         return df
 
+
 def load_channel_tags(basepath):
-    """ 
+    """
     load_channel_tags returns dictionary of tags located in basename.session.channelTags
     """
-    filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
-    data = sio.loadmat(filename,simplify_cells=True)
-    return data['session']['channelTags']
+    filename = glob.glob(os.path.join(basepath, "*.session.mat"))[0]
+    data = sio.loadmat(filename, simplify_cells=True)
+    return data["session"]["channelTags"]
 
 
 def load_extracellular_metadata(basepath):
-    """ 
-    load_extracellular returns dictionary of metadata located 
+    """
+    load_extracellular returns dictionary of metadata located
         in basename.session.extracellular
     """
-    filename = glob.glob(os.path.join(basepath,'*.session.mat'))[0]
-    data = sio.loadmat(filename,simplify_cells=True)
-    return data['session']['extracellular']
+    filename = glob.glob(os.path.join(basepath, "*.session.mat"))[0]
+    data = sio.loadmat(filename, simplify_cells=True)
+    return data["session"]["extracellular"]
