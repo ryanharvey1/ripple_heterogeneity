@@ -231,8 +231,6 @@ def runPatterns(
 def computeAssemblyActivity(patterns, zactmat, zerodiag=True):
 
     if len(patterns) == 0:
-        print("WARNING !")
-        print("    no assembly detecded!")
         return None
 
     nassemblies = len(patterns)

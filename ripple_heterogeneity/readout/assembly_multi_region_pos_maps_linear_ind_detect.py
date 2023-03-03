@@ -173,9 +173,7 @@ def run(
 
             assembly_act.append(assembly_act_.data[keep_assembly, :])
             abscissa_vals.append(assembly_act_.abscissa_vals)
-            assem_labels.append(
-                [deepSuperficial + "_" + cross_region[1]] * assembly_act_.n_signals
-            )
+            assem_labels.append([deepSuperficial + "_" + cross_region[1]] * sum(keep_assembly))
             m1[deepSuperficial + "_" + cross_region[1]] = m1_
 
     if len(assembly_act) == 0:
@@ -185,6 +183,9 @@ def run(
         data=np.vstack(assembly_act),
         timestamps=abscissa_vals[0],
     )
+    if assembly_act.isempty:
+        return None
+    
     assem_labels = np.hstack(assem_labels)
 
     pos, outbound_epochs, inbound_epochs, position_df_no_nan = get_pos(

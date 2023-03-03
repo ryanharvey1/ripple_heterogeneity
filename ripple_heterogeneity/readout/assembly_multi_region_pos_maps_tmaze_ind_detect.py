@@ -174,6 +174,29 @@ def locate_t_maze_key_locations(current_pos):
     return start_pos, decision_pos, reward_left_pos, reward_right_pos
 
 
+def confirm_cross_region_assembly(m1_, cross_region, deepSuperficial): 
+    keep_assembly = []         
+    _, _, keep_assembly_, is_member = find_sig_assembly.main(m1_.patterns)
+    for assembly_i in range(m1_.n_assemblies()):
+        member_idx = is_member[assembly_i, :]
+        cortex_check = (
+            m1_.cell_metrics[member_idx]
+            .brainRegion.str.contains(cross_region[1])
+            .any()
+        )
+        ca1_check = (
+            m1_.cell_metrics[member_idx]
+            .brainRegion.str.contains(cross_region[0])
+            .any()
+        )
+        ca1_layer_check = (
+            m1_.cell_metrics[member_idx].deepSuperficial == deepSuperficial
+        ).any()
+        keep_assembly.append(cortex_check & ca1_check & ca1_layer_check)
+
+    return keep_assembly
+
+
 def run(
     basepath,
     cross_regions: tuple = (("CA1", "PFC"), ("CA1", "EC1|EC2|EC3|EC4|EC5|MEC")),
@@ -186,6 +209,7 @@ def run(
     smooth_window: int = 10,  # smoothing window in cm
     speed_thres: int = 4,  # speed threshold for ratemap in cm/sec
     restrict_to_theta: bool = False,  # restrict to theta epochs
+    confirm_cross_region: bool = True,  # confirm that the assembly is in both regions
 ) -> dict:
 
     # locate and load linearization file to get key maze locations
@@ -262,24 +286,10 @@ def run(
                 continue
 
             # make sure assembly members represent cross region label
-            keep_assembly = []
-            _, _, keep_assembly_, is_member = find_sig_assembly.main(m1_.patterns)
-            for assembly_i in range(m1_.n_assemblies()):
-                member_idx = is_member[assembly_i, :]
-                cortex_check = (
-                    m1_.cell_metrics[member_idx]
-                    .brainRegion.str.contains(cross_region[1])
-                    .any()
-                )
-                ca1_check = (
-                    m1_.cell_metrics[member_idx]
-                    .brainRegion.str.contains(cross_region[0])
-                    .any()
-                )
-                ca1_layer_check = (
-                    m1_.cell_metrics[member_idx].deepSuperficial == deepSuperficial
-                ).any()
-                keep_assembly.append(cortex_check & ca1_check & ca1_layer_check)
+            if confirm_cross_region:
+                keep_assembly = confirm_cross_region_assembly(m1_, cross_region, deepSuperficial)
+            else:
+                keep_assembly = np.ones(m1_.n_assemblies(), dtype=bool)
 
             assembly_act.append(assembly_act_.data[keep_assembly, :])
             abscissa_vals.append(assembly_act_.abscissa_vals)
