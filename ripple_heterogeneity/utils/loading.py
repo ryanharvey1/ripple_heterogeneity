@@ -170,7 +170,7 @@ def load_all_cell_metrics(basepaths):
     return pd.concat(cell_metrics,ignore_index=True)
 
 
-def load_cell_metrics(basepath,only_metrics=False):
+def load_cell_metrics(basepath:str,only_metrics:bool=False)-> tuple:
     """ 
     loader of cell-explorer cell_metrics.cellinfo.mat
 
