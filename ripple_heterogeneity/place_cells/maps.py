@@ -417,7 +417,7 @@ class SpatialMap(object):
             [len(np.unique(mask_)) - 1 for mask_ in self.tc.field_mask]
         )
 
-    def save_mat_file(self, basepath:str, UID=None):
+    def save_mat_file(self, basepath: str, UID=None):
 
         """
         Save firing rate map data to a .mat file in MATLAB format.
