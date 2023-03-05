@@ -78,7 +78,7 @@ class SpatialMap(object):
         place_field_sigma: Union[int, float] = 2,
         n_shuff: int = 500,
         parallel_shuff: bool = True,
-    ) -> object:
+    ) -> None:
         self.pos = pos
         self.st = st
         self.dim = dim
