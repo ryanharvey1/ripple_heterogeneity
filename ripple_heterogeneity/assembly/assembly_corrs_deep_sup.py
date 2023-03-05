@@ -47,6 +47,20 @@ def pairwise_cross_corr(spks, binsize=0.001, nbins=100):
 
 
 def get_group_cor_vectors(df, temp_df, basepath):
+    """
+    Get the correlation vectors for each group
+    Inputs:
+        df: dataframe 
+        temp_df: dataframe
+        basepath: basepath to get the data from
+    Outputs:
+        deep: deep correlation vector
+        sup: sup correlation vector
+        ...
+
+    This function is not well written as it is very repetitive. Definitely needs to be refactored.
+        TODO: use a dictionary to store the dataframes and then iterate over the keys to get the data
+    """
     deep = []
     sup = []
     member_rho = []
@@ -57,6 +71,26 @@ def get_group_cor_vectors(df, temp_df, basepath):
     non_member_sup = []
     member_deep_sup = []
     non_member_deep_sup = []
+    deep_uid_ref = []
+    deep_uid_target = []
+    sup_uid_ref = []
+    sup_uid_target = []
+    member_uid_ref = []
+    member_uid_target = []
+    non_member_uid_ref = []
+    non_member_uid_target = []
+    member_deep_uid_ref = []
+    member_deep_uid_target = []
+    member_sup_uid_ref = []
+    member_sup_uid_target = []
+    non_member_deep_uid_ref = []
+    non_member_deep_uid_target = []
+    non_member_sup_uid_ref = []
+    non_member_sup_uid_target = []
+    member_deep_sup_uid_ref = []
+    member_deep_sup_uid_target = []
+    non_member_deep_sup_uid_ref = []
+    non_member_deep_sup_uid_target = []
 
     assembly_id = {}
     assembly_id["deep"] = []
@@ -76,27 +110,62 @@ def get_group_cor_vectors(df, temp_df, basepath):
         nonmember_uid = current_df[current_df.membership == False].UID.values
 
         deep.append(
-            temp_df[
-                (temp_df.layer_ref == "Deep") & (temp_df.layer_target == "Deep")
-            ].rho.values
+            temp_df.query("layer_ref == 'Deep' and layer_target == 'Deep'").rho.values
         )
+        deep_uid_ref.append(
+            temp_df.query("layer_ref == 'Deep' and layer_target == 'Deep'").UID_ref.values
+        )
+        deep_uid_target.append(
+            temp_df.query("layer_ref == 'Deep' and layer_target == 'Deep'").UID_target.values
+        )
+        
+
         sup.append(
-            temp_df[
-                (temp_df.layer_ref == "Superficial")
-                & (temp_df.layer_target == "Superficial")
-            ].rho.values
+            temp_df.query("layer_ref == 'Superficial' and layer_target == 'Superficial'").rho.values
         )
+        sup_uid_ref.append(
+            temp_df.query("layer_ref == 'Superficial' and layer_target == 'Superficial'").UID_ref.values
+        )
+        sup_uid_target.append(
+            temp_df.query("layer_ref == 'Superficial' and layer_target == 'Superficial'").UID_target.values
+        )
+
         member_rho.append(
             temp_df[
                 (np.in1d(temp_df.UID_ref, member_uid))
                 & (np.in1d(temp_df.UID_target, member_uid))
             ].rho.values
         )
+        member_uid_ref.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, member_uid))
+                & (np.in1d(temp_df.UID_target, member_uid))
+            ].UID_ref.values
+        )
+        member_uid_target.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, member_uid))
+                & (np.in1d(temp_df.UID_target, member_uid))
+            ].UID_target.values
+        )  
+
         non_member_rho.append(
             temp_df[
                 (np.in1d(temp_df.UID_ref, nonmember_uid))
                 & (np.in1d(temp_df.UID_target, nonmember_uid))
             ].rho.values
+        )
+        non_member_uid_ref.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, nonmember_uid))
+                & (np.in1d(temp_df.UID_target, nonmember_uid))
+            ].UID_ref.values
+        )
+        non_member_uid_target.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, nonmember_uid))
+                & (np.in1d(temp_df.UID_target, nonmember_uid))
+            ].UID_target.values
         )
         member_deep.append(
             temp_df[
@@ -106,6 +175,22 @@ def get_group_cor_vectors(df, temp_df, basepath):
                 & (temp_df.layer_target == "Deep")
             ].rho.values
         )
+        member_deep_uid_ref.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, member_uid))
+                & (np.in1d(temp_df.UID_target, member_uid))
+                & (temp_df.layer_ref == "Deep")
+                & (temp_df.layer_target == "Deep")
+            ].UID_ref.values
+        )
+        member_deep_uid_target.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, member_uid))
+                & (np.in1d(temp_df.UID_target, member_uid))
+                & (temp_df.layer_ref == "Deep")
+                & (temp_df.layer_target == "Deep")
+            ].UID_target.values
+        )
         member_sup.append(
             temp_df[
                 (np.in1d(temp_df.UID_ref, member_uid))
@@ -113,6 +198,22 @@ def get_group_cor_vectors(df, temp_df, basepath):
                 & (temp_df.layer_ref == "Superficial")
                 & (temp_df.layer_target == "Superficial")
             ].rho.values
+        )
+        member_sup_uid_ref.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, member_uid))
+                & (np.in1d(temp_df.UID_target, member_uid))
+                & (temp_df.layer_ref == "Superficial")
+                & (temp_df.layer_target == "Superficial")
+            ].UID_ref.values
+        )
+        member_sup_uid_target.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, member_uid))
+                & (np.in1d(temp_df.UID_target, member_uid))
+                & (temp_df.layer_ref == "Superficial")
+                & (temp_df.layer_target == "Superficial")
+            ].UID_target.values
         )
         non_member_deep.append(
             temp_df[
@@ -122,6 +223,22 @@ def get_group_cor_vectors(df, temp_df, basepath):
                 & (temp_df.layer_target == "Deep")
             ].rho.values
         )
+        non_member_deep_uid_ref.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, nonmember_uid))
+                & (np.in1d(temp_df.UID_target, nonmember_uid))
+                & (temp_df.layer_ref == "Deep")
+                & (temp_df.layer_target == "Deep")
+            ].UID_ref.values
+        )
+        non_member_deep_uid_target.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, nonmember_uid))
+                & (np.in1d(temp_df.UID_target, nonmember_uid))
+                & (temp_df.layer_ref == "Deep")
+                & (temp_df.layer_target == "Deep")
+            ].UID_target.values
+        )
         non_member_sup.append(
             temp_df[
                 (np.in1d(temp_df.UID_ref, nonmember_uid))
@@ -129,6 +246,22 @@ def get_group_cor_vectors(df, temp_df, basepath):
                 & (temp_df.layer_ref == "Superficial")
                 & (temp_df.layer_target == "Superficial")
             ].rho.values
+        )
+        non_member_sup_uid_ref.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, nonmember_uid))
+                & (np.in1d(temp_df.UID_target, nonmember_uid))
+                & (temp_df.layer_ref == "Superficial")
+                & (temp_df.layer_target == "Superficial")
+            ].UID_ref.values
+        )
+        non_member_sup_uid_target.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, nonmember_uid))
+                & (np.in1d(temp_df.UID_target, nonmember_uid))
+                & (temp_df.layer_ref == "Superficial")
+                & (temp_df.layer_target == "Superficial")
+            ].UID_target.values
         )
         member_deep_sup.append(
             temp_df[
@@ -142,6 +275,30 @@ def get_group_cor_vectors(df, temp_df, basepath):
                 )
             ].rho.values
         )
+        member_deep_sup_uid_ref.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, member_uid))
+                & (np.in1d(temp_df.UID_target, member_uid))
+                & (
+                    (temp_df.layer_ref == "Deep")
+                    & (temp_df.layer_target == "Superficial")
+                    | (temp_df.layer_ref == "Superficial")
+                    & (temp_df.layer_target == "Deep")
+                )
+            ].UID_ref.values
+        )
+        member_deep_sup_uid_target.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, member_uid))
+                & (np.in1d(temp_df.UID_target, member_uid))
+                & (
+                    (temp_df.layer_ref == "Deep")
+                    & (temp_df.layer_target == "Superficial")
+                    | (temp_df.layer_ref == "Superficial")
+                    & (temp_df.layer_target == "Deep")
+                )
+            ].UID_target.values
+        )
         non_member_deep_sup.append(
             temp_df[
                 (np.in1d(temp_df.UID_ref, nonmember_uid))
@@ -153,6 +310,30 @@ def get_group_cor_vectors(df, temp_df, basepath):
                     & (temp_df.layer_target == "Deep")
                 )
             ].rho.values
+        )
+        non_member_deep_sup_uid_ref.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, nonmember_uid))
+                & (np.in1d(temp_df.UID_target, nonmember_uid))
+                & (
+                    (temp_df.layer_ref == "Deep")
+                    & (temp_df.layer_target == "Superficial")
+                    | (temp_df.layer_ref == "Superficial")
+                    & (temp_df.layer_target == "Deep")
+                )
+            ].UID_ref.values
+        )
+        non_member_deep_sup_uid_target.append(
+            temp_df[
+                (np.in1d(temp_df.UID_ref, nonmember_uid))
+                & (np.in1d(temp_df.UID_target, nonmember_uid))
+                & (
+                    (temp_df.layer_ref == "Deep")
+                    & (temp_df.layer_target == "Superficial")
+                    | (temp_df.layer_ref == "Superficial")
+                    & (temp_df.layer_target == "Deep")
+                )
+            ].UID_target.values
         )
 
         assembly_id["deep"].append([assembly_n] * len(deep[-1]))
@@ -168,6 +349,8 @@ def get_group_cor_vectors(df, temp_df, basepath):
             [assembly_n] * len(non_member_deep_sup[-1])
         )
 
+    # TODO: refactor this to be more efficient
+    # flatten lists
     deep = np.hstack(deep)
     sup = np.hstack(sup)
     member = np.hstack(member_rho)
@@ -178,7 +361,27 @@ def get_group_cor_vectors(df, temp_df, basepath):
     non_member_sup = np.hstack(non_member_sup)
     member_deep_sup = np.hstack(member_deep_sup)
     non_member_deep_sup = np.hstack(non_member_deep_sup)
-
+    deep_uid_ref = np.hstack(deep_uid_ref)
+    deep_uid_target = np.hstack(deep_uid_target)
+    sup_uid_ref = np.hstack(sup_uid_ref)
+    sup_uid_target = np.hstack(sup_uid_target)
+    member_uid_ref = np.hstack(member_uid_ref) 
+    member_uid_target = np.hstack(member_uid_target)
+    non_member_uid_ref = np.hstack(non_member_uid_ref)
+    non_member_uid_target = np.hstack(non_member_uid_target)
+    member_deep_uid_ref = np.hstack(member_deep_uid_ref)
+    member_deep_uid_target = np.hstack(member_deep_uid_target)
+    member_sup_uid_ref = np.hstack(member_sup_uid_ref)
+    member_sup_uid_target = np.hstack(member_sup_uid_target)
+    non_member_deep_uid_ref = np.hstack(non_member_deep_uid_ref)
+    non_member_deep_uid_target = np.hstack(non_member_deep_uid_target)
+    non_member_sup_uid_ref = np.hstack(non_member_sup_uid_ref)
+    non_member_sup_uid_target = np.hstack(non_member_sup_uid_target)
+    member_deep_sup_uid_ref = np.hstack(member_deep_sup_uid_ref)
+    member_deep_sup_uid_target = np.hstack(member_deep_sup_uid_target)
+    non_member_deep_sup_uid_ref = np.hstack(non_member_deep_sup_uid_ref)
+    non_member_deep_sup_uid_target = np.hstack(non_member_deep_sup_uid_target)
+    
     for key_ in assembly_id.keys():
         assembly_id[key_] = np.hstack(assembly_id[key_])
 
@@ -194,6 +397,26 @@ def get_group_cor_vectors(df, temp_df, basepath):
         member_deep_sup,
         non_member_deep_sup,
         assembly_id,
+        deep_uid_ref,
+        deep_uid_target,
+        sup_uid_ref,
+        sup_uid_target,
+        member_uid_ref,
+        member_uid_target,
+        non_member_uid_ref,
+        non_member_uid_target,
+        member_deep_uid_ref,
+        member_deep_uid_target,
+        member_sup_uid_ref,
+        member_sup_uid_target,
+        non_member_deep_uid_ref,
+        non_member_deep_uid_target,
+        non_member_sup_uid_ref,
+        non_member_sup_uid_target,
+        member_deep_sup_uid_ref,
+        member_deep_sup_uid_target,
+        non_member_deep_sup_uid_ref,
+        non_member_deep_sup_uid_target,
     )
 
 
@@ -232,7 +455,7 @@ def get_pairwise_corrs(
     cell_metrics = cell_metrics[restrict_idx]
 
     # add deep sup classification
-    cell_metrics = add_new_deep_sup.add_new_deep_sup_class(cell_metrics)
+    cell_metrics = add_new_deep_sup.deep_sup_from_distance(cell_metrics)
 
     st_unit = nel.SpikeTrainArray(
         timestamps=np.array(data["spikes"], dtype=object)[restrict_idx], fs=fs_dat
@@ -304,6 +527,26 @@ def get_and_organize_pairwise_corrs(
         member_deep_sup,
         non_member_deep_sup,
         assembly_id,
+        deep_uid_ref,
+        deep_uid_target,
+        sup_uid_ref,
+        sup_uid_target,
+        member_uid_ref,
+        member_uid_target,
+        non_member_uid_ref,
+        non_member_uid_target,
+        member_deep_uid_ref,
+        member_deep_uid_target,
+        member_sup_uid_ref,
+        member_sup_uid_target,
+        non_member_deep_uid_ref,
+        non_member_deep_uid_target,
+        non_member_sup_uid_ref,
+        non_member_sup_uid_target,
+        member_deep_sup_uid_ref,
+        member_deep_sup_uid_target,
+        non_member_deep_sup_uid_ref,
+        non_member_deep_sup_uid_target
     ) = get_group_cor_vectors(df, temp_df, basepath)
 
     df_save = pd.DataFrame()
@@ -320,6 +563,35 @@ def get_and_organize_pairwise_corrs(
             non_member_sup,
             member_deep_sup,
             non_member_deep_sup,
+        ]
+    )
+
+    df_save["uid_ref"] = np.hstack(
+        [
+            deep_uid_ref,
+            sup_uid_ref,
+            member_uid_ref,
+            non_member_uid_ref,
+            member_deep_uid_ref,
+            member_sup_uid_ref,
+            non_member_deep_uid_ref,
+            non_member_sup_uid_ref,
+            member_deep_sup_uid_ref,
+            non_member_deep_sup_uid_ref,
+        ]
+    )
+    df_save["uid_target"] = np.hstack(
+        [
+            deep_uid_target,
+            sup_uid_target,
+            member_uid_target,
+            non_member_uid_target,
+            member_deep_uid_target,
+            member_sup_uid_target,
+            non_member_deep_uid_target,
+            non_member_sup_uid_target,
+            member_deep_sup_uid_target,
+            non_member_deep_sup_uid_target,
         ]
     )
 
