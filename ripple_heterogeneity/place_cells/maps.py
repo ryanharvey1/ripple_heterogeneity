@@ -11,6 +11,7 @@ import multiprocessing
 from joblib import Parallel, delayed
 from scipy.io import savemat
 import os
+from typing import Union
 
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -35,7 +36,6 @@ class SpatialMap(object):
         place_field_min_size: min size of place field (cm) (float)
         place_field_min_peak: min peak rate of place field (float)
         place_field_sigma: extra smoothing sigma to apply before field detection (float)
-        transform_func: function to transform position data (spike interp) before analysis (function).
         n_shuff: number of positon shuffles for spatial information (int)
     attributes:
         tc: tuning curves (nelpy.TuningCurve)
@@ -59,27 +59,26 @@ class SpatialMap(object):
 
     def __init__(
         self,
-        pos,
-        st,
-        dim=None,
-        dir_epoch=None,
-        speed_thres=4,
-        ds_bst=0.05,
-        s_binsize=3,
-        x_minmax:list=None,
-        y_minmax:list=None,
-        tuning_curve_sigma=3,
-        min_duration=0.1,
-        minbgrate=0,
-        place_field_thres=0.2,
-        place_field_min_size=None,
-        place_field_max_size=None,
-        place_field_min_peak=3,
-        place_field_sigma=2,
-        transform_func=None,
-        n_shuff:int=500,
-        parallel_shuff:bool=True,
-    ):
+        pos: object,
+        st: object,
+        dim: int = None,
+        dir_epoch: object = None,
+        speed_thres: Union[int, float] = 4,
+        ds_bst: float = 0.05,
+        s_binsize: Union[int, float] = 3,
+        x_minmax: list = None,
+        y_minmax: list = None,
+        tuning_curve_sigma: Union[int, float] = 3,
+        min_duration: float = 0.1,
+        minbgrate: Union[int, float] = 0,
+        place_field_thres: Union[int, float] = 0.2,
+        place_field_min_size: Union[int, float] = None,
+        place_field_max_size: Union[int, float] = None,
+        place_field_min_peak: Union[int, float] = 3,
+        place_field_sigma: Union[int, float] = 2,
+        n_shuff: int = 500,
+        parallel_shuff: bool = True,
+    ) -> object:
         self.pos = pos
         self.st = st
         self.dim = dim
@@ -97,7 +96,6 @@ class SpatialMap(object):
         self.place_field_min_peak = place_field_min_peak
         self.place_field_max_size = place_field_max_size
         self.place_field_sigma = place_field_sigma
-        self.transform_func = transform_func
         self.n_shuff = n_shuff
         self.parallel_shuff = parallel_shuff
 
@@ -117,7 +115,7 @@ class SpatialMap(object):
         # find place fields. Currently only collects metrics from peak field
         # self.find_fields()
 
-    def map_1d(self, pos=None):
+    def map_1d(self, pos: object = None):
 
         if self.dir_epoch is None:
             raise ValueError("dir_epoch must be specified")
@@ -138,8 +136,6 @@ class SpatialMap(object):
             x_min, x_max = self.x_minmax
 
         self.x_edges = np.arange(x_min, x_max + self.s_binsize, self.s_binsize)
-
-        n_bins = int((x_max - x_min) / self.s_binsize)
 
         # compute occupancy
         occupancy = self.compute_occupancy_1d(pos_run)
@@ -170,12 +166,14 @@ class SpatialMap(object):
 
         return tc, st_run
 
-    def compute_occupancy_1d(self, pos_run):
+    def compute_occupancy_1d(self, pos_run: object):
 
         occupancy, _ = np.histogram(pos_run.data[0, :], bins=self.x_edges)
         return occupancy / pos_run.fs
 
-    def compute_ratemap_1d(self, st_run, pos_run, occupancy):
+    def compute_ratemap_1d(
+        self, st_run: object, pos_run: object, occupancy: np.ndarray
+    ):
 
         ratemap = np.zeros((st_run.data.shape[0], occupancy.shape[0]))
         for i in range(st_run.data.shape[0]):
@@ -189,7 +187,7 @@ class SpatialMap(object):
 
         return ratemap
 
-    def map_2d(self, pos=None):
+    def map_2d(self, pos: object = None):
 
         # restrict spike trains to those epochs during which the animal was running
         st_run = self.st[self.run_epochs]
@@ -255,14 +253,16 @@ class SpatialMap(object):
 
         return tc, st_run
 
-    def compute_occupancy_2d(self, pos_run):
+    def compute_occupancy_2d(self, pos_run: object) -> np.ndarray:
 
         occupancy, _, _ = np.histogram2d(
             pos_run.data[0, :], pos_run.data[1, :], bins=(self.x_edges, self.y_edges)
         )
         return occupancy / pos_run.fs
 
-    def compute_ratemap_2d(self, st_run, pos_run, occupancy):
+    def compute_ratemap_2d(
+        self, st_run: object, pos_run: object, occupancy: np.ndarray
+    ) -> np.ndarray:
 
         ratemap = np.zeros(
             (st_run.data.shape[0], occupancy.shape[0], occupancy.shape[1])
@@ -279,7 +279,7 @@ class SpatialMap(object):
 
         return ratemap
 
-    def shuffle_spatial_information(self):
+    def shuffle_spatial_information(self) -> np.ndarray:
         def create_shuffled_coordinates(X, n_shuff=500):
             range_ = X.shape[1]
 
@@ -333,7 +333,7 @@ class SpatialMap(object):
 
         return self.spatial_information_pvalues
 
-    def find_fields(self):
+    def find_fields(self) -> None:
         """
         Find place fields in the spatial maps.
 
@@ -417,7 +417,7 @@ class SpatialMap(object):
             [len(np.unique(mask_)) - 1 for mask_ in self.tc.field_mask]
         )
 
-    def save_mat_file(self, basepath, UID=None):
+    def save_mat_file(self, basepath:str, UID=None):
 
         """
         Save firing rate map data to a .mat file in MATLAB format.
@@ -505,7 +505,7 @@ class SpatialMap(object):
             {"firingRateMap": firingRateMap},
         )
 
-    def _unit_subset(self,unit_list):
+    def _unit_subset(self, unit_list):
         newtuningcurve = copy.copy(self)
         newtuningcurve.st = newtuningcurve.st._unit_subset(unit_list)
         newtuningcurve.st_run = newtuningcurve.st_run._unit_subset(unit_list)
