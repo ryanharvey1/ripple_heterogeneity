@@ -26,6 +26,8 @@ class SpatialMap(object):
         speed_thres: speed threshold for running (float)
         ds_bst: bin size for the spike train (float)
         s_binsize: bin size for the spatial map (float)
+        x_minmax: min and max x values for the spatial map (list)
+        y_minmax: min and max y values for the spatial map (list)
         tuning_curve_sigma: sigma for the tuning curve (float)
         min_duration: minimum duration for a tuning curve (float)
         minbgrate: min firing rate for tuning curve, will set to this if lower (float)
@@ -64,6 +66,8 @@ class SpatialMap(object):
         speed_thres=4,
         ds_bst=0.05,
         s_binsize=3,
+        x_minmax:list=None,
+        y_minmax:list=None,
         tuning_curve_sigma=3,
         min_duration=0.1,
         minbgrate=0,
@@ -73,8 +77,8 @@ class SpatialMap(object):
         place_field_min_peak=3,
         place_field_sigma=2,
         transform_func=None,
-        n_shuff=500,
-        parallel_shuff=True,
+        n_shuff:int=500,
+        parallel_shuff:bool=True,
     ):
         self.pos = pos
         self.st = st
@@ -83,6 +87,8 @@ class SpatialMap(object):
         self.speed_thres = speed_thres
         self.ds_bst = ds_bst
         self.s_binsize = s_binsize
+        self.x_minmax = x_minmax
+        self.y_minmax = y_minmax
         self.tuning_curve_sigma = tuning_curve_sigma
         self.min_duration = min_duration
         self.minbgrate = minbgrate
@@ -125,8 +131,11 @@ class SpatialMap(object):
         else:
             pos_run = self.pos[self.dir_epoch][self.run_epochs]
 
-        x_max = np.ceil(np.nanmax(self.pos[self.dir_epoch].data))
-        x_min = np.floor(np.nanmin(self.pos[self.dir_epoch].data))
+        if self.x_minmax is None:
+            x_max = np.ceil(np.nanmax(self.pos[self.dir_epoch].data))
+            x_min = np.floor(np.nanmin(self.pos[self.dir_epoch].data))
+        else:
+            x_min, x_max = self.x_minmax
 
         self.x_edges = np.arange(x_min, x_max + self.s_binsize, self.s_binsize)
 
@@ -192,14 +201,22 @@ class SpatialMap(object):
             pos_run = self.pos[self.run_epochs]
 
         # get xy max min
-        ext_xmin, ext_xmax = (
-            np.floor(np.nanmin(self.pos.data[0, :])),
-            np.ceil(np.nanmax(self.pos.data[0, :])),
-        )
-        ext_ymin, ext_ymax = (
-            np.floor(np.nanmin(self.pos.data[1, :])),
-            np.ceil(np.nanmax(self.pos.data[1, :])),
-        )
+        if self.x_minmax is None:
+            ext_xmin, ext_xmax = (
+                np.floor(np.nanmin(self.pos.data[0, :])),
+                np.ceil(np.nanmax(self.pos.data[0, :])),
+            )
+        else:
+            ext_xmin, ext_xmax = self.x_minmax
+
+        if self.y_minmax is None:
+            ext_ymin, ext_ymax = (
+                np.floor(np.nanmin(self.pos.data[1, :])),
+                np.ceil(np.nanmax(self.pos.data[1, :])),
+            )
+        else:
+            ext_ymin, ext_ymax = self.y_minmax
+
         # create bin edges
         self.x_edges = np.arange(ext_xmin, ext_xmax + self.s_binsize, self.s_binsize)
         self.y_edges = np.arange(ext_ymin, ext_ymax + self.s_binsize, self.s_binsize)
