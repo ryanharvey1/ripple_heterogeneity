@@ -103,23 +103,23 @@ def shuffle_and_score_single_cell(tc_new, bst, cell_id, n_shuffles=1000):
 
 
 def get_pcc_score(
-    results, direction, n_shuffles_single_cell=1000, n_shuffles_corr=1000
+    results, direction, shuffle_type, n_shuffles_single_cell=1000, n_shuffles_corr=1000
 ):
     """
     get_pcc_score: will return a (n cells x n events) matrix of contribution of that cell to the event
     """
 
     if not results[direction]:
-        return None
+        return None, None
 
     # pull out data
     # only look at pre-defined replay events
-    idx_replay = np.where(results[direction]["df"].score_pval_time_swap < 0.05)[0]
+    idx_replay = np.where(results[direction]["df"][shuffle_type] < 0.05)[0]
     bst = copy.deepcopy(results[direction]["bst_placecells"][idx_replay])
     tc = copy.deepcopy(results[direction]["tc"])
 
     if bst.isempty:
-        return None
+        return None, None
 
     # get the number of units that participated in each event
     n_active = [bst_.n_active for bst_ in bst]
@@ -168,6 +168,7 @@ def run(
     replay_save_path: str = None,
     n_shuffles_single_cell: int = 1000,
     n_shuffles_corr: int = 1000,
+    shuffle_type: str = "weighted_corr_pval_col_cycle",
 ) -> pd.core.frame.DataFrame:
 
     # locate saved replay file and load it
@@ -192,6 +193,7 @@ def run(
         pcc, pcc_raw = get_pcc_score(
             results,
             direction,
+            shuffle_type,
             n_shuffles_single_cell=n_shuffles_single_cell,
             n_shuffles_corr=n_shuffles_corr,
         )
@@ -221,7 +223,7 @@ def run(
 
         # add metadata from replay_df
         current_replay_df = results[direction]["df"].query(
-            "score_pval_time_swap < 0.05"
+            "@shuffle_type < 0.05"
         )
         keys = current_replay_df.keys()
         for replay_i, df in enumerate(current_replay_df.iterrows()):
