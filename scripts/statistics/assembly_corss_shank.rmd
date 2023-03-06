@@ -1,0 +1,156 @@
+---
+title: "Untitled"
+author: "ryan"
+date: '2023-03-06'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(DHARMa)
+library(ggplot2)
+library(effectsize)
+library(EMAtools)
+library(sjmisc)
+library(sjlabelled)
+```
+
+```{r}
+data <- read.csv("Z:/home/ryanh/projects/ripple_heterogeneity/assembly_unit_corrs_deep_sup_shank_split_results_df.csv")
+data$basepath = factor(data$basepath)
+data$animal_id = factor(data$animal_id)
+data$label_2 = factor(data$label_2)
+data$pair_shank_label = factor(data$pair_shank_label)
+
+summary(data)
+```
+# member_cross_layer vs. member_same_layer on same shank
+
+```{r}
+temp_data <- data[(data$label_2 == "member_cross_layer" | data$label_2 == "member_same_layer") & data$pair_shank_label == "same_shank",]
+temp_data$label_2 = factor(temp_data$label_2)
+
+temp_data$y_trans <- temp_data$rho + 2
+
+mdl_boxcox <- boxcox(y_trans ~ label_2, data=temp_data, lambda = seq(-15, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ label_2 + (1 | basepath), data = temp_data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+lme.dscore(m1,data=temp_data,type="lme4")
+
+plot(rho ~ label_2 , data = temp_data)
+# plot_model(m1,type = "re", value.size = .1)
+```
+
+# member_cross_layer vs. non_member on same shank
+
+```{r}
+temp_data <- data[(data$label_2 == "member_cross_layer" | data$label_2 == "non_member") & data$pair_shank_label == "same_shank",]
+temp_data$label_2 = factor(temp_data$label_2)
+
+temp_data$y_trans <- temp_data$rho + 2
+
+mdl_boxcox <- boxcox(y_trans ~ label_2, data=temp_data, lambda = seq(-15, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ label_2 + (1 | basepath), data = temp_data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+lme.dscore(m1,data=temp_data,type="lme4")
+
+plot(rho ~ label_2 , data = temp_data)
+```
+
+# member_cross_layer vs. member_same_layer on different shank
+
+
+```{r}
+temp_data <- data[(data$label_2 == "member_cross_layer" | data$label_2 == "member_same_layer") & data$pair_shank_label == "diff_shank",]
+temp_data$label_2 = factor(temp_data$label_2)
+
+temp_data$y_trans <- temp_data$rho + 2
+
+mdl_boxcox <- boxcox(y_trans ~ label_2, data=temp_data, lambda = seq(-15, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ label_2 + (1 | basepath), data = temp_data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+lme.dscore(m1,data=temp_data,type="lme4")
+
+plot(rho ~ label_2 , data = temp_data)
+```
+
+# member_cross_layer vs. non_member on different shank
+
+
+```{r}
+temp_data <- data[(data$label_2 == "member_cross_layer" | data$label_2 == "non_member") & data$pair_shank_label == "diff_shank",]
+temp_data$label_2 = factor(temp_data$label_2)
+
+temp_data$y_trans <- temp_data$rho + 2
+
+mdl_boxcox <- boxcox(y_trans ~ label_2, data=temp_data, lambda = seq(-15, 5, length = 100))
+max_lambda <- mdl_boxcox$x[max(mdl_boxcox$y) == mdl_boxcox$y]
+
+temp_data$y_trans <- temp_data$y_trans^max_lambda
+
+m1 = lmer(y_trans ~ label_2 + (1 | basepath), data = temp_data, REML=FALSE)
+summary(m1)
+
+simulationOutput <- simulateResiduals(fittedModel = m1, plot = F)
+plot(simulationOutput)
+
+a1 = anova(m1)
+F_to_eta2(a1$`F value`, a1$NumDF, a1$DenDF)
+lme.dscore(m1,data=temp_data,type="lme4")
+
+plot(rho ~ label_2 , data = temp_data)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
