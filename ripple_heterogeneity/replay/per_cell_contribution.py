@@ -153,6 +153,7 @@ def get_pcc_score(
         pcc_raw.append((rZ_obs - rZ_shuff))
 
     pcc = np.array(pcc)
+    pcc_raw = np.array(pcc_raw)
 
     # find events that the cells did not participation in and make pcc nan
     events_active = [np.any(bst_.data > 0, axis=1) for bst_ in bst]
