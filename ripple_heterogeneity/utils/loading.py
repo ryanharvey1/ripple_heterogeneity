@@ -8,7 +8,7 @@ import nelpy as nel
 import warnings
 from ripple_heterogeneity.utils import functions
 from warnings import simplefilter
-
+from typing import Union
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 
@@ -703,7 +703,7 @@ def load_barrage_events(
     return df
 
 
-def load_ied_events(basepath, return_epoch_array=False):
+def load_ied_events(basepath:str, return_epoch_array:bool=False):
     """
     load info from ripples.events.mat and store within df
 
@@ -926,7 +926,7 @@ def load_SleepState_states(basepath):
     return dict_
 
 
-def load_animal_behavior(basepath, alternative_file=None):
+def load_animal_behavior(basepath:str, alternative_file:Union[str,None]=None) -> pd.DataFrame:
     """
     load_animal_behavior loads basename.animal.behavior.mat files created by general_behavior_file.m
     The output is a pandas data frame with [time,x,y,z,linerized,speed,acceleration,trials,epochs]
@@ -939,7 +939,7 @@ def load_animal_behavior(basepath, alternative_file=None):
             filename = glob.glob(os.path.join(basepath, "*.animal.behavior.mat"))[0]
         except:
             warnings.warn("file does not exist")
-            return
+            return pd.DataFrame()
     else:
         try:
             filename = glob.glob(
@@ -947,7 +947,7 @@ def load_animal_behavior(basepath, alternative_file=None):
             )[0]
         except:
             warnings.warn("file does not exist")
-            return
+            return pd.DataFrame()
     data = []
     data = sio.loadmat(filename, simplify_cells=True)
 
