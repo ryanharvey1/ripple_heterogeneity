@@ -83,6 +83,8 @@ def run(basepath: str) -> Union[pd.DataFrame,None]:
             for i in tasks[task]:
                 idx = functions.in_intervals(pos.abscissa_vals, beh_epochs[i].data)
                 x, y = pos.data[:, idx]
+                if len(x) == 0:
+                    continue
                 pos._data[:, idx] = functions.linearize_position(x, y)
 
         # pull out coordinates for for this task type to get spatial extent
@@ -140,5 +142,6 @@ def run(basepath: str) -> Union[pd.DataFrame,None]:
         results_df_temp["deepSuperficial"] = cm.deepSuperficial.values
         results_df_temp["task"] = task
         results_df = pd.concat([results_df, results_df_temp], ignore_index=True)
-
+        
+    results_df["basepath"] = basepath
     return results_df
