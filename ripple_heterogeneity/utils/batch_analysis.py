@@ -100,7 +100,9 @@ def run(
             main_loop(basepath, save_path, func, overwrite, skip_if_error, **kwargs)
 
 
-def load_results(save_path: str, verbose: bool = False) -> pd.core.frame.DataFrame:
+def load_results(
+    save_path: str, verbose: bool = False, add_save_file_name: bool = False
+) -> pd.core.frame.DataFrame:
     """
     load_results: load results (pandas dataframe) from a pickle file
 
@@ -109,6 +111,14 @@ def load_results(save_path: str, verbose: bool = False) -> pd.core.frame.DataFra
 
     This will have to be adapted if your output was more complicated, but you can
         use this function as an example.
+
+    Inputs:
+        save_path: str path to save results
+        verbose: bool whether to print progress
+        add_save_file_name: bool whether to add a column with the save file name
+
+    Returns:
+        results: pandas dataframe with results
     """
 
     if not os.path.exists(save_path):
@@ -125,6 +135,9 @@ def load_results(save_path: str, verbose: bool = False) -> pd.core.frame.DataFra
             results_ = pickle.load(f)
         if results_ is None:
             continue
+
+        if add_save_file_name:
+            results_["save_file_name"] = os.path.basename(session)
 
         results = pd.concat([results, results_], ignore_index=True)
 
