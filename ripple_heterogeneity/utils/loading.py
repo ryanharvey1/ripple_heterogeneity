@@ -9,10 +9,14 @@ import warnings
 from ripple_heterogeneity.utils import functions
 from warnings import simplefilter
 from typing import Union
+import multiprocessing
+from joblib import Parallel, delayed
+from xml.dom import minidom
+
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 
-def loadXML(basepath):
+def loadXML(basepath:str):
     """
     path should be the folder session containing the XML file
     Function returns :
@@ -35,7 +39,6 @@ def loadXML(basepath):
         warnings.warn("xml file does not exist")
         return
 
-    from xml.dom import minidom
 
     xmldoc = minidom.parse(filename)
     nChannels = (
@@ -71,6 +74,7 @@ def loadXML(basepath):
 def loadLFP(
     basepath, n_channels=90, channel=64, frequency=1250.0, precision="int16", ext="lfp"
 ):
+    path = ""
     if ext == "lfp":
         try:
             path = glob.glob(
@@ -133,7 +137,7 @@ def loadLFP(
 
 
 class LoadLfp(object):
-    def __init__(self, basepath, channels):
+    def __init__(self, basepath:str, channels:Union[int, list]):
         self.basepath = basepath
         self.channels = channels
         self.get_xml_data()
@@ -188,8 +192,6 @@ def load_all_cell_metrics(basepaths):
 
     Note: to get waveforms, spike times, etc. use load_cell_metrics
     """
-    import multiprocessing
-    from joblib import Parallel, delayed
 
     # to speed up, use parallel
     num_cores = multiprocessing.cpu_count()
