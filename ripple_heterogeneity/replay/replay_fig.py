@@ -119,7 +119,7 @@ def plot_all_replay(
                                 bst.n_bins+1)
 
         axRaster.vlines(bin_edges, *ax.get_ylim(), lw=1,
-                        linestyle=':', color='0.8')
+                        linestyle=':', color='0.8',zorder=-1000)
         axRaster.vlines(bin_edges[np.cumsum(bst.lengths)],
                         *ax.get_ylim(), lw=1, color='0.2')
 
