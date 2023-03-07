@@ -12,6 +12,7 @@ import numpy as np
 from itertools import combinations
 from typing import Union
 
+
 def find_repeated_strings(lst: list) -> dict:
     """
     Find all repeated strings in a list.
@@ -47,7 +48,9 @@ def ratemap_cor(A: np.ndarray, B: np.ndarray) -> float:
     return np.corrcoef(x1[~bad_idx], x2[~bad_idx])[0, 1]
 
 
-def run(basepath: str) -> Union[pd.DataFrame,None]:
+def run(
+    basepath: str, n_shuff: int = 500, parallel_shuff: bool = True
+) -> Union[pd.DataFrame, None]:
 
     position_df = loading.load_animal_behavior(basepath)
     position_df_no_nan = position_df.query("not x.isnull() & not y.isnull()")
@@ -98,50 +101,80 @@ def run(basepath: str) -> Union[pd.DataFrame,None]:
         # for reduced complexity, using 2d spatial maps and not splitting by direction (linear track)
         ratemaps = []
         spatial_pval = []
+        n_spikes = []
+        peak_firing_rate = []
+        epoch = []
         for i in tasks[task]:
+            current_pos = pos[beh_epochs[i]]
+            current_st = st[beh_epochs[i]]
 
-            if pos[beh_epochs[i]].isempty | st[beh_epochs[i]].isempty:
+            if current_pos.isempty | current_st.isempty:
                 continue
 
             spatial_maps = maps.SpatialMap(
-                pos[beh_epochs[i]],
-                st[beh_epochs[i]],
+                current_pos,
+                current_st,
                 dim=2,
                 s_binsize=3,
                 x_minmax=xminmax,
                 y_minmax=yminmax,
                 tuning_curve_sigma=3,
-                n_shuff=500,
-                parallel_shuff=True,
+                n_shuff=n_shuff,
+                parallel_shuff=parallel_shuff,
             )
             # store ratemaps
             ratemaps.append(spatial_maps.ratemap)
             # store p-values for spatial information shuffle
             spatial_pval.append(spatial_maps.shuffle_spatial_information())
+            # store n spikes per cell
+            n_spikes.append(current_st.n_events)
+            # store peak firing rate for each cell
+            peak_firing_rate.append(spatial_maps.max(axis=1))
+            # store epoch n for each cell
+            epoch.append(np.ones((len(current_st.data), 1)) * i)
 
         # find correlation between all pairs of ratemaps for each cell
         # find all pairs of ratemaps
         pairs = np.array(list(combinations(np.arange(0, len(ratemaps)), 2)))
-        # set up array to store correlations
-        within_corr = np.zeros((len(st.data), len(pairs)))
+        # set up arrays to store metadata
+        metadata = {
+            "spatial_pval": spatial_pval,
+            "n_spikes": n_spikes,
+            "peak_firing_rate": peak_firing_rate,
+            "epoch": epoch,
+        }
+        metadata_ref_target = {}
+        for key in metadata:
+            metadata_ref_target["ref_" + key] = np.zeros((len(st.data), len(pairs)))
+            metadata_ref_target["target_" + key] = np.zeros((len(st.data), len(pairs)))
+
+        between_corr = np.zeros((len(st.data), len(pairs)))
+
         # loop through pairs
         for pair_i, s in enumerate(pairs):
             # loop through cells
             for cell_i in range(len(st.data)):
                 # find correlation between ratemaps
-                within_corr[cell_i, pair_i] = ratemap_cor(
+                between_corr[cell_i, pair_i] = ratemap_cor(
                     ratemaps[s[0]][cell_i, :, :], ratemaps[s[1]][cell_i, :, :]
                 )
-        # take mean across pairs
-        within_corr = np.nanmean(within_corr, axis=1)
-        results_df_temp["corr"] = within_corr
-        results_df_temp["n_pass_spatial_shuff"] = np.sum(
-            np.vstack(spatial_pval) < 0.05, axis=0
+                # store metadata for each cell for each pair
+                for key in metadata:
+                    metadata_ref_target["ref_" + key][cell_i, pair_i] = metadata[key][s[0]][cell_i]
+                    metadata_ref_target["target_" + key][cell_i, pair_i] = metadata[key][s[1]][cell_i]
+        
+        # store results in dataframe
+        results_df_temp["correlation"] = between_corr.flatten("F")
+        
+        for key in metadata_ref_target:
+            results_df_temp[key] = metadata_ref_target[key].flatten("F")
+
+        results_df_temp["UID"] = np.tile(cm.UID.values, len(pairs))
+        results_df_temp["deepSuperficial"] = np.tile(
+            cm.deepSuperficial.values, len(pairs)
         )
-        results_df_temp["UID"] = cm.UID.values
-        results_df_temp["deepSuperficial"] = cm.deepSuperficial.values
         results_df_temp["task"] = task
         results_df = pd.concat([results_df, results_df_temp], ignore_index=True)
-        
+
     results_df["basepath"] = basepath
     return results_df
