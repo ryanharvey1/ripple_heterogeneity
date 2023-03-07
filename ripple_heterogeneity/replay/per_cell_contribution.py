@@ -223,9 +223,9 @@ def run(
         temp_df["brainRegion"] = np.tile(cell_metrics.brainRegion.values, pcc.shape[1])
 
         # add metadata from replay_df
-        current_replay_df = results[direction]["df"].query(
-            "@shuffle_type < 0.05"
-        )
+        current_replay_df = results[direction]["df"][
+            results[direction]["df"][shuffle_type] < 0.05
+        ]
         keys = current_replay_df.keys()
         for replay_i, df in enumerate(current_replay_df.iterrows()):
             for key in keys:
@@ -247,7 +247,7 @@ def run(
 
     if results_df.shape[0] == 0:
         return None
-    
+
     results_df = add_new_deep_sup.deep_sup_from_deepSuperficialDistance(results_df)
 
     return results_df
