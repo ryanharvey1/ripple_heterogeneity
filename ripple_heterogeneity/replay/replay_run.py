@@ -332,7 +332,7 @@ def get_tuning_curves(
 
     # return class 'auxiliary.TuningCurve1D'
     #   instead of class 'maps.SpatialMap' for decoding.py compatibility
-    return spatial_maps.tc, st_run, bst_run
+    return spatial_maps.tc, st_run, bst_run, spatial_maps.run_epochs
 
 
 def restrict_to_place_cells(
@@ -545,7 +545,7 @@ def run_all(
         if dir_epoch.isempty:
             continue
         # construct tuning curves
-        tc, st_run, bst_run = get_tuning_curves(
+        tc, st_run, bst_run, run_epochs = get_tuning_curves(
             pos, st_all, dir_epoch, speed_thres, ds_50ms, s_binsize, tuning_curve_sigma
         )
 
@@ -570,9 +570,9 @@ def run_all(
             continue
 
         # access decoding accuracy on behavioral time scale
-        bst_run_beh = sta_placecells[dir_epoch].bin(ds=ds_beh_decode)
+        bst_run_beh = sta_placecells[dir_epoch][run_epochs].bin(ds=ds_beh_decode)
         decoding_r2, median_error, decoding_r2_shuff, _ = decode_and_shuff(
-            bst_run_beh, tc, pos[dir_epoch], n_shuffles=behav_shuff
+            bst_run_beh, tc, pos[dir_epoch][run_epochs], n_shuffles=behav_shuff
         )
         if median_error > min_decoding_error:
             continue
