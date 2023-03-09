@@ -6,12 +6,63 @@ from joblib import Parallel, delayed
 import pandas as pd
 from tqdm import tqdm
 import traceback
+from collections.abc import Callable
+
+
+def encode_file_path(basepath: str, save_path: str) -> str:
+    """
+    encode_file_path: encode file path to be used as a file name
+
+    Inputs:
+        basepath: str path to session
+
+    Returns:
+        save_file: str encoded file path
+
+    example:
+        basepath = r"Z:\\Data\\AYAold\\AB3\\AB3_38_41"
+        save_path = r"Z:\\home\\ryanh\\projects\\ripple_heterogeneity\\replay_02_17_23"
+        batch_analysis.encode_file_path(basepath,save_path)
+        >> "Z:\home\ryanh\projects\ripple_heterogeneity\replay_02_17_23\Z---___Data___AYAold___AB3___AB3_38_41.pkl"
+    """
+    # normalize paths
+    basepath = os.path.normpath(basepath)
+    save_path = os.path.normpath(save_path)
+    # encode file path with unlikely characters
+    save_file = os.path.join(
+        save_path, basepath.replace(os.sep, "___").replace(":", "---") + ".pkl"
+    )
+    return save_file
+
+
+def decode_file_path(save_file: str) -> str:
+    """
+    decode_file_path: decode file path to be used as a file name
+
+    Inputs:
+        save_file: str encoded file path
+
+    Returns:
+        basepath: str path to session
+
+    example:
+        save_file = r"Z:\home\ryanh\projects\ripple_heterogeneity\replay_02_17_23\Z---___Data___AYAold___AB3___AB3_38_41.pkl"
+        batch_analysis.decode_file_path(save_file)
+        >> "Z:\\Data\\AYAold\\AB3\\AB3_38_41"
+    """
+
+    # get basepath from save_file
+    basepath = os.path.basename(save_file).replace("___", os.sep).replace("---", ":")
+    # also remove file extension
+    basepath = os.path.splitext(basepath)[0]
+
+    return basepath
 
 
 def main_loop(
     basepath: str,
     save_path: str,
-    func,
+    func: Callable,
     overwrite: bool,
     skip_if_error: bool,
     **kwargs,
@@ -27,11 +78,8 @@ def main_loop(
         kwargs: dict of keyword arguments to pass to func (see run)
     """
     # get file name from basepath
-    basepath = os.path.normpath(basepath)
-    save_path = os.path.normpath(save_path)
-    save_file = os.path.join(
-        save_path, basepath.replace(os.sep, "_").replace(":", "_") + ".pkl"
-    )
+    save_file = encode_file_path(basepath, save_path)
+
     # if file exists and overwrite is False, skip
     if os.path.exists(save_file) & ~overwrite:
         return
@@ -55,7 +103,7 @@ def main_loop(
 def run(
     df: pd.core.frame.DataFrame,
     save_path: str,
-    func,
+    func: Callable,
     parallel: bool = True,
     verbose: bool = False,
     overwrite: bool = False,
@@ -124,7 +172,7 @@ def load_results(
     if not os.path.exists(save_path):
         raise ValueError(f"folder {save_path} does not exist")
 
-    sessions = glob.glob(save_path + os.sep + "*.pkl")
+    sessions = glob.glob(os.path.join(save_path, "*.pkl"))
 
     results = pd.DataFrame()
 
