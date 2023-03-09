@@ -3,6 +3,7 @@ import os
 import pickle
 import pandas as pd
 from ripple_heterogeneity.utils import batch_analysis
+import tempfile
 
 
 def test_batchanalysis():
@@ -18,50 +19,87 @@ def test_batchanalysis():
         }
         return results
 
-    df = pd.read_csv(r"Z:\home\ryanh\projects\ripple_heterogeneity\sessions.csv")
-    df = df.iloc[0:10]
-    
-    save_path = r"Z:\home\ryanh\projects\ripple_heterogeneity\batch_analysis_test"
+    df = pd.DataFrame()
+    df["basepath"] = [
+        r"\test_data\test_data_1",
+        r"\test_data\test_data_2",
+        r"\test_data\test_data_3",
+    ]
 
-    batch_analysis.run(
-        df,
-        save_path,
-        test_analysis,
-        parallel=False,
-        overwrite=True,
-        a="fake",
-        b="julksdjflm",
-    )
+    # test serial
+    with tempfile.TemporaryDirectory() as save_path:
+        batch_analysis.run(
+            df,
+            save_path,
+            test_analysis,
+            parallel=False,
+            overwrite=True,
+            a="fake",
+            b="julksdjflm",
+        )
 
-    sessions = glob.glob(save_path + os.sep + "*.pkl")
-    for session in sessions:
-        with open(session, "rb") as f:
-            results = pickle.load(f)
+        sessions = glob.glob(save_path + os.sep + "*.pkl")
+        assert len(sessions) == 3
+        for session in sessions:
+            with open(session, "rb") as f:
+                results = pickle.load(f)
 
-        assert results['a'] == 'fake'
-        assert results['b'] == 'julksdjflm'
-        assert results['c'] == 'Is'
-        assert results['d'] == 'Great'
-        assert results['e'] == '!'
+            assert results["a"] == "fake"
+            assert results["b"] == "julksdjflm"
+            assert results["c"] == "Is"
+            assert results["d"] == "Great"
+            assert results["e"] == "!"
 
     # test parallel
-    batch_analysis.run(
-        df,
-        save_path,
-        test_analysis,
-        parallel=True,
-        overwrite=True,
-        a="fake",
-        b="julksdjflm",
-    )
+    with tempfile.TemporaryDirectory() as save_path:
 
-    sessions = glob.glob(save_path + os.sep + "*.pkl")
-    for session in sessions:
-        with open(session, "rb") as f:
-            results = pickle.load(f)
-            
-        assert results['a'] == 'fake'
-        assert results['b'] == 'julksdjflm'
-        assert results['c'] == 'Is'
-        assert results['d'] == 'Great'
-        assert results['e'] == '!'
+        batch_analysis.run(
+            df,
+            save_path,
+            test_analysis,
+            parallel=True,
+            overwrite=True,
+            a="fake",
+            b="julksdjflm",
+        )
+
+        sessions = glob.glob(save_path + os.sep + "*.pkl")
+        assert len(sessions) == 3
+        for session in sessions:
+            with open(session, "rb") as f:
+                results = pickle.load(f)
+
+            assert results["a"] == "fake"
+            assert results["b"] == "julksdjflm"
+            assert results["c"] == "Is"
+            assert results["d"] == "Great"
+            assert results["e"] == "!"
+
+    # test load_results
+    def test_analysis(basepath):
+        results = pd.DataFrame()
+        results["basepath"] = [basepath]
+        return results
+
+    with tempfile.TemporaryDirectory() as save_path:
+        batch_analysis.run(
+            df,
+            save_path,
+            test_analysis,
+            parallel=False,
+            overwrite=True,
+        )
+
+        df = batch_analysis.load_results(save_path)
+        assert df.shape[0] == 3
+        assert df["basepath"].iloc[0] == r"\test_data\test_data_1"
+        assert df["basepath"].iloc[1] == r"\test_data\test_data_2"
+        assert df["basepath"].iloc[2] == r"\test_data\test_data_3"
+
+    # test file encode/decode
+    with tempfile.TemporaryDirectory() as save_path:
+        file = r"C:\test_data\test_data_1"
+        encoded_file = batch_analysis.encode_file_path(file, save_path)
+        decoded_file = batch_analysis.decode_file_path(encoded_file)
+        assert decoded_file == file
+        assert encoded_file == save_path + os.sep + "C---___test_data___test_data_1.pkl"
