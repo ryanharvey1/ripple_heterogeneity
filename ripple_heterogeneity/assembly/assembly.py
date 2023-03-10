@@ -4,6 +4,7 @@
 	This implementation was written in Feb 2019.
 	Please e-mail me if you have comments, doubts, bug reports or criticism (Vítor, vtlsantos@gmail.com /  vitor.lopesdossantos@pharm.ox.ac.uk).
 """
+from typing import Tuple, Union
 from sklearn.decomposition import FastICA
 from sklearn.decomposition import PCA
 from scipy import stats
@@ -47,7 +48,7 @@ class toyassemblies:
         self.actstrength = actstrength
 
 
-def marcenkopastur(significance):
+def marcenkopastur(significance: object):
 
     nbins = significance.nbins
     nneurons = significance.nneurons
@@ -61,7 +62,7 @@ def marcenkopastur(significance):
     return lambdaMax
 
 
-def getlambdacontrol(zactmat_):
+def getlambdacontrol(zactmat_: np.ndarray):
 
     significance_ = PCA()
     significance_.fit(zactmat_.T)
@@ -70,7 +71,7 @@ def getlambdacontrol(zactmat_):
     return lambdamax_
 
 
-def binshuffling(zactmat, significance):
+def binshuffling(zactmat: np.ndarray, significance: object):
 
     np.random.seed()
 
@@ -87,7 +88,7 @@ def binshuffling(zactmat, significance):
     return lambdaMax
 
 
-def circshuffling(zactmat, significance):
+def circshuffling(zactmat: np.ndarray, significance: object):
 
     np.random.seed()
 
@@ -104,7 +105,7 @@ def circshuffling(zactmat, significance):
     return lambdaMax
 
 
-def runSignificance(zactmat, significance):
+def runSignificance(zactmat: np.ndarray, significance: object):
 
     if significance.nullhyp == "mp":
         lambdaMax = marcenkopastur(significance)
@@ -113,13 +114,9 @@ def runSignificance(zactmat, significance):
     elif significance.nullhyp == "circ":
         lambdaMax = circshuffling(zactmat, significance)
     else:
-        print("ERROR !")
-        print(
-            "    nyll hypothesis method "
-            + str(significance.nullhyp)
-            + " not understood"
+        raise ValueError(
+            "nyll hypothesis method " + str(significance.nullhyp) + " not understood"
         )
-        significance.nassemblies = np.nan
 
     nassemblies = np.sum(significance.explained_variance_ > lambdaMax)
     significance.nassemblies = nassemblies
@@ -127,7 +124,9 @@ def runSignificance(zactmat, significance):
     return significance
 
 
-def extractPatterns(actmat, significance, method):
+def extractPatterns(
+    actmat: np.ndarray, significance: object, method: str
+) -> np.ndarray:
     nassemblies = significance.nassemblies
 
     if method == "pca":
@@ -138,9 +137,9 @@ def extractPatterns(actmat, significance, method):
         ica.fit(actmat.T)
         patterns = ica.components_
     else:
-        print("ERROR !")
-        print("    assembly extraction method " + str(method) + " not understood")
-        patterns = np.nan
+        raise ValueError(
+            "assembly extraction method " + str(method) + " not understood"
+        )
 
     if patterns is not np.nan:
 
@@ -160,12 +159,14 @@ def runPatterns(
     nshu: int = 1000,
     percentile: int = 99,
     tracywidom: bool = False,
-):
+) -> Union[Tuple[Union[np.ndarray,None], object, Union[np.ndarray,None]], None]:
 
     """
     INPUTS
 
         actmat:     activity matrix - numpy array (neurons, time bins)
+
+        method:     defines how to extract assembly patterns (ica,pca).
 
         nullhyp:    defines how to generate statistical threshold for assembly detection.
                         'bin' - bin shuffling, will shuffle time bins of each neuron independently
@@ -194,7 +195,10 @@ def runPatterns(
 
     silentneurons = np.var(actmat, axis=1) == 0
     actmat_ = actmat[~silentneurons, :]
-
+    if actmat_.shape[0] == 0:
+        warnings.warn("no active neurons")
+        return None, None, None
+    
     # z-scoring activity matrix
     zactmat_ = stats.zscore(actmat_, axis=1)
 
@@ -209,19 +213,19 @@ def runPatterns(
     significance.nullhyp = nullhyp
     significance = runSignificance(zactmat_, significance)
     if np.isnan(significance.nassemblies):
-        return
+        return None, significance, None
 
     if significance.nassemblies < 1:
 
         warnings.warn("no assembly detected")
 
-        patterns = []
-        zactmat = []
+        patterns = None
+        zactmat = None
     else:
         # extracting co-activation patterns
         patterns_ = extractPatterns(zactmat_, significance, method)
         if patterns_ is np.nan:
-            return
+            return None
 
         # putting eventual silent neurons back (their assembly weights are defined as zero)
         patterns = np.zeros((np.size(patterns_, 0), nneurons))
@@ -233,7 +237,9 @@ def runPatterns(
 
 
 @jit(nopython=True)
-def computeAssemblyActivity(patterns, zactmat, zerodiag=True):
+def computeAssemblyActivity(
+    patterns: np.ndarray, zactmat: np.ndarray, zerodiag: bool = True
+) -> np.ndarray:
 
     if len(patterns) == 0:
         return None
