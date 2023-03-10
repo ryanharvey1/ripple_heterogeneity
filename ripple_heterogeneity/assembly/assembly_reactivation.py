@@ -1,5 +1,6 @@
 import glob
 import multiprocessing
+from typing import Tuple
 from joblib import Parallel, delayed
 import os
 import pandas as pd
@@ -22,7 +23,7 @@ class AssemblyReact(object):
 
     Core assembly methods come from assembly.py by Vítor Lopes dos Santos
         https://doi.org/10.1016/j.jneumeth.2013.04.010
-        
+
     Parameters:
     -----------
     basepath: str
@@ -55,9 +56,10 @@ class AssemblyReact(object):
     isempty: isempty (bool)
     copy: returns copy of class
     plot: stem plot of assembly weights
+    find_members: find members of an assembly
 
     *Usage*::
-        
+
         >>> # create the object assembly_react
         >>> assembly_react = assembly_reactivation.AssemblyReact(
         ...    basepath=basepath,
@@ -66,7 +68,7 @@ class AssemblyReact(object):
         >>> # load need data (spikes, ripples, epochs)
         >>> assembly_react.load_data()
 
-        >>> # detect assemblies 
+        >>> # detect assemblies
         >>> assembly_react.get_weights()
 
         >>> # visually inspect weights for each assembly
@@ -74,7 +76,10 @@ class AssemblyReact(object):
 
         >>> # compute time resolved signal for each assembly
         >>> assembly_act = assembly_react.get_assembly_act()
-            
+
+        >>> # locate members of assemblies
+        >>> assembly_members = assembly_react.find_members()
+
     """
 
     def __init__(
@@ -188,7 +193,7 @@ class AssemblyReact(object):
         if self.st.isempty:
             self.patterns = []
             return
-        
+
         if epoch is not None:
             bst = self.st[epoch].bin(ds=self.weight_dt).data
         else:
@@ -204,7 +209,7 @@ class AssemblyReact(object):
         # check for num of assemblies first
         if self.n_assemblies() == 0:
             return nel.AnalogSignalArray(empty=True)
-        
+
         if epoch is not None:
             zactmat, ts = self.get_z_mat(self.st[epoch])
         else:
@@ -217,7 +222,17 @@ class AssemblyReact(object):
         )
         return assembly_act
 
-    def plot(self):
+    def plot(
+        self,
+        plot_members: bool = True,
+        central_line_color: str = "grey",
+        marker_color: str = "k",
+        member_color: str = "#6768ab",
+        line_width: float = 1.25,
+        markersize: float = 4,
+        x_padding: float = 0.2,
+    ):
+
         """
         plots basic stem plot to display assembly weights
         """
@@ -226,6 +241,8 @@ class AssemblyReact(object):
         else:
             if self.patterns == []:
                 return None, None
+            if plot_members:
+                self.find_members()
             # set up figure with size relative to assembly matrix
             fig, axes = plt.subplots(
                 1,
@@ -239,17 +256,34 @@ class AssemblyReact(object):
                 markerline, stemlines, baseline = axes[i].stem(
                     self.patterns[i, :], orientation="horizontal"
                 )
-                markerline._color = "k"
-                baseline._color = "grey"
-                baseline.zorder = -100
+                markerline._color = marker_color
+                baseline._color = central_line_color
+                baseline.zorder = -1000
                 plt.setp(stemlines, "color", plt.getp(markerline, "color"))
+                plt.setp(stemlines, linewidth=line_width)
+                plt.setp(markerline, markersize=markersize)
+
+                if plot_members:
+                    current_pattern = self.patterns[i, :].copy()
+                    current_pattern[~self.assembly_members[i, :]] = np.nan
+                    markerline, stemlines, baseline = axes[i].stem(
+                        current_pattern, orientation="horizontal"
+                    )
+                    markerline._color = member_color
+                    baseline._color = "#00000000"
+                    baseline.zorder = -1000
+                    plt.setp(stemlines, "color", plt.getp(markerline, "color"))
+                    plt.setp(stemlines, linewidth=line_width)
+                    plt.setp(markerline, markersize=markersize)
 
                 axes[i].spines["top"].set_visible(False)
                 axes[i].spines["right"].set_visible(False)
 
             # give room for marker
-            axes[0].set_xlim(-self.patterns.max()-.1,self.patterns.max()+.1)
-            
+            axes[0].set_xlim(
+                -self.patterns.max() - x_padding, self.patterns.max() + x_padding
+            )
+
             axes[0].set_ylabel("Neurons #")
             axes[0].set_xlabel("Weights (a.u.)")
 
@@ -290,6 +324,75 @@ class AssemblyReact(object):
             n_units = f"{self.st.n_active} units"
             dstr = f"of length {self.st.support.length}"
             return "<%s: %s> %s" % (self.type_name, n_units, dstr)
+
+    def find_members(self) -> np.ndarray:
+        """
+        Finds significant assembly patterns and signficant assembly members
+
+        Output:
+            assembly_members: a ndarray of booleans indicating whether each unit is a significant member of an assembly
+
+        also, sets self.assembly_members and self.valid_assembly
+
+        self.valid_assembly: a ndarray of booleans indicating an assembly has members with the same sign (Boucly et al. 2022)
+
+        """
+
+        def Otsu(vector: np.ndarray) -> Tuple[np.ndarray, float, float]:
+            """
+            The Otsu method for splitting data into two groups.
+            This is somewhat equivalent to kmeans(vector,2), but while the kmeans implementation
+            finds a local minimum and may therefore produce different results each time,
+            the Otsu implementation is guaranteed to find the best division every time.
+
+            input:
+                vector: arbitrary vector
+            output:
+                group: binary class
+                threshold: threshold used for classification
+                em: effectiveness metric
+
+            From Raly
+            """
+            sorted = np.sort(vector)
+            n = len(vector)
+            intraClassVariance = [np.nan] * n
+            for i in np.arange(n):
+                p = (i + 1) / n
+                p0 = 1 - p
+                if i + 1 == n:
+                    intraClassVariance[i] = np.nan
+                else:
+                    intraClassVariance[i] = p * np.var(sorted[0 : i + 1]) + p0 * np.var(
+                        sorted[i + 1 :]
+                    )
+
+            minIntraVariance = np.nanmin(intraClassVariance)
+            idx = np.nanargmin(intraClassVariance)
+            threshold = sorted[idx]
+            group = vector > threshold
+
+            em = 1 - (minIntraVariance / np.var(vector))
+
+            return group, threshold, em
+
+        is_member = []
+        keep_assembly = []
+        for pat in self.patterns:
+            isMember, _, _ = Otsu(np.abs(pat))
+            is_member.append(isMember)
+
+            if np.any(pat[isMember] < 0) & np.any(pat[isMember] > 0):
+                keep_assembly.append(False)
+            elif sum(isMember) == 0:
+                keep_assembly.append(False)
+            else:
+                keep_assembly.append(True)
+
+        self.assembly_members = np.array(is_member)
+        self.valid_assembly = np.array(keep_assembly)
+
+        return self.assembly_members
 
 
 def get_peak_activity(assembly_act, epochs):
