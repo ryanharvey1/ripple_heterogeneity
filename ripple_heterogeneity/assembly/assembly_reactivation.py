@@ -137,7 +137,7 @@ class AssemblyReact(object):
         self.load_ripples()
         self.load_epoch()
 
-    def restrict_epochs_to_pre_task_post(self):
+    def restrict_epochs_to_pre_task_post(self) -> None:
         """
         Restricts the epochs to the specified epochs
         """

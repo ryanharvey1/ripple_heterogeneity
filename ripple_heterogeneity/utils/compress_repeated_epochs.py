@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 
-def main(epoch_df, epoch_name="sleep"):
+def main(epoch_df:pd.DataFrame, epoch_name:str="sleep") -> pd.DataFrame:
     """
     Compress back to back epochs with name epoch_name
     Input:

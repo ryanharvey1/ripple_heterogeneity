@@ -18,7 +18,7 @@ __version__ = "2019.1"
 
 def toyExample(assemblies, nneurons=10, nbins=1000, rate=1.0):
 
-    np.random.seed()
+    np.random.seed(42)
 
     actmat = np.random.poisson(rate, nneurons * nbins).reshape(nneurons, nbins)
     assemblies.actbins = [None] * len(assemblies.membership)
@@ -154,7 +154,12 @@ def extractPatterns(actmat, significance, method):
 
 
 def runPatterns(
-    actmat, method="ica", nullhyp="mp", nshu=1000, percentile=99, tracywidom=False
+    actmat: np.ndarray,
+    method: str = "ica",
+    nullhyp: str = "mp",
+    nshu: int = 1000,
+    percentile: int = 99,
+    tracywidom: bool = False,
 ):
 
     """
@@ -207,8 +212,8 @@ def runPatterns(
         return
 
     if significance.nassemblies < 1:
-        
-        warnings.warn('no assembly detected')
+
+        warnings.warn("no assembly detected")
 
         patterns = []
         zactmat = []

@@ -994,7 +994,7 @@ def load_animal_behavior(basepath:str, alternative_file:Union[str,None]=None) ->
     return df
 
 
-def load_epoch(basepath):
+def load_epoch(basepath:str) -> pd.DataFrame:
     """
     Loads epoch info from cell explorer basename.session and stores in df
     """
