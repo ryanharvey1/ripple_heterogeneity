@@ -68,3 +68,10 @@ def test_assembly():
     assert patterns is None
     assert zactmat is None
     assert significance is None
+
+    # test no patterns found
+    X = np.zeros([n_samples, n_features],int).T
+    np.fill_diagonal(X, 1)
+    patterns, significance, zactmat = assembly.runPatterns(X,method="ica",nullhyp="mp")
+    assert patterns is None
+    assert zactmat is None
