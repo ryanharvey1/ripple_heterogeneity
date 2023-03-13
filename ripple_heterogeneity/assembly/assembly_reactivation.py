@@ -13,6 +13,7 @@ from ripple_heterogeneity.assembly import assembly
 import logging
 import copy
 import matplotlib.pyplot as plt
+from typing import Union
 
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -84,11 +85,11 @@ class AssemblyReact(object):
 
     def __init__(
         self,
-        basepath,
-        brainRegion="CA1",
-        putativeCellType="Pyramidal Cell",
-        weight_dt=0.025,
-        z_mat_dt=0.002,
+        basepath: Union[str, None] = None,
+        brainRegion: str = "CA1",
+        putativeCellType: str = "Pyramidal Cell",
+        weight_dt: Union[float, int] = 0.025,
+        z_mat_dt: Union[float, int] = 0.002,
     ):
         self.basepath = basepath
         self.brainRegion = brainRegion
@@ -231,6 +232,7 @@ class AssemblyReact(object):
         line_width: float = 1.25,
         markersize: float = 4,
         x_padding: float = 0.2,
+        figsize: Union[tuple, None] = None,
     ):
 
         """
@@ -243,11 +245,13 @@ class AssemblyReact(object):
                 return None, None
             if plot_members:
                 self.find_members()
+            if figsize is None:
+                figsize = (self.n_assemblies() + 1, np.round(self.n_assemblies() / 2))
             # set up figure with size relative to assembly matrix
             fig, axes = plt.subplots(
                 1,
                 self.n_assemblies(),
-                figsize=(self.n_assemblies() + 1, np.round(self.n_assemblies() / 2)),
+                figsize=figsize,
                 sharey=True,
                 sharex=True,
             )
