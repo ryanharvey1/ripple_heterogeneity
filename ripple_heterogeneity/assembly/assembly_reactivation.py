@@ -293,6 +293,8 @@ class AssemblyReact(object):
         if hasattr(self, "patterns"):
             if self.patterns == []:
                 return 0
+            elif self.patterns is None:
+                return 0
             return self.patterns.shape[0]
 
     @property
