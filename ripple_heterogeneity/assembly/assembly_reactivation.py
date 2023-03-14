@@ -37,6 +37,16 @@ class AssemblyReact(object):
         Time resolution of the weight matrix
     z_mat_dt: float
         Time resolution of the z matrix
+    method: str
+        Defines how to extract assembly patterns (ica,pca).
+    nullhyp: str
+        Defines how to generate statistical threshold for assembly detection (bin,circ,mp).
+    nshu: int
+        Number of shuffles for bin and circ null hypothesis.
+    percentile: int
+        Percentile for mp null hypothesis.
+    tracywidom: bool
+        If true, uses Tracy-Widom distribution for mp null hypothesis.
 
     attributes:
     -----------
@@ -88,14 +98,24 @@ class AssemblyReact(object):
         basepath: Union[str, None] = None,
         brainRegion: str = "CA1",
         putativeCellType: str = "Pyramidal Cell",
-        weight_dt: Union[float, int] = 0.025,
-        z_mat_dt: Union[float, int] = 0.002,
+        weight_dt: float = 0.025,
+        z_mat_dt: float = 0.002,
+        method: str = "ica",
+        nullhyp: str = "mp",
+        nshu: int = 1000,
+        percentile: int = 99,
+        tracywidom: bool = False,
     ):
         self.basepath = basepath
         self.brainRegion = brainRegion
         self.putativeCellType = putativeCellType
         self.weight_dt = weight_dt
         self.z_mat_dt = z_mat_dt
+        self.method = method
+        self.nullhyp = nullhyp
+        self.nshu = nshu
+        self.percentile = percentile
+        self.tracywidom = tracywidom
         self.type_name = self.__class__.__name__
 
     def add_st(self, st):
@@ -203,7 +223,14 @@ class AssemblyReact(object):
         if (bst == 0).all():
             self.patterns = []
         else:
-            self.patterns, _, _ = assembly.runPatterns(bst)
+            self.patterns, _, _ = assembly.runPatterns(
+                bst,
+                method=self.method,
+                nullhyp=self.nullhyp,
+                nshu=self.nshu,
+                percentile=self.percentile,
+                tracywidom=self.tracywidom,
+            )
 
     def get_assembly_act(self, epoch=None):
 
