@@ -6,7 +6,7 @@ import pickle
 import nelpy as nel
 import multiprocessing
 from joblib import Parallel, delayed
-from ripple_heterogeneity.utils import functions,loading,add_new_deep_sup
+from ripple_heterogeneity.utils import functions, loading, add_new_deep_sup
 
 
 def load_data(basepath):
@@ -28,7 +28,10 @@ def load_data(basepath):
     if cell_metrics.shape[0] < 2:
         return None, None, None, None, None
 
-    cell_metrics = add_new_deep_sup.add_new_deep_sup_class(cell_metrics)
+    if "deepSuperficialDistance" not in cell_metrics.columns:
+        return None, None, None, None, None
+
+    cell_metrics = add_new_deep_sup.deep_sup_from_distance(cell_metrics)
     ripples = loading.load_ripples_events(basepath)
     ripples = nel.EpochArray(np.array([ripples.start, ripples.stop]).T)
 
@@ -40,7 +43,7 @@ def load_data(basepath):
     return st, cell_metrics, ripples, nrem_epochs, wake_epochs
 
 
-def main(basepath, states=None, ccg_nbins=100, ccg_binsize=0.004):
+def main(basepath, states=None, ccg_nbins=100, ccg_binsize=0.005, method="pearson"):
     """
     Main function.
     Inputs:
@@ -73,7 +76,7 @@ def main(basepath, states=None, ccg_nbins=100, ccg_binsize=0.004):
     unit_mat = functions.get_participation(
         st.data, ripples.starts, ripples.stops, par_type="counts"
     )
-    rho, pval, corr_c = functions.pairwise_corr(unit_mat)
+    rho, pval, corr_c = functions.pairwise_corr(unit_mat, method=method)
 
     # get ccg
     ccgs, c = functions.pairwise_cross_corr(

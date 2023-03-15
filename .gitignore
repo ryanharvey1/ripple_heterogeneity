@@ -6,3 +6,5 @@ __pycache__/
 *.vscode
 data/
 dask-worker-space/
+.vs/ProjectSettings.json
+.vs/VSWorkspaceState.json

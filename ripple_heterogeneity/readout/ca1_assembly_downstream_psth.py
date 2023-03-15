@@ -146,11 +146,17 @@ def run(
         m1.cell_metrics
     )
 
-    if not ((m1.cell_metrics.deepSuperficial == "Deep").sum() >= min_cells) & (
+    if not ((m1.cell_metrics.deepSuperficial == "Deep").sum() >= min_cells) | (
         (m1.cell_metrics.deepSuperficial == "Superficial").sum() >= min_cells
     ):
         print("Not enough cells")
         return None
+    
+    # if not ((m1.cell_metrics.deepSuperficial == "Deep").sum() >= min_cells) & (
+    #     (m1.cell_metrics.deepSuperficial == "Superficial").sum() >= min_cells
+    # ):
+    #     print("Not enough cells")
+    #     return None
 
     # extend ripples to include some extra time
     m1.ripples = m1.ripples.expand(rip_exp_start, direction="start")
@@ -194,6 +200,11 @@ def run(
         basepath, brainRegion=target_regions, putativeCellType=putativeCellType
     )
 
+    target_regions_1,target_regions_2 = target_regions 
+    if not cell_metrics.brainRegion.str.contains(target_regions_1).any() | cell_metrics.brainRegion.str.contains(target_regions_2).any():
+        print("Not enough cells")
+        return None
+    
     _, _, keep_assembly, is_member = find_sig_assembly.main(
         results.get("react").patterns
     )
