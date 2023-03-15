@@ -95,7 +95,7 @@ def get_pairs(curr_assem):
     return label_df
 
 
-def run(basepath):
+def run(basepath,binsize=0.005, nbins=200):
 
     with open(basepath, "rb") as f:
         results = pickle.load(f)
@@ -138,8 +138,10 @@ def run(basepath):
 
     # calculate tuning curves
     tc = maps.SpatialMap(pos[m1.epochs[task_idx]], m1.st[m1.epochs[task_idx]], dim=2)
-
+    # tc.shuffle_spatial_information()
+    
     label_df = pd.DataFrame()
+    ccgs = pd.DataFrame()
 
     current_st = m1.st[m1.epochs[task_idx]]
 
@@ -162,6 +164,9 @@ def run(basepath):
         label_df_["spatial_info_ref"] = tc.tc.spatial_information()[label_df_.idx_ref]
         label_df_["spatial_info_tar"] = tc.tc.spatial_information()[label_df_.idx_tar]
 
+        # label_df_["spatial_pval_ref"] = tc.spatial_information_pvalues[label_df_.idx_ref]
+        # label_df_["spatial_pval_tar"] = tc.spatial_information_pvalues[label_df_.idx_tar]
+
         label_df_["spatial_sparsity_ref"] = tc.tc.spatial_sparsity()[label_df_.idx_ref]
         label_df_["spatial_sparsity_tar"] = tc.tc.spatial_sparsity()[label_df_.idx_tar]
 
@@ -171,17 +176,28 @@ def run(basepath):
         label_df_["n_spikes_ref"] = current_st.n_events[label_df_.idx_ref]
         label_df_["n_spikes_tar"] = current_st.n_events[label_df_.idx_tar]
         
+        ccgs_ = functions.pairwise_cross_corr(
+            current_st.data,
+            binsize=binsize,
+            nbins=nbins,
+            pairs=label_df_[["idx_ref", "idx_tar"]].values,
+        )
+        ccgs = pd.concat([ccgs, ccgs_], axis=1, ignore_index=True)
+
         label_df = pd.concat([label_df, label_df_], ignore_index=True)
 
     label_df["basepath"] = m1.basepath
 
-    return label_df
+    results = {"ccgs": ccgs, "label_df": label_df}
+
+    return results
 
 
 def load_results(save_path, verbose=False):
 
     sessions = glob.glob(save_path + os.sep + "*.pkl")
 
+    ccgs = pd.DataFrame()
     label_df = pd.DataFrame()
 
     for session in tqdm(sessions):
@@ -192,6 +208,7 @@ def load_results(save_path, verbose=False):
         if results is None:
             continue
 
-        label_df = pd.concat([label_df, results], ignore_index=True)
+        ccgs = pd.concat([ccgs, results["ccgs"]], axis=1, ignore_index=True)
+        label_df = pd.concat([label_df, results["label_df"]], ignore_index=True)
 
-    return label_df
+    return ccgs, label_df
