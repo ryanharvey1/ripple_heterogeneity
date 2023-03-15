@@ -9,6 +9,7 @@ import warnings
 import logging
 import nelpy as nel
 
+logging.getLogger().setLevel(logging.ERROR)
 
 def run(
     basepath,
@@ -24,7 +25,6 @@ def run(
     """
     Gets the pre and post assembly strengths
     """
-    logging.getLogger().setLevel(logging.ERROR)
 
     # initialize session
     m1 = assembly_reactivation.AssemblyReact(
@@ -82,7 +82,7 @@ def run(
     else:
         m1.get_weights(m1.epochs[1][~m1.ripples])
 
-    if len(m1.patterns) == 0:
+    if m1.n_assemblies() == 0:
         print("No patterns found")
         return None
 
