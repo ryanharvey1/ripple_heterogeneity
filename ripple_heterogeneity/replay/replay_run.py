@@ -46,6 +46,7 @@ def pooled_incoherent_shuffle_bst(bst):
         segment = np.atleast_1d(np.squeeze(data[uu, :]))
         segment = np.roll(segment, np.random.randint(len(segment)))
         data[uu, :] = segment
+    out._data = data
     return out
 
 
