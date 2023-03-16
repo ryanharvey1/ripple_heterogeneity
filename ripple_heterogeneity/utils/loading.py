@@ -662,7 +662,7 @@ def load_barrage_events(
             )[0]
         else:
             filename = glob.glob(
-                basepath + os.sep + "Barrage_Files" + os.sep + "HSE.mat"
+                basepath + os.sep + "Barrage_Files" + os.sep + "*HSE.mat"
             )[0]
     except:
         warnings.warn("file does not exist")
