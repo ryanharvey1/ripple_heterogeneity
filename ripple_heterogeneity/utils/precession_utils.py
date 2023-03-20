@@ -128,7 +128,7 @@ def corrcc_uniform(alpha1, alpha2, axis=None):
 
 
 def spatial_phase_precession(
-    spike_phases, spike_position, slope_bounds=[-3 * np.pi, 3 * np.pi]
+    circ, lin, slope_bounds=[-3 * np.pi, 3 * np.pi]
 ):
     """
     Compute the circular-linear correlation as in: https://pubmed.ncbi.nlm.nih.gov/22487609/
@@ -194,8 +194,8 @@ def spatial_phase_precession(
     linear_circ = np.mod(abs(sl) * lin, 2 * np.pi)
 
     # # marginal distributions:
-    # p1, z1 = pcs.tests.rayleigh(circ)
-    # p2, z2 = pcs.tests.rayleigh(linear_circ)
+    p1, z1 = pcs.tests.rayleigh(circ)
+    p2, z2 = pcs.tests.rayleigh(linear_circ)
 
     # circular-linear correlation:
     if (p1 > 0.5) | (p2 > 0.5):
