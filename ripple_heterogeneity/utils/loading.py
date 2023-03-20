@@ -12,6 +12,7 @@ from typing import Union
 import multiprocessing
 from joblib import Parallel, delayed
 from xml.dom import minidom
+from scipy import signal
 
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
@@ -164,6 +165,34 @@ class LoadLfp(object):
             fs=self.fs,
             support=nel.EpochArray(np.array([min(timestep), max(timestep)])),
         )
+    def __repr__(self) -> None:
+        return self.lfp.__repr__()
+
+    def get_freq_phase_amp(self, sig=None, band2filter: list=[6,12], ford=3):
+        """
+        Uses the Hilbert transform to calculate the instantaneous phase and
+        amplitude of the time series in sig
+        Parameters
+        ----------
+        sig: np.array
+            The signal to be analysed
+        ford: int
+            The order for the Butterworth filter
+        band2filter: list
+            The two frequencies to be filtered for e.g. [6, 12]
+        """
+        if sig is None:
+            sig = self.lfp.data
+        band2filter = np.array(band2filter, dtype=float)
+
+        b, a = signal.butter(ford, band2filter /
+                                (self.fs / 2), btype="bandpass")
+
+        filt_sig = signal.filtfilt(b, a, sig, padtype="odd")
+        phase = np.angle(signal.hilbert(filt_sig))
+        amplitude = np.abs(signal.hilbert(filt_sig))
+        amplitude_filtered = signal.filtfilt(b, a, amplitude, padtype="odd")
+        return filt_sig, phase, amplitude, amplitude_filtered
 
 
 def load_position(basepath, fs=39.0625):
@@ -616,7 +645,7 @@ def load_ripples_events(
     return df
 
 
-def load_theta_cycles(basepath):
+def load_theta_cycles(basepath, return_epoch_array=False):
     """
     load theta cycles calculated from auto_theta_cycles.m
     """
@@ -629,6 +658,9 @@ def load_theta_cycles(basepath):
     df["center"] = data["thetacycles"]["center"]
     df["trough"] = data["thetacycles"]["peaks"]
     df["theta_channel"] = data["thetacycles"]["detectorinfo"]["theta_channel"]
+
+    if return_epoch_array:
+        return nel.EpochArray([np.array([df.start, df.stop]).T], label="theta_cycles")
     return df
 
 
