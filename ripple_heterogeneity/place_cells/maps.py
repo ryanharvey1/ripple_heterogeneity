@@ -14,7 +14,7 @@ import os
 from typing import Union, List
 
 logging.getLogger().setLevel(logging.ERROR)
-
+np.seterr(divide='ignore', invalid='ignore')
 
 class SpatialMap(object):
     """
@@ -30,6 +30,7 @@ class SpatialMap(object):
         x_minmax: min and max x values for the spatial map (list)
         y_minmax: min and max y values for the spatial map (list)
         tuning_curve_sigma: sigma for the tuning curve (float)
+        smooth_mode: mode for smoothing curve (str) reflect,constant,nearest,mirror,wrap
         min_duration: minimum duration for a tuning curve (float)
         minbgrate: min firing rate for tuning curve, will set to this if lower (float)
         place_field_thres: percent of continuous region of peak firing rate (float)
@@ -69,6 +70,7 @@ class SpatialMap(object):
         x_minmax: List[Union[int, float]] = None,
         y_minmax: List[Union[int, float]] = None,
         tuning_curve_sigma: Union[int, float] = 3,
+        smooth_mode: str = "reflect",
         min_duration: float = 0.1,
         minbgrate: Union[int, float] = 0,
         place_field_thres: Union[int, float] = 0.2,
@@ -79,25 +81,15 @@ class SpatialMap(object):
         n_shuff: int = 500,
         parallel_shuff: bool = True,
     ) -> None:
-        self.pos = pos
-        self.st = st
-        self.dim = dim
-        self.dir_epoch = dir_epoch
-        self.speed_thres = speed_thres
-        self.ds_bst = ds_bst
-        self.s_binsize = s_binsize
-        self.x_minmax = x_minmax
-        self.y_minmax = y_minmax
-        self.tuning_curve_sigma = tuning_curve_sigma
-        self.min_duration = min_duration
-        self.minbgrate = minbgrate
-        self.place_field_thres = place_field_thres
-        self.place_field_min_size = place_field_min_size
-        self.place_field_min_peak = place_field_min_peak
-        self.place_field_max_size = place_field_max_size
-        self.place_field_sigma = place_field_sigma
-        self.n_shuff = n_shuff
-        self.parallel_shuff = parallel_shuff
+        # add all the inputs to self
+        self.__dict__.update(locals())
+        del self.__dict__["self"]
+
+        # make sure pos and st are nelpy objects
+        if not isinstance(pos, nel.core._analogsignalarray.AnalogSignalArray):
+            raise TypeError("pos must be nelpy.AnalogSignal")
+        if not isinstance(st, nel.core._eventarray.SpikeTrainArray):
+            raise TypeError("st must be nelpy.SpikeTrain")
 
         # get speed and running epochs
         self.speed = nel.utils.ddt_asa(self.pos, smooth=True, sigma=0.1, norm=True)
@@ -162,7 +154,7 @@ class SpatialMap(object):
 
         if self.tuning_curve_sigma is not None:
             if self.tuning_curve_sigma > 0:
-                tc.smooth(sigma=self.tuning_curve_sigma, inplace=True)
+                tc.smooth(sigma=self.tuning_curve_sigma, inplace=True, mode=self.smooth_mode)
 
         return tc, st_run
 
@@ -249,7 +241,7 @@ class SpatialMap(object):
 
         if self.tuning_curve_sigma is not None:
             if self.tuning_curve_sigma > 0:
-                tc.smooth(sigma=self.tuning_curve_sigma, inplace=True)
+                tc.smooth(sigma=self.tuning_curve_sigma, inplace=True, mode=self.smooth_mode)
 
         return tc, st_run
 
