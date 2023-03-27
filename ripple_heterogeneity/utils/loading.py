@@ -703,19 +703,19 @@ def load_barrage_events(
         return pd.DataFrame()
 
     # load matfile
-    data = sio.loadmat(filename)
+    data = sio.loadmat(filename, simplify_cells=True)
 
     # make data frame of known fields
     df = pd.DataFrame()
-    df["start"] = data["HSE"]["timestamps"][0][0][:, 0]
-    df["stop"] = data["HSE"]["timestamps"][0][0][:, 1]
-    df["peaks"] = data["HSE"]["peaks"][0][0]
+    df["start"] = data["HSE"]["timestamps"][:, 0]
+    df["stop"] = data["HSE"]["timestamps"][:, 1]
+    df["peaks"] = data["HSE"]["peaks"]
     try:
-        df["amplitude"] = data["HSE"]["amplitudes"][0][0]
+        df["amplitude"] = data["HSE"]["amplitudes"]
     except:
         df["amplitude"] = np.nan
     try:
-        df["duration"] = data["HSE"]["duration"][0][0]
+        df["duration"] = data["HSE"]["duration"]
     except:
         df["duration"] = df["stop"] - df["start"]
 
@@ -726,10 +726,10 @@ def load_barrage_events(
     df["basename"] = path_components[-2]
     df["animal"] = path_components[-3]
 
-    df = df.loc[np.array(data["HSE"]["keep"][0][0]).T[0] - 1].reset_index(drop=True)
-
+    df = df.loc[np.array(data["HSE"]["keep"]).T - 1].reset_index(drop=True)
+        
     if restrict_to_nrem:
-        df = df.loc[np.array(data["HSE"]["NREM"][0][0]).T[0] - 1].reset_index(drop=True)
+        df = df.loc[np.array(data["HSE"]["NREM"]).T - 1].reset_index(drop=True)
 
     if return_epoch_array:
         return nel.EpochArray([np.array([df.start, df.stop]).T], label="barrage")
