@@ -120,6 +120,7 @@ def run(
         verbose: bool whether to print progress
         overwrite: bool whether to overwrite existing files in save_path
         skip_if_error: bool whether to skip if an error occurs
+        num_cores: int number of cores to use (if None, will use all cores)
         kwargs: dict of keyword arguments to pass to func
     """
     # find sessions to run
