@@ -362,30 +362,22 @@ def load_cell_metrics(basepath: str, only_metrics: bool = False) -> tuple:
         except:
             continue
 
-    # add column for bad label tag
-    # have dedicated var as this tag is important
-    try:
-        df["bad_unit"] = [False] * df.shape[0]
-        bad_units = data["cell_metrics"]["tags"][0][0]["Bad"][0][0][0]
-        df["bad_unit"] = [False] * df.shape[0]
-        for uid in bad_units:
-            df.loc[df.UID == uid, "bad_unit"] = True
-    except:
-        pass
-
     # load in tag
-    try:
-        dt = data["cell_metrics"]["tags"][0][0].dtype
-        if len(dt) > 0:
-            # iter through each tag
-            for dn in dt.names:
-                # set up column for tag
-                df["tags_" + dn] = [False] * df.shape[0]
-                # iter through uid
-                for uid in data["cell_metrics"]["tags"][0][0][dn][0][0][0]:
-                    df.loc[df.UID == uid, "tags_" + dn] = True
-    except:
-        pass
+    dt = data["cell_metrics"]["tags"][0][0].dtype
+    if len(dt) > 0:
+        # iter through each tag
+        for dn in dt.names:
+            # set up column for tag
+            df["tags_" + dn] = [False] * df.shape[0]
+            # iter through uid
+            for uid in data["cell_metrics"]["tags"][0][0][dn][0][0].flatten():
+                df.loc[df.UID == uid, "tags_" + dn] = True
+
+    # add bad unit tag for legacy
+    df["bad_unit"] = [False] * df.shape[0]
+    if "tags_Bad" in df.keys():
+        df.bad_unit = df.tags_Bad
+        df.bad_unit = df.bad_unit.replace({np.nan: False})
 
     # add data from general metrics
     df["basename"] = data["cell_metrics"]["general"][0][0]["basename"][0][0][0]
