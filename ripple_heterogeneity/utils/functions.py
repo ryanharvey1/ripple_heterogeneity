@@ -1891,6 +1891,36 @@ def in_intervals(timestamps, intervals):
 
     return in_interval
 
+@njit(parallel=True)
+def in_intervals_interval(timestamps:np.ndarray, intervals: np.ndarray) -> np.ndarray:
+    """
+    for each timestamps value, the index of the interval to which it belongs (nan = none)
+
+    Parameters
+    ----------
+    timestamps : ndarray
+        An array of timestamp values. assumes sorted
+    intervals : ndarray
+        An array of time intervals, represented as pairs of start and end times.
+
+    Returns
+    -------
+    ndarray
+        A ndarray indicating for each timestamps which interval it was within.
+
+    Examples
+    --------
+    >>> timestamps = np.array([1, 2, 3, 4, 5, 6, 7, 8])
+    >>> intervals = np.array([[2, 4], [5, 7]])
+    >>> in_intervals_interval(timestamps, intervals)
+    array([nan,  0,  0,  0,  1,  1,  1, nan])
+    """
+    in_interval = np.empty(timestamps.shape, dtype=float) * np.nan
+    for i, (start, end) in enumerate(intervals):
+        in_interval[(timestamps >= start) & (timestamps <= end)] = i
+
+    return in_interval
+
 
 def count_events(events, time_ref, time_range):
     """
@@ -1966,6 +1996,7 @@ def relative_times(
     By Ryan H, based on RelativeTimes.m by Ralitsa Todorova
 
     """
+
     # Check inputs 
     if t.ndim != 1:
         raise ValueError("t must be a 1D array")
@@ -1987,11 +2018,11 @@ def relative_times(
     
 
     # Initialize output arrays
-    rt = np.zeros_like(t, dtype=float)
-    intervalID = np.zeros_like(t, dtype=float)
+    rt = np.zeros_like(t, dtype=float) * np.nan
+    intervalID = np.zeros_like(t, dtype=float) * np.nan
     if values is None:
         values = np.arange(intervals.shape[0], dtype=int)
-    rt_values = np.zeros_like(t, dtype=float)
+    rt_values = np.zeros_like(t, dtype=float) * np.nan
 
     # Find intervals for each time point
     in_interval = (t[:, None] >= intervals[:, 0]) & (t[:, None] <= intervals[:, 1])
@@ -2003,10 +2034,7 @@ def relative_times(
             rt[i] = (t[i] - intervals[idx, 0]) / (intervals[idx, 1] - intervals[idx, 0])
             intervalID[i] = idx
             rt_values[i] = values[idx]
-        else:
-            rt[i] = np.nan
-            intervalID[i] = np.nan
-            rt_values[i] = np.nan
+
 
     return rt, intervalID, rt_values
 
