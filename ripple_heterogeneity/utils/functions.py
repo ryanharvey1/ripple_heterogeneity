@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
-from numba import jit,njit
+from numba import jit, njit
 from numba import int8
 from numba.typed import List
 from numba import typeof
@@ -18,6 +18,7 @@ import random
 from nelpy import core
 from ripple_heterogeneity.utils import loading
 from scipy.linalg import toeplitz
+from typing import List, Tuple, Union
 
 def set_plotting_defaults():
     tex_fonts = {
@@ -306,20 +307,21 @@ def compute_psth(spikes, event, bin_width=0.002, n_bins=100):
         ccg[i] = crossCorr(event, s, bin_width, n_bins)
     return ccg
 
-def deconvolve_peth(signal,events,bin_width=0.002, n_bins=100):
+
+def deconvolve_peth(signal, events, bin_width=0.002, n_bins=100):
     """
     This function performs deconvolution of a peri-event time histogram (PETH) signal.
-    
+
     Parameters:
     signal (array): An array representing the discrete events.
     events (array): An array representing the discrete events.
     bin_width (float, optional): The width of a time bin in seconds (default value is 0.002 seconds).
     n_bins (int, optional): The number of bins to use in the PETH (default value is 100 bins).
-    
+
     Returns:
     deconvolved (array): An array representing the deconvolved signal.
     times (array): An array representing the time points corresponding to the bins.
-    
+
     Based on DeconvolvePETH.m from https://github.com/ayalab1/neurocode/blob/master/spikes/DeconvolvePETH.m
     """
 
@@ -327,8 +329,8 @@ def deconvolve_peth(signal,events,bin_width=0.002, n_bins=100):
     times = np.linspace(-(n_bins * bin_width) / 2, (n_bins * bin_width) / 2, n_bins + 1)
 
     # Calculate the autocorrelogram of the signal and the PETH of the events and the signal
-    autocorrelogram = crossCorr(signal, signal, bin_width, n_bins*2)
-    raw_peth = crossCorr(events, signal, bin_width, n_bins*2)
+    autocorrelogram = crossCorr(signal, signal, bin_width, n_bins * 2)
+    raw_peth = crossCorr(events, signal, bin_width, n_bins * 2)
 
     # Subtract the mean value from the raw_peth
     const = np.mean(raw_peth)
@@ -338,14 +340,14 @@ def deconvolve_peth(signal,events,bin_width=0.002, n_bins=100):
     #   the cross-correlation of the autocorrelogram
     T0 = toeplitz(
         autocorrelogram,
-        np.hstack([autocorrelogram[0], np.zeros(len(autocorrelogram)-1)])
+        np.hstack([autocorrelogram[0], np.zeros(len(autocorrelogram) - 1)]),
     )
-    T = T0[n_bins:, :n_bins+1]
+    T = T0[n_bins:, : n_bins + 1]
 
     # Calculate the deconvolved signal by solving a linear equation
     deconvolved = np.linalg.solve(
         T, raw_peth[int(n_bins / 2) : int(n_bins / 2 * 3 + 1)].T + const / len(events)
-    )   
+    )
     return deconvolved, times
 
 
@@ -407,9 +409,11 @@ def get_raster_points(data, time_ref, bin_width=0.002, n_bins=100, window=None):
     """
 
     if window is not None:
-        times = np.arange(window[0], window[1] + bin_width/2, bin_width)
+        times = np.arange(window[0], window[1] + bin_width / 2, bin_width)
     else:
-        times = np.linspace(-(n_bins * bin_width) / 2, (n_bins * bin_width) / 2, n_bins + 1)
+        times = np.linspace(
+            -(n_bins * bin_width) / 2, (n_bins * bin_width) / 2, n_bins + 1
+        )
     x = []
     y = []
     for i, r in enumerate(time_ref):
@@ -417,10 +421,11 @@ def get_raster_points(data, time_ref, bin_width=0.002, n_bins=100, window=None):
         cur_data = data[idx]
         # if any(cur_data):
         x.append(cur_data - r)
-        y.append(np.ones_like(cur_data)+i)       
+        y.append(np.ones_like(cur_data) + i)
     x = list(itertools.chain(*x))
     y = list(itertools.chain(*y))
     return x, y, times
+
 
 def peth_matrix(data, time_ref, bin_width=0.002, n_bins=100, window=None):
 
@@ -430,18 +435,21 @@ def peth_matrix(data, time_ref, bin_width=0.002, n_bins=100, window=None):
     dt = np.diff(t)[0]
     x, y = np.array(x), np.array(y)
     H, xedges, yedges = np.histogram2d(
-        x, y, bins=(
-            np.arange(t.min(),t.max()+dt,dt),
-            np.arange(.5,len(time_ref) + 1.5)
-            )
+        x,
+        y,
+        bins=(
+            np.arange(t.min(), t.max() + dt, dt),
+            np.arange(0.5, len(time_ref) + 1.5),
+        ),
     )
-    return H, t[:-1]+dt/2
+    return H, t[:-1] + dt / 2
+
 
 def event_triggered_average_irregular_sample(
     timestamps, data, time_ref, bin_width=0.002, n_bins=100, window=None
 ):
     """
-    Compute the average and standard deviation of data values within a window around 
+    Compute the average and standard deviation of data values within a window around
     each reference time.
 
     Specifically for irregularly sampled data
@@ -460,13 +468,13 @@ def event_triggered_average_irregular_sample(
         The number of bins in the window. Default is 100.
     window : tuple, optional
         A tuple containing the start and end times of the window to be plotted around each reference time.
-        If not provided, the window will be centered around each reference time and have a 
+        If not provided, the window will be centered around each reference time and have a
         width of `n_bins * bin_width` seconds.
 
     Returns
     -------
     pd.DataFrame, pd.DataFrame
-        two dataframes, the first containing the average values, the second the 
+        two dataframes, the first containing the average values, the second the
         standard deviation of data values within the window around each reference time.
     """
 
@@ -488,30 +496,32 @@ def event_triggered_average_irregular_sample(
         return temp_df, temp_df
     temp_df["time"] = np.hstack(x)
     temp_df["data"] = np.hstack(y)
-    temp_df = temp_df.sort_values(by="time",ascending=True)
+    temp_df = temp_df.sort_values(by="time", ascending=True)
 
-    average_val = np.zeros(len(times)-1)
-    std_val = np.zeros(len(times)-1)
-    for i in range(len(times)-1):
-        average_val[i] = temp_df[temp_df.time.between(times[i], times[i+1])].data.mean()
-        std_val[i] = temp_df[temp_df.time.between(times[i], times[i+1])].data.std()
+    average_val = np.zeros(len(times) - 1)
+    std_val = np.zeros(len(times) - 1)
+    for i in range(len(times) - 1):
+        average_val[i] = temp_df[
+            temp_df.time.between(times[i], times[i + 1])
+        ].data.mean()
+        std_val[i] = temp_df[temp_df.time.between(times[i], times[i + 1])].data.std()
 
-    avg = pd.DataFrame(index=times[:-1] + bin_width/2)
+    avg = pd.DataFrame(index=times[:-1] + bin_width / 2)
     avg[0] = average_val
 
-    std = pd.DataFrame(index=times[:-1] + bin_width/2)
+    std = pd.DataFrame(index=times[:-1] + bin_width / 2)
     std[0] = std_val
 
     return avg, std
 
 
 def event_triggered_average(
-        timestamps:np.ndarray,
-        signal:np.ndarray,
-        events:np.ndarray,
-        sampling_rate=None,
-        window=[-0.5, 0.5],
-        return_pandas: bool=False
+    timestamps: np.ndarray,
+    signal: np.ndarray,
+    events: np.ndarray,
+    sampling_rate=None,
+    window=[-0.5, 0.5],
+    return_pandas: bool = False,
 ) -> np.ndarray:
     """
     Calculates the spike-triggered averages of signals in a time window
@@ -590,10 +600,12 @@ def event_triggered_average(
         # summing over all respective signal intervals around spiketimes
         for event in events:
             # locate signal in time range
-            idx = (timestamps >= event + window_starttime) & (timestamps <= event + window_stoptime)
+            idx = (timestamps >= event + window_starttime) & (
+                timestamps <= event + window_stoptime
+            )
             # for speed, instead of checking if we have enough time each iteration, just skip if we don't
             try:
-                result_sta[:, i] += signal[idx,i] 
+                result_sta[:, i] += signal[idx, i]
             except:
                 continue
             # counting of the used event
@@ -608,7 +620,9 @@ def event_triggered_average(
         warnings.warn("No events at all was either found or used for averaging")
 
     if return_pandas:
-        return pd.DataFrame(index=time_lags, columns=np.arange(result_sta.shape[1]), data=result_sta)
+        return pd.DataFrame(
+            index=time_lags, columns=np.arange(result_sta.shape[1]), data=result_sta
+        )
 
     return result_sta, time_lags
 
@@ -832,14 +846,14 @@ def get_participation(st, event_starts, event_stops, par_type="binary"):
 def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
     """
     Return the significant events based on percentiles,
-    the p-values and the standard deviation of the scores 
+    the p-values and the standard deviation of the scores
     in terms of the shuffled scores.
     Parameters
     ----------
     scores : array of shape (n_events,)
         The array of scores for which to calculate significant events
     shuffled_scores : array of shape (n_shuffles, n_events)
-        The array of scores obtained from randomized data 
+        The array of scores obtained from randomized data
     q : float in range of [0,100]
         Percentile to compute, which must be between 0 and 100 inclusive.
     Returns
@@ -847,12 +861,12 @@ def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
     sig_event_idx : array of shape (n_sig_events,)
         Indices (from 0 to n_events-1) of significant events.
     pvalues : array of shape (n_events,)
-        The p-values 
+        The p-values
     stddev : array of shape (n_events,)
         The standard deviation of the scores in terms of the shuffled scores
     """
     # check shape and correct if needed
-    if isinstance(scores,list) | isinstance(scores,np.ndarray):
+    if isinstance(scores, list) | isinstance(scores, np.ndarray):
         if shuffled_scores.shape[1] != len(scores):
             shuffled_scores = shuffled_scores.T
 
@@ -868,7 +882,7 @@ def get_significant_events(scores, shuffled_scores, q=95, tail="both"):
     pvalues = (r + 1) / (n + 1)
 
     # set nan scores to 1
-    if isinstance(np.isnan(scores),np.ndarray):
+    if isinstance(np.isnan(scores), np.ndarray):
         pvalues[np.isnan(scores)] = 1
 
     sig_event_idx = np.argwhere(
@@ -1396,27 +1410,28 @@ def find_pre_task_post(env, pre_post_label="sleep"):
                 dummy[0 + i : 3 + i] = True
                 return dummy, [0, 1, 2] + i
 
-def find_multitask_pre_post(env, task_tag = 'open_field|linear_track|box|tmaze|wmaze'):
+
+def find_multitask_pre_post(env, task_tag="open_field|linear_track|box|tmaze|wmaze"):
     """
-    Find the row index for pre_task/post_task sleep for a given enviornment from cell explorer session.epochs dataframe 
-    Returns list of pre/task_post epochs for each task. 
-    input: 
-        df: data frame consisting of cell explorer session.epochs data 
+    Find the row index for pre_task/post_task sleep for a given enviornment from cell explorer session.epochs dataframe
+    Returns list of pre/task_post epochs for each task.
+    input:
+        df: data frame consisting of cell explorer session.epochs data
         col_name: name of column to query task tag. Default is environemnt
-        task_tag: string within col_name that indicates a task. 
-    output: 
+        task_tag: string within col_name that indicates a task.
+    output:
         list of epoch indicies [pre_task, task, post_task] of size n = # of task epochs
 
-    LB/RH 1/5/2022    
+    LB/RH 1/5/2022
     """
     # Find the row indices that contain the search string in the specified column
     task_bool = env.str.contains(task_tag, case=False)
-    sleep_bool = env.str.contains('sleep', case=False)
+    sleep_bool = env.str.contains("sleep", case=False)
 
     task_idx = np.where(task_bool)[0]
-    task_idx = np.delete(task_idx,task_idx == 0,0)
+    task_idx = np.delete(task_idx, task_idx == 0, 0)
     sleep_idx = np.where(sleep_bool)[0]
-    
+
     pre_task_post = []
     for task in task_idx:
         temp = sleep_idx - task
@@ -1424,16 +1439,17 @@ def find_multitask_pre_post(env, task_tag = 'open_field|linear_track|box|tmaze|w
         post_task = sleep_idx[temp > 0]
 
         if len(post_task) == 0:
-            print('no post_task sleep for task epoch '+str(task))
+            print("no post_task sleep for task epoch " + str(task))
         elif len(pre_task) == 0:
-            print('no pre_task sleep for task epoch '+str(task))
+            print("no pre_task sleep for task epoch " + str(task))
         else:
             pre_task_post.append([pre_task[-1], task, post_task[0]])
 
     if len(pre_task_post) == 0:
         pre_task_post = None
-        
+
     return pre_task_post
+
 
 def find_epoch_pattern(env, pattern):
     """
@@ -1518,16 +1534,18 @@ def find_env_paradigm_pre_task_post(epoch_df, env="sleep", paradigm="memory"):
     ).values
     return idx
 
-def add_animal_id(df:pd.core.frame.DataFrame) -> pd.core.frame.DataFrame:
+
+def add_animal_id(df: pd.core.frame.DataFrame) -> pd.core.frame.DataFrame:
     df["animal_id"] = df.basepath.map(
         dict(
             [
                 (basepath, loading.get_animal_id(basepath))
-                    for basepath in df.basepath.unique()
+                for basepath in df.basepath.unique()
             ]
         )
     )
     return df
+
 
 def get_rank_order(
     st,
@@ -1727,7 +1745,7 @@ def randomize_epochs(epoch, randomize_each=True, start_stop=None):
     if not new_epochs.isempty:
         if np.any(new_epochs.data[:, 1] - new_epochs.data[:, 0] < 0):
             raise ValueError("start must be less than or equal to stop")
-            
+
     new_epochs._sort()
 
     return new_epochs
@@ -1762,6 +1780,7 @@ def overlap_intersect(epoch, interval, return_indices=True):
         return out, indices
     return out
 
+
 @jit(nopython=True)
 def find_intersecting_intervals_(set1, set2):
 
@@ -1775,6 +1794,7 @@ def find_intersecting_intervals_(set1, set2):
                 break
         intersecting_intervals.append(intersects)
     return intersecting_intervals
+
 
 def find_intersecting_intervals(set1, set2):
     """
@@ -1813,16 +1833,17 @@ def get_speed(position, time=None):
     velocity = get_velocity(position, time=time)
     return np.sqrt(np.sum(velocity**2, axis=1))
 
+
 def find_interval(logical):
     """
     Find consecutive intervals of True values in a list of boolean values.
-    
+
     Parameters:
     logical (List[bool]): The list of boolean values.
-    
+
     Returns:
     List[Tuple[int, int]]: A list of tuples representing the start and end indices of each consecutive interval of True values in the logical list.
-    
+
     Example:
     find_interval([0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1]) -> [(2, 4), (6, 7), (10, 11)]
     find_interval([1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1]) -> [(0, 2), (4, 5), (9, 10)]
@@ -1838,6 +1859,7 @@ def find_interval(logical):
     if start is not None:
         intervals.append((start, len(logical) - 1))
     return intervals
+
 
 @njit(parallel=True)
 def in_intervals(timestamps, intervals):
@@ -1898,8 +1920,98 @@ def count_events(events, time_ref, time_range):
 
     return counts
 
+# @jit(nopython=True)
+def relative_times(
+    t: np.ndarray, intervals: np.ndarray, values: Union[np.ndarray, None] = None
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Calculate relative times and interval IDs for a set of time points.
+    Intervals are defined as pairs of start and end times. The relative time is the time
+    within the interval, normalized to the interval duration. The interval ID is the index
+    of the interval in the intervals array. The values array can be used to assign a value
+    to each interval, which is then returned as the rt_values array.
+    Parameters
+    ----------
+    t : ndarray
+        An array of time points.
+    intervals : ndarray
+        An array of time intervals, represented as pairs of start and end times.
+    values : ndarray, optional
+        An array of values to assign to each interval. The default is None.
+    Returns
+    -------
+    rt : ndarray
+        An array of relative times, one for each time point (same len as t).
+    intervalID : ndarray
+        An array of interval IDs, one for each time point (same len as t).
+    rt_values : ndarray
+        An array of values assigned to each interval, one for each time point (same len as t).
+    Examples
+    --------
+    >>> t = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    >>> intervals = np.array([[1, 3], [4, 6], [7, 9]])
+    >>> relative_times(t, intervals)
+        (array([nan, 0. , 0.5, 1. , 0. , 0.5, 1. , 0. , 0.5, 1. ]),
+        array([nan,  0.,  0.,  0.,  1.,  1.,  1.,  2.,  2.,  2.]),
+        array([nan,  0.,  0.,  0.,  1.,  1.,  1.,  2.,  2.,  2.]))
 
-def clean_lfp(lfp, thresholds=[5,10], artifact_time_expand=[0.25,0.1]):
+    >>> t = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    >>> intervals = np.array([[1, 3], [4, 6], [7, 9]])
+    >>> values = np.array([10, 20, 30])
+    >>> relative_times(t, intervals, values)
+        (array([nan, 0. , 0.5, 1. , 0. , 0.5, 1. , 0. , 0.5, 1. ]),
+        array([nan,  0.,  0.,  0.,  1.,  1.,  1.,  2.,  2.,  2.]),
+        array([nan, 10., 10., 10., 20., 20., 20., 30., 30., 30.]))
+
+    By Ryan H, based on RelativeTimes.m by Ralitsa Todorova
+
+    """
+    # Check inputs 
+    if t.ndim != 1:
+        raise ValueError("t must be a 1D array")
+    if intervals.ndim < 2:
+        raise ValueError("intervals must be a 2D array")
+    if intervals.shape[1] != 2:
+        raise ValueError("intervals must have 2 columns")
+    if values is not None:
+        if values.ndim != 1:
+            raise ValueError("values must be a 1D array")
+        if len(values) != intervals.shape[0]:
+            raise ValueError("values must have the same length as intervals")
+    # check if intervals are sorted
+    if not np.all(np.diff(intervals, axis=0) >= 0):
+        raise ValueError("intervals must be sorted")
+    # check if t is sorted
+    if not np.all(np.diff(t) >= 0):
+        raise ValueError("t must be sorted")
+    
+
+    # Initialize output arrays
+    rt = np.zeros_like(t, dtype=float)
+    intervalID = np.zeros_like(t, dtype=float)
+    if values is None:
+        values = np.arange(intervals.shape[0], dtype=int)
+    rt_values = np.zeros_like(t, dtype=float)
+
+    # Find intervals for each time point
+    in_interval = (t[:, None] >= intervals[:, 0]) & (t[:, None] <= intervals[:, 1])
+
+    # Calculate relative time and interval ID
+    for i in range(len(t)):
+        if np.any(in_interval[i]):
+            idx = np.where(in_interval[i])[0][0]
+            rt[i] = (t[i] - intervals[idx, 0]) / (intervals[idx, 1] - intervals[idx, 0])
+            intervalID[i] = idx
+            rt_values[i] = values[idx]
+        else:
+            rt[i] = np.nan
+            intervalID[i] = np.nan
+            rt_values[i] = np.nan
+
+    return rt, intervalID, rt_values
+
+
+def clean_lfp(lfp, thresholds=[5, 10], artifact_time_expand=[0.25, 0.1]):
     """
     Remove artefacts and noise from a local field potential (LFP) signal.
 
@@ -1931,7 +2043,9 @@ def clean_lfp(lfp, thresholds=[5,10], artifact_time_expand=[0.25,0.1]):
         -1.63661574, -1.10868426])
     """
     threshold1 = thresholds[0]  # in sigmas deviating from the mean
-    aroundArtefact1 = artifact_time_expand[0]  # interval to expand large global artefacts
+    aroundArtefact1 = artifact_time_expand[
+        0
+    ]  # interval to expand large global artefacts
 
     threshold2 = thresholds[1]  # for derivative of z-scored signal
     aroundArtefact2 = artifact_time_expand[1]  # interval to expand detected noise
@@ -1963,11 +2077,14 @@ def clean_lfp(lfp, thresholds=[5,10], artifact_time_expand=[0.25,0.1]):
     in_interval = in_intervals(t, bad.data)
 
     # Interpolate values for timestamps within intervals for artefacts and noise
-    values[in_interval] = np.interp(t[in_interval], t[~in_interval], values[~in_interval])
-    
+    values[in_interval] = np.interp(
+        t[in_interval], t[~in_interval], values[~in_interval]
+    )
+
     return values
 
-def confidence_intervals(X:np.ndarray, conf:float=0.95):
+
+def confidence_intervals(X: np.ndarray, conf: float = 0.95):
     """
     confidence_intervals: calculates upper and lower .95 confidence intervals on matrix
 
@@ -1988,7 +2105,7 @@ def confidence_intervals(X:np.ndarray, conf:float=0.95):
     return lower, upper
 
 
-def reindex_df(df:pd.core.frame.DataFrame, weight_col:str) -> pd.core.frame.DataFrame:
+def reindex_df(df: pd.core.frame.DataFrame, weight_col: str) -> pd.core.frame.DataFrame:
     """
     reindex_df: expands dataframe by weights
 
