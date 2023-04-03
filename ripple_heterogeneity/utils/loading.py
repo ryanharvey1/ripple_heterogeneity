@@ -17,7 +17,7 @@ from scipy import signal
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 
-def loadXML(basepath:str):
+def loadXML(basepath: str):
     """
     path should be the folder session containing the XML file
     Function returns :
@@ -39,7 +39,6 @@ def loadXML(basepath:str):
     except:
         warnings.warn("xml file does not exist")
         return
-
 
     xmldoc = minidom.parse(filename)
     nChannels = (
@@ -73,7 +72,12 @@ def loadXML(basepath:str):
 
 
 def loadLFP(
-    basepath, n_channels=90, channel=64, frequency=1250.0, precision="int16", ext="lfp"
+    basepath: str,
+    n_channels: int = 90,
+    channel: int = 64,
+    frequency: float = 1250.0,
+    precision: str = "int16",
+    ext: str = "lfp",
 ):
     path = ""
     if ext == "lfp":
@@ -94,6 +98,19 @@ def loadLFP(
     if not os.path.exists(path):
         warnings.warn("file does not exist")
         return
+    if channel is None:
+        n_channels = int(n_channels)
+
+        f = open(path, "rb")
+        startoffile = f.seek(0, 0)
+        endoffile = f.seek(0, 2)
+        bytes_size = 2
+        n_samples = int((endoffile - startoffile) / n_channels / bytes_size)
+        duration = n_samples / frequency
+        f.close()
+        data = np.memmap(path, np.int16, "r", shape=(n_samples, n_channels))
+        timestep = np.arange(0, n_samples) / frequency
+        return data, timestep
 
     if type(channel) is not list:
         f = open(path, "rb")
@@ -114,7 +131,7 @@ def loadLFP(
             if os.path.exists(lfp_ts_path):
                 timestep = np.load(lfp_ts_path).reshape(-1)
 
-            return data, timestep  # nts.Tsd(timestep, data, time_units = 's')
+            return data, timestep
 
     elif type(channel) is list:
         f = open(path, "rb")
@@ -134,14 +151,53 @@ def loadLFP(
             )
             if os.path.exists(lfp_ts_path):
                 timestep = np.load(lfp_ts_path).reshape(-1)
-            return data, timestep  # nts.TsdFrame(timestep, data, time_units = 's')
+            return data, timestep
 
 
 class LoadLfp(object):
-    def __init__(self, basepath:str, channels:Union[int, list]):
-        self.basepath = basepath
-        self.channels = channels
+    """
+    Simple class to load LFP or wideband data from a recording folder
+    Args:
+        basepath : string (path to the recording folder)
+        channels : int or list of int or None (default None, load all channels memmap)
+        ext : string (lfp or dat)
+    Returns:
+        : nelpy analogsignalarray of shape (n_channels, n_samples)
+
+    Example:
+        # load lfp file
+        >>> basepath = r"X:/data/Barrage/NN10/day10"
+        >>> lfp = loading.LoadLfp(basepath,ext="lfp")
+        >>> lfp
+        >>>    <AnalogSignalArray at 0x25ba1576640: 128 signals> for a total of 5:33:58:789 hours
+
+        # Loading dat file
+        >>> dat = loading.LoadLfp(basepath,ext="dat")
+        >>> dat
+        >>>    <AnalogSignalArray at 0x25ba4fedc40: 128 signals> for a total of 5:33:58:790 hours
+        >>> dat.lfp.data.shape    
+        >>>    (128, 400775808)
+        >>> type(dat.lfp.data)    
+        >>>    numpy.memmap
+
+    Ryan Harvey 2023
+    """
+
+    def __init__(
+        self, basepath: str, channels: Union[int, list, None] = None, ext: str = "lfp"
+    ) -> None:
+        self.basepath = basepath  # path to the recording folder
+        self.channels = channels  # channel number or list of channel numbers
+        self.ext = ext  # lfp or dat
+
+        # get xml data
         self.get_xml_data()
+
+        # set sampling rate based on the extension of the file (lfp or dat)
+        if self.ext == "dat":
+            self.fs = self.fs_dat
+
+        # load lfp
         self.load_lfp()
 
     def get_xml_data(self):
@@ -157,18 +213,20 @@ class LoadLfp(object):
             n_channels=self.nChannels,
             channel=self.channels,
             frequency=self.fs,
-            ext="lfp",
+            ext=self.ext,
         )
+
         self.lfp = nel.AnalogSignalArray(
             data=lfp.T,
             timestamps=timestep,
             fs=self.fs,
             support=nel.EpochArray(np.array([min(timestep), max(timestep)])),
         )
+
     def __repr__(self) -> None:
         return self.lfp.__repr__()
 
-    def get_freq_phase_amp(self, sig=None, band2filter: list=[6,12], ford=3):
+    def get_freq_phase_amp(self, sig=None, band2filter: list = [6, 12], ford=3):
         """
         Uses the Hilbert transform to calculate the instantaneous phase and
         amplitude of the time series in sig
@@ -185,8 +243,7 @@ class LoadLfp(object):
             sig = self.lfp.data
         band2filter = np.array(band2filter, dtype=float)
 
-        b, a = signal.butter(ford, band2filter /
-                                (self.fs / 2), btype="bandpass")
+        b, a = signal.butter(ford, band2filter / (self.fs / 2), btype="bandpass")
 
         filt_sig = signal.filtfilt(b, a, sig, padtype="odd")
         phase = np.angle(signal.hilbert(filt_sig))
@@ -686,7 +743,9 @@ def load_barrage_events(
             )[0]
         else:
             filename = glob.glob(
-                os.path.join(basepath,"Barrage_Files",os.path.basename(basepath)+".HSE.mat")
+                os.path.join(
+                    basepath, "Barrage_Files", os.path.basename(basepath) + ".HSE.mat"
+                )
             )[0]
     except:
         warnings.warn("file does not exist")
@@ -719,7 +778,7 @@ def load_barrage_events(
     df["animal"] = path_components[-3]
 
     df = df.loc[np.array(data["HSE"]["keep"]).T - 1].reset_index(drop=True)
-        
+
     if restrict_to_nrem:
         df = df.loc[np.array(data["HSE"]["NREM"]).T - 1].reset_index(drop=True)
 
@@ -729,7 +788,7 @@ def load_barrage_events(
     return df
 
 
-def load_ied_events(basepath:str, return_epoch_array:bool=False):
+def load_ied_events(basepath: str, return_epoch_array: bool = False):
     """
     load info from ripples.events.mat and store within df
 
@@ -952,7 +1011,9 @@ def load_SleepState_states(basepath):
     return dict_
 
 
-def load_animal_behavior(basepath:str, alternative_file:Union[str,None]=None) -> pd.DataFrame:
+def load_animal_behavior(
+    basepath: str, alternative_file: Union[str, None] = None
+) -> pd.DataFrame:
     """
     load_animal_behavior loads basename.animal.behavior.mat files created by general_behavior_file.m
     The output is a pandas data frame with [time,x,y,z,linerized,speed,acceleration,trials,epochs]
@@ -1018,7 +1079,7 @@ def load_animal_behavior(basepath:str, alternative_file:Union[str,None]=None) ->
     return df
 
 
-def load_epoch(basepath:str) -> pd.DataFrame:
+def load_epoch(basepath: str) -> pd.DataFrame:
     """
     Loads epoch info from cell explorer basename.session and stores in df
     """
