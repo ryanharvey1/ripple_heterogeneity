@@ -193,6 +193,8 @@ def compute_AutoCorrs(spks, binsize=0.001, nbins=100):
 
     # Now we can iterate over the dictionnary of spikes
     for i, s in enumerate(spks):
+        if len(s) == 0:
+            continue
         # Calling the crossCorr function
         autocorrs[i] = crossCorr(s, s, binsize, nbins)
 
