@@ -1969,31 +1969,29 @@ def relative_times(
     intervals : ndarray
         An array of time intervals, represented as pairs of start and end times.
     values : ndarray, optional
-        An array of values to assign to each interval. The default is None.
+        An array of values to assign to interval bounds. The default is [0,1].
     Returns
     -------
     rt : ndarray
         An array of relative times, one for each time point (same len as t).
     intervalID : ndarray
         An array of interval IDs, one for each time point (same len as t).
-    rt_values : ndarray
-        An array of values assigned to each interval, one for each time point (same len as t).
+
     Examples
     --------
     >>> t = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     >>> intervals = np.array([[1, 3], [4, 6], [7, 9]])
     >>> relative_times(t, intervals)
         (array([nan, 0. , 0.5, 1. , 0. , 0.5, 1. , 0. , 0.5, 1. ]),
-        array([nan,  0.,  0.,  0.,  1.,  1.,  1.,  2.,  2.,  2.]),
         array([nan,  0.,  0.,  0.,  1.,  1.,  1.,  2.,  2.,  2.]))
 
     >>> t = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     >>> intervals = np.array([[1, 3], [4, 6], [7, 9]])
-    >>> values = np.array([10, 20, 30])
+    >>> values = np.array([0, 2*np.pi])
     >>> relative_times(t, intervals, values)
-        (array([nan, 0. , 0.5, 1. , 0. , 0.5, 1. , 0. , 0.5, 1. ]),
-        array([nan,  0.,  0.,  0.,  1.,  1.,  1.,  2.,  2.,  2.]),
-        array([nan, 10., 10., 10., 20., 20., 20., 30., 30., 30.]))
+        (array([       nan, 0.        , 3.14159265, 6.28318531, 0.        ,
+                3.14159265, 6.28318531, 0.        , 3.14159265, 6.28318531]),
+        array([nan,  0.,  0.,  0.,  1.,  1.,  1.,  2.,  2.,  2.]))
 
     By Ryan H, based on RelativeTimes.m by Ralitsa Todorova
 
@@ -2009,8 +2007,6 @@ def relative_times(
     if values is not None:
         if values.ndim != 1:
             raise ValueError("values must be a 1D array")
-        if len(values) != intervals.shape[0]:
-            raise ValueError("values must have the same length as intervals")
     # check if intervals are sorted
     if not np.all(np.diff(intervals, axis=0) >= 0):
         raise ValueError("intervals must be sorted")
@@ -2023,8 +2019,7 @@ def relative_times(
     rt = np.zeros_like(t, dtype=float) * np.nan
     intervalID = np.zeros_like(t, dtype=float) * np.nan
     if values is None:
-        values = np.arange(intervals.shape[0], dtype=int)
-    rt_values = np.zeros_like(t, dtype=float) * np.nan
+        values = np.arange(intervals.shape[1], dtype=int)
 
     # Find intervals for each time point
     in_interval = (t[:, None] >= intervals[:, 0]) & (t[:, None] <= intervals[:, 1])
@@ -2032,13 +2027,17 @@ def relative_times(
     # Calculate relative time and interval ID
     for i in range(len(t)):
         if np.any(in_interval[i]):
+            # Find the interval that the time point is in
             idx = np.where(in_interval[i])[0][0]
-            rt[i] = (t[i] - intervals[idx, 0]) / (intervals[idx, 1] - intervals[idx, 0])
+            # Calculate relative time
+            scale = (values[1] - values[0])
+            rt[i] = (
+                ((t[i] - intervals[idx, 0]) / (intervals[idx, 1] - intervals[idx, 0])) * scale + values[0]
+            )
+            # Save interval ID
             intervalID[i] = idx
-            rt_values[i] = values[idx]
 
-
-    return rt, intervalID, rt_values
+    return rt, intervalID
 
 
 def clean_lfp(lfp, thresholds=[5, 10], artifact_time_expand=[0.25, 0.1]):
