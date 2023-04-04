@@ -2159,3 +2159,20 @@ def get_spindices(data:np.ndarray) -> pd.DataFrame():
     spikes['spike_id'] = np.hstack(spikes_id)
     spikes.sort_values('spike_times',inplace=True)
     return spikes
+
+def spindices_to_ndarray(spikes:pd.DataFrame) -> np.ndarray:
+    """
+    Convert spike times and spike id to a list of arrays
+    Parameters
+    ----------
+    spikes : pd.DataFrame
+        sorted dataframe of spike times and spike id
+    Returns
+    -------
+    data : np.ndarray
+        spike times for each spike train, in a list of arrays
+    """
+    data = []
+    for spk_i in np.unique(spikes['spike_id']):
+        data.append(spikes[spikes['spike_id']==spk_i]['spike_times'].values)
+    return data
