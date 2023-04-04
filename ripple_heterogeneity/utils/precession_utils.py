@@ -8,11 +8,12 @@ import pyfftw
 import multiprocessing
 import numba
 from scipy.signal import find_peaks
-
+from scipy.ndimage import gaussian_filter1d
 
 # These are the core functions used to identify both spatial and non-spatial phase precession
 # https://github.com/seqasim/human_precession/blob/main/Precession_utils.py
 # https://doi.org/10.1016/j.cell.2021.04.017
+
 
 def corrcc(alpha1, alpha2, axis=None):
     """
@@ -105,7 +106,7 @@ def corrcc_uniform(alpha1, alpha2, axis=None):
     alpha1_centered, alpha2_centered = pcs.descriptive.center(alpha1, alpha2, axis=axis)
 
     # One of the sample means is not well defined due to uniform distribution of data
-    # so take the difference of the resultant vector length for the sum and difference 
+    # so take the difference of the resultant vector length for the sum and difference
     # of the alphas
     num = pcs.descriptive.resultant_vector_length(
         alpha1 - alpha2
@@ -115,7 +116,7 @@ def corrcc_uniform(alpha1, alpha2, axis=None):
         * np.sum(np.sin(alpha2_centered) ** 2, axis=axis)
     )
     rho = n * num / den
-    # significance of this correlation coefficient can be tested using the fact that Z 
+    # significance of this correlation coefficient can be tested using the fact that Z
     # is approx. normal
 
     l20 = np.mean(np.sin(alpha1_centered) ** 2)
@@ -127,9 +128,7 @@ def corrcc_uniform(alpha1, alpha2, axis=None):
     return rho, pval
 
 
-def spatial_phase_precession(
-    circ, lin, slope_bounds=[-3 * np.pi, 3 * np.pi]
-):
+def spatial_phase_precession(circ, lin, slope_bounds=[-3 * np.pi, 3 * np.pi]):
     """
     Compute the circular-linear correlation as in: https://pubmed.ncbi.nlm.nih.gov/22487609/
 
@@ -189,6 +188,8 @@ def spatial_phase_precession(
     offs = np.arctan2(
         np.sum(np.sin(circ - (sl * lin))), np.sum(np.cos(circ - (sl * lin)))
     )
+    # offs = (offs + np.pi) % (2 * np.pi) - np.pi
+    offs = np.arctan2(np.sin(offs), np.cos(offs))
 
     # circular variable derived from the linearization
     linear_circ = np.mod(abs(sl) * lin, 2 * np.pi)
@@ -209,6 +210,11 @@ def spatial_phase_precession(
         rho = -np.abs(rho)
     else:
         rho = np.abs(rho)
+
+    # if offs < 0:
+    #     offs = offs + 2 * np.pi
+    # if offs > np.pi:
+    #     offs = offs - 2 * np.pi
 
     return rho, pval, sl, offs
 
@@ -366,6 +372,8 @@ def nonspatial_phase_precession(
     cut_peak: bool = True,
     norm: bool = True,
     psd_lims: list = [0.65, 1.55],
+    upsample: int = 4,
+    smooth_sigma=1
 ):
 
     """
@@ -405,23 +413,111 @@ def nonspatial_phase_precession(
         / (2 * width - bin_width)
     )
 
+    frequencies = np.interp(
+        np.arange(0, len(frequencies), 1/upsample), np.arange(0, len(frequencies)), frequencies
+    )
+
     freqs_of_interest = np.intersect1d(
         np.where(frequencies > psd_lims[0]), np.where(frequencies < psd_lims[1])
     )
 
     acf, _ = fast_acf(unwrapped_spike_phases, width, bin_width, cut_peak=cut_peak)
     psd = acf_power(acf, norm=norm)
-    all_peaks = find_peaks(psd[freqs_of_interest], None)[
-        0
-    ]  # FIND ALL LOCAL MAXIMA IN WINDOW
 
-    # make sure there is a peak.... .
+    # upsample 2x psd
+    psd = np.interp(np.arange(0, len(psd), 1/upsample), np.arange(0, len(psd)), psd)
+    # smooth psd with gaussian filter
+    psd = gaussian_filter1d(psd, smooth_sigma)
+
+    # FIND ALL LOCAL MAXIMA IN WINDOW OF INTEREST
+    all_peaks = find_peaks(psd[freqs_of_interest], None)[0]
+
+    # make sure there is a peak
     if ~np.any(all_peaks):
-        return np.nan, np.nan
+        return np.nan, np.nan, psd[freqs_of_interest], frequencies[freqs_of_interest], acf
 
     max_peak = np.max(psd[freqs_of_interest][all_peaks])
     max_idx = [all_peaks[np.argmax(psd[freqs_of_interest][all_peaks])]]
     max_freq = frequencies[freqs_of_interest][max_idx]
     MI = max_peak / np.trapz(psd[freqs_of_interest])
 
-    return max_freq, MI
+    return max_freq, MI, psd[freqs_of_interest], frequencies[freqs_of_interest], acf
+
+
+# def nonspatial_phase_precession_v2(
+#     spike_cycles: np.ndarray,
+#     width: float = 4 * 2 * np.pi,
+#     bin_width: float = np.pi / 3,
+#     cut_peak: bool = True,
+#     norm: bool = True,
+#     psd_lims: list = [0.65, 1.55],
+#     upsample: int = 4,
+#     smooth_sigma=1
+# ):
+
+#     """
+#     Compute the nonspatial spike-LFP relationship modulation index.
+
+#     Parameters
+#     ----------
+#     spike_cycles : 1d array
+#         Spike phases that have been linearly unwrapped (units=cycles)
+#     width: float
+#         Time window for ACF in cycles (default = 4 cycles)
+#     bin_width: float
+#         Width of bins in radians (default = 60 degrees)
+#     cut_peak : bool
+#         Whether or not the largest central peak should be replaced for
+#         subsequent fitting
+#     norm: bool
+#         To normalize the ACF or not
+#     psd_lims: list
+#         Limits of the PSD to consider for peak finding (default = [0.65, 1.55])
+#     Returns
+#     ----------
+#     max_freq: float
+#         Relative spike-LFP frequency of PSD peak
+
+#     MI: float
+#         Modulation index of non-spatial phase relationship
+
+
+#     Notes
+#     -----
+#     """
+
+#     frequencies = (
+#         (np.arange(2 * (width // bin_width) - 1))
+#         * (2 * np.pi)
+#         / (2 * width - bin_width)
+#     )
+
+#     frequencies = np.interp(
+#         np.arange(0, len(frequencies), 1/upsample), np.arange(0, len(frequencies)), frequencies
+#     )
+
+#     freqs_of_interest = np.intersect1d(
+#         np.where(frequencies > psd_lims[0]), np.where(frequencies < psd_lims[1])
+#     )
+
+#     acf, _ = fast_acf(unwrapped_spike_phases, width, bin_width, cut_peak=cut_peak)
+#     psd = acf_power(acf, norm=norm)
+
+#     # upsample 2x psd
+#     psd = np.interp(np.arange(0, len(psd), 1/upsample), np.arange(0, len(psd)), psd)
+#     # smooth psd with gaussian filter
+#     psd = gaussian_filter1d(psd, smooth_sigma)
+
+#     # FIND ALL LOCAL MAXIMA IN WINDOW OF INTEREST
+#     all_peaks = find_peaks(psd[freqs_of_interest], None)[0]
+
+#     # make sure there is a peak
+#     if ~np.any(all_peaks):
+#         return np.nan, np.nan, psd[freqs_of_interest], frequencies[freqs_of_interest]
+
+#     max_peak = np.max(psd[freqs_of_interest][all_peaks])
+#     max_idx = [all_peaks[np.argmax(psd[freqs_of_interest][all_peaks])]]
+#     max_freq = frequencies[freqs_of_interest][max_idx]
+#     MI = max_peak / np.trapz(psd[freqs_of_interest])
+
+#     return max_freq, MI, psd[freqs_of_interest], frequencies[freqs_of_interest], acf
