@@ -248,3 +248,47 @@ def mtspectrumc(data, Fs, fpass, tapers):
     J = J.T[findx, :]
     S = np.real(np.mean(np.conj(J) * J, 1))
     return pd.Series(index=f, data=S)
+
+
+def point_spectra(times,Fs=1250,freq_range=[1,20],tapers0=[3,5],pad=0):
+    """
+    Compute point spectra for a set of spike times
+    Inputs:
+        times: array of spike times (in seconds)
+        Fs: sampling frequency
+        freq_range: frequency range to evaluate
+        tapers0: [NW, K] or [tapers, eigenvalues]
+        pad: number of points to pad
+    Outputs:
+        spectra: power spectrum
+        f: frequencies
+    
+    By Ryan H, converted from PointSpectra.m by Ralitsa Todorova
+    """
+    
+    timesRange = [min(times), max(times)]
+    t = np.mean(timesRange)
+    window = np.floor(np.diff(timesRange))
+    nSamplesPerWindow = int(np.round(Fs*window)) # number of samples in window
+    nfft = np.max([(int(2**np.ceil(np.log2(nSamplesPerWindow)))+pad),nSamplesPerWindow])
+    fAll = np.linspace(0,Fs,int(nfft))
+    ok = (fAll >= freq_range[0]) & (fAll<= freq_range[1])
+    Nf = sum(ok)
+    tapers, eigens = dpss(nSamplesPerWindow,tapers0[0],tapers0[1])
+    tapers = tapers * np.sqrt(Fs)
+    spectra = np.zeros(Nf)
+    H = np.fft.fft(tapers.T,int(nfft),1) # fft of tapers
+    # restrict fft of tapers to required frequencies
+    f = fAll[ok] 
+    H = H[:,ok]
+    w = 2*np.pi*f # angular frequencies at which ft is to be evaluated
+    timegrid = np.linspace(timesRange[0],timesRange[1],nSamplesPerWindow)
+
+    # make sure times are within the range of timegrid
+    data = times[(times>=timegrid[0]) & (times<=timegrid[-1])]
+    data_proj = [np.interp(data,timegrid,taper) for taper in tapers.T]
+    data_proj = np.vstack(data_proj)
+    exponential = np.exp(np.outer(-1j*w,(data-timegrid[0])))
+    J = exponential@data_proj.T - H.T*len(data) / len(timegrid)
+    spectra = np.squeeze(np.mean(np.real(np.conj(J)*J),axis=1))
+    return spectra, f
