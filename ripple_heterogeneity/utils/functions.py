@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from numba import jit, njit
+import numba
 from numba import int8
 from numba.typed import List
 from numba import typeof
@@ -1893,7 +1894,7 @@ def in_intervals(timestamps, intervals):
 
     return in_interval
 
-@njit(parallel=True)
+@jit(nopython=True, parallel=True)
 def in_intervals_interval(timestamps:np.ndarray, intervals: np.ndarray) -> np.ndarray:
     """
     for each timestamps value, the index of the interval to which it belongs (nan = none)
@@ -1917,9 +1918,11 @@ def in_intervals_interval(timestamps:np.ndarray, intervals: np.ndarray) -> np.nd
     >>> in_intervals_interval(timestamps, intervals)
     array([nan,  0,  0,  0,  1,  1,  1, nan])
     """
-    in_interval = np.empty(timestamps.shape, dtype=float) * np.nan
-    for i, (start, end) in enumerate(intervals):
-        in_interval[(timestamps >= start) & (timestamps <= end)] = i
+    in_interval = np.full(timestamps.shape, np.nan)
+    for i in numba.prange(intervals.shape[0]):
+        start, end = intervals[i]
+        mask = (timestamps >= start) & (timestamps <= end)
+        in_interval[mask] = i
 
     return in_interval
 
@@ -1952,16 +1955,16 @@ def count_events(events, time_ref, time_range):
 
     return counts
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def relative_times(
-    t: np.ndarray, intervals: np.ndarray, values: Union[np.ndarray, None] = None
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    t, intervals, values = np.array([0,1])
+):
     """
     Calculate relative times and interval IDs for a set of time points.
     Intervals are defined as pairs of start and end times. The relative time is the time
     within the interval, normalized to the interval duration. The interval ID is the index
     of the interval in the intervals array. The values array can be used to assign a value
-    to each interval, which is then returned as the rt_values array.
+    to each interval.
     Parameters
     ----------
     t : ndarray
@@ -1995,47 +1998,24 @@ def relative_times(
 
     By Ryan H, based on RelativeTimes.m by Ralitsa Todorova
 
-    """
+    """  
 
-    # Check inputs 
-    if t.ndim != 1:
-        raise ValueError("t must be a 1D array")
-    if intervals.ndim < 2:
-        raise ValueError("intervals must be a 2D array")
-    if intervals.shape[1] != 2:
-        raise ValueError("intervals must have 2 columns")
-    if values is not None:
-        if values.ndim != 1:
-            raise ValueError("values must be a 1D array")
-    # check if intervals are sorted
-    if not np.all(np.diff(intervals, axis=0) >= 0):
-        raise ValueError("intervals must be sorted")
-    # check if t is sorted
-    if not np.all(np.diff(t) >= 0):
-        raise ValueError("t must be sorted")
-    
+    rt = np.zeros(len(t), dtype=np.float64) * np.nan
+    intervalID = np.zeros(len(t), dtype=np.float64) * np.nan
 
-    # Initialize output arrays
-    rt = np.zeros_like(t, dtype=float) * np.nan
-    intervalID = np.zeros_like(t, dtype=float) * np.nan
-    if values is None:
-        values = np.arange(intervals.shape[1], dtype=int)
+    start_times = intervals[:, 0]
+    end_times = intervals[:, 1]
+    values_diff = values[1] - values[0]
+    intervals_diff = end_times - start_times
+    intervals_scale = values_diff / intervals_diff
 
-    # Find intervals for each time point
-    in_interval = (t[:, None] >= intervals[:, 0]) & (t[:, None] <= intervals[:, 1])
-
-    # Calculate relative time and interval ID
     for i in range(len(t)):
-        if np.any(in_interval[i]):
-            # Find the interval that the time point is in
-            idx = np.where(in_interval[i])[0][0]
-            # Calculate relative time
-            scale = (values[1] - values[0])
-            rt[i] = (
-                ((t[i] - intervals[idx, 0]) / (intervals[idx, 1] - intervals[idx, 0])) * scale + values[0]
-            )
-            # Save interval ID
-            intervalID[i] = idx
+        idx = np.searchsorted(start_times, t[i])
+        if idx > 0 and t[i] <= end_times[idx - 1]:
+            interval_i = idx - 1
+            scale = intervals_scale[interval_i]
+            rt[i] = ((t[i] - start_times[interval_i]) * scale) + values[0]
+            intervalID[i] = interval_i
 
     return rt, intervalID
 
@@ -2154,3 +2134,28 @@ def reindex_df(df: pd.core.frame.DataFrame, weight_col: str) -> pd.core.frame.Da
     df.reset_index(drop=True, inplace=True)
 
     return df
+
+
+def get_spindices(data:np.ndarray) -> pd.DataFrame():
+    """
+    Get spike timestamps and spike id for each spike train in a 
+        sorted dataframe of spike trains
+    Parameters
+    ----------
+    data : np.ndarray
+        spike times for each spike train, in a list of arrays
+    Returns
+    -------
+    spikes : pd.DataFrame
+        sorted dataframe of spike times and spike id
+        
+    """
+    spikes_id = []
+    for spk_i,spk in enumerate(data):
+        spikes_id.append(spk_i * np.ones_like(spk))
+
+    spikes = pd.DataFrame()
+    spikes['spike_times'] = np.hstack(data)
+    spikes['spike_id'] = np.hstack(spikes_id)
+    spikes.sort_values('spike_times',inplace=True)
+    return spikes
