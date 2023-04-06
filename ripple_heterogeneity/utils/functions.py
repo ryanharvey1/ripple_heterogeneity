@@ -21,6 +21,7 @@ from ripple_heterogeneity.utils import loading
 from scipy.linalg import toeplitz
 from typing import List, Tuple, Union
 
+
 def set_plotting_defaults():
     tex_fonts = {
         #     # Use LaTeX to write all text
@@ -1894,8 +1895,9 @@ def in_intervals(timestamps, intervals):
 
     return in_interval
 
+
 @jit(nopython=True, parallel=True)
-def in_intervals_interval(timestamps:np.ndarray, intervals: np.ndarray) -> np.ndarray:
+def in_intervals_interval(timestamps: np.ndarray, intervals: np.ndarray) -> np.ndarray:
     """
     for each timestamps value, the index of the interval to which it belongs (nan = none)
 
@@ -1955,10 +1957,9 @@ def count_events(events, time_ref, time_range):
 
     return counts
 
+
 @jit(nopython=True)
-def relative_times(
-    t, intervals, values = np.array([0,1])
-):
+def relative_times(t, intervals, values=np.array([0, 1])):
     """
     Calculate relative times and interval IDs for a set of time points.
     Intervals are defined as pairs of start and end times. The relative time is the time
@@ -1998,7 +1999,7 @@ def relative_times(
 
     By Ryan H, based on RelativeTimes.m by Ralitsa Todorova
 
-    """  
+    """
 
     rt = np.zeros(len(t), dtype=np.float64) * np.nan
     intervalID = np.zeros(len(t), dtype=np.float64) * np.nan
@@ -2136,9 +2137,9 @@ def reindex_df(df: pd.core.frame.DataFrame, weight_col: str) -> pd.core.frame.Da
     return df
 
 
-def get_spindices(data:np.ndarray) -> pd.DataFrame():
+def get_spindices(data: np.ndarray) -> pd.DataFrame():
     """
-    Get spike timestamps and spike id for each spike train in a 
+    Get spike timestamps and spike id for each spike train in a
         sorted dataframe of spike trains
     Parameters
     ----------
@@ -2148,31 +2149,38 @@ def get_spindices(data:np.ndarray) -> pd.DataFrame():
     -------
     spikes : pd.DataFrame
         sorted dataframe of spike times and spike id
-        
+
     """
     spikes_id = []
-    for spk_i,spk in enumerate(data):
+    for spk_i, spk in enumerate(data):
         spikes_id.append(spk_i * np.ones_like(spk))
 
     spikes = pd.DataFrame()
-    spikes['spike_times'] = np.hstack(data)
-    spikes['spike_id'] = np.hstack(spikes_id)
-    spikes.sort_values('spike_times',inplace=True)
+    spikes["spike_times"] = np.hstack(data)
+    spikes["spike_id"] = np.hstack(spikes_id)
+    spikes.sort_values("spike_times", inplace=True)
     return spikes
 
-def spindices_to_ndarray(spikes:pd.DataFrame) -> np.ndarray:
+
+def spindices_to_ndarray(
+    spikes: pd.DataFrame, spike_id: Union[list, np.ndarray, None] = None
+) -> np.ndarray:
     """
     Convert spike times and spike id to a list of arrays
     Parameters
     ----------
     spikes : pd.DataFrame
         sorted dataframe of spike times and spike id
+    spike_id: list or np.ndarray
+        spike ids search for in the dataframe (important if spikes were restricted)
     Returns
     -------
     data : np.ndarray
         spike times for each spike train, in a list of arrays
     """
+    if spike_id is None:
+        spike_id = np.unique(spikes["spike_id"])
     data = []
-    for spk_i in np.unique(spikes['spike_id']):
-        data.append(spikes[spikes['spike_id']==spk_i]['spike_times'].values)
+    for spk_i in spike_id:
+        data.append(spikes[spikes["spike_id"] == spk_i]["spike_times"].values)
     return data
