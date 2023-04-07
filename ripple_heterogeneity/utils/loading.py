@@ -161,6 +161,7 @@ class LoadLfp(object):
         basepath : string (path to the recording folder)
         channels : int or list of int or None (default None, load all channels memmap)
         ext : string (lfp or dat)
+        epoch: nelpy EpochArray or ndarray (default None, load all data)
     Returns:
         : nelpy analogsignalarray of shape (n_channels, n_samples)
 
@@ -175,20 +176,25 @@ class LoadLfp(object):
         >>> dat = loading.LoadLfp(basepath,ext="dat")
         >>> dat
         >>>    <AnalogSignalArray at 0x25ba4fedc40: 128 signals> for a total of 5:33:58:790 hours
-        >>> dat.lfp.data.shape    
+        >>> dat.lfp.data.shape
         >>>    (128, 400775808)
-        >>> type(dat.lfp.data)    
+        >>> type(dat.lfp.data)
         >>>    numpy.memmap
 
     Ryan Harvey 2023
     """
 
     def __init__(
-        self, basepath: str, channels: Union[int, list, None] = None, ext: str = "lfp"
+        self,
+        basepath: str,
+        channels: Union[int, list, None] = None,
+        ext: str = "lfp",
+        epoch:Union[np.ndarray,nel.EpochArray,None]=None,
     ) -> None:
         self.basepath = basepath  # path to the recording folder
         self.channels = channels  # channel number or list of channel numbers
         self.ext = ext  # lfp or dat
+        self.epoch = epoch
 
         # get xml data
         self.get_xml_data()
@@ -216,17 +222,34 @@ class LoadLfp(object):
             ext=self.ext,
         )
 
+        if isinstance(self.epoch, nel.EpochArray):
+            intervals = self.epoch.data
+        elif isinstance(self.epoch, np.ndarray):
+            intervals = self.epoch
+            if intervals.ndim == 1:
+                intervals = intervals[np.newaxis, :]
+        else:
+            intervals = np.array([[min(timestep), max(timestep)]])
+
+        idx = functions.in_intervals(timestep, intervals)
+
         self.lfp = nel.AnalogSignalArray(
-            data=lfp.T,
-            timestamps=timestep,
+            data=lfp[idx, None].T,
+            timestamps=timestep[idx],
             fs=self.fs,
-            support=nel.EpochArray(np.array([min(timestep), max(timestep)])),
+            support=nel.EpochArray(np.array([min(timestep[idx]), max(timestep[idx])])),
         )
 
     def __repr__(self) -> None:
         return self.lfp.__repr__()
 
-    def get_freq_phase_amp(self, sig=None, band2filter: list = [6, 12], ford=3):
+    def get_phase(self, band2filter: list = [6, 12], ford=3):
+        band2filter = np.array(band2filter, dtype=float)
+        b, a = signal.butter(ford, band2filter / (self.fs / 2), btype="bandpass")
+        filt_sig = signal.filtfilt(b, a, self.lfp.data, padtype="odd")
+        return np.angle(signal.hilbert(filt_sig))
+
+    def get_freq_phase_amp(self, band2filter: list = [6, 12], ford=3):
         """
         Uses the Hilbert transform to calculate the instantaneous phase and
         amplitude of the time series in sig
@@ -239,13 +262,12 @@ class LoadLfp(object):
         band2filter: list
             The two frequencies to be filtered for e.g. [6, 12]
         """
-        if sig is None:
-            sig = self.lfp.data
+
         band2filter = np.array(band2filter, dtype=float)
 
         b, a = signal.butter(ford, band2filter / (self.fs / 2), btype="bandpass")
 
-        filt_sig = signal.filtfilt(b, a, sig, padtype="odd")
+        filt_sig = signal.filtfilt(b, a, self.lfp.data, padtype="odd")
         phase = np.angle(signal.hilbert(filt_sig))
         amplitude = np.abs(signal.hilbert(filt_sig))
         amplitude_filtered = signal.filtfilt(b, a, amplitude, padtype="odd")
