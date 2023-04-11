@@ -608,6 +608,10 @@ class SpatialMap(object):
     def information_rate(self):
         return self.tc.information_rate
 
+    @property
+    def spatial_selectivity(self):
+        return self.tc.spatial_selectivity
+
     def __sub__(self, other):
         return self.tc.__sub__(other)
 
