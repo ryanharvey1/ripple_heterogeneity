@@ -415,12 +415,15 @@ def load_cell_metrics(basepath: str, only_metrics: bool = False) -> tuple:
                 continue
         return df
 
-    filename = glob.glob(os.path.join(basepath, "*.cell_metrics.cellinfo.mat"))[0]
+    filename = os.path.join(basepath, os.path.basename(basepath) + ".cell_metrics.cellinfo.mat")
+    # filename = glob.glob(os.path.join(basepath, "*.cell_metrics.cellinfo.mat"))[0]
 
     # check if saved file exists
     if not os.path.exists(filename):
         warnings.warn("file does not exist")
-        return
+        if only_metrics:
+            return None
+        return None, None
 
     # load cell_metrics file
     data = sio.loadmat(filename)
@@ -442,15 +445,18 @@ def load_cell_metrics(basepath: str, only_metrics: bool = False) -> tuple:
             continue
 
     # load in tag
-    dt = data["cell_metrics"]["tags"][0][0].dtype
-    if len(dt) > 0:
-        # iter through each tag
-        for dn in dt.names:
-            # set up column for tag
-            df["tags_" + dn] = [False] * df.shape[0]
-            # iter through uid
-            for uid in data["cell_metrics"]["tags"][0][0][dn][0][0].flatten():
-                df.loc[df.UID == uid, "tags_" + dn] = True
+    # check if tags exist within cell_metrics
+    if "tags" in data.get("cell_metrics").dtype.names:
+        # get names of each tag
+        dt = data["cell_metrics"]["tags"][0][0].dtype
+        if len(dt) > 0:
+            # iter through each tag
+            for dn in dt.names:
+                # set up column for tag
+                df["tags_" + dn] = [False] * df.shape[0]
+                # iter through uid
+                for uid in data["cell_metrics"]["tags"][0][0][dn][0][0].flatten():
+                    df.loc[df.UID == uid, "tags_" + dn] = True
 
     # add bad unit tag for legacy
     df["bad_unit"] = [False] * df.shape[0]
@@ -1235,6 +1241,9 @@ def load_spikes(
     # load cell metrics and spike data
     cell_metrics, data = load_cell_metrics(basepath)
 
+    if cell_metrics is None or data is None:
+        return None, None
+    
     # put spike data into array st
     st = np.array(data["spikes"], dtype=object)
 
