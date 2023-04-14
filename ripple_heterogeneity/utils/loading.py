@@ -657,7 +657,10 @@ def load_ripples_events(
             0
         ][0]
     except:
-        df["detectorName"] = data["ripples"]["detectorName"][0][0][0]
+        try:
+            df["detectorName"] = data["ripples"]["detectorName"][0][0][0]
+        except:
+            df["detectorName"] = "unknown"
 
     # find ripple channel (this can be in several places depending on the file)
     try:
@@ -680,9 +683,12 @@ def load_ripples_events(
                         "detectionparms"
                     ][0][0]["ripple_channel"][0][0][0][0]
                 except:
-                    df["ripple_channel"] = data["ripples"]["detectorinfo"][0][0][
-                        "detectionchannel1"
-                    ][0][0][0][0]
+                    try:
+                        df["ripple_channel"] = data["ripples"]["detectorinfo"][0][0][
+                            "detectionchannel1"
+                        ][0][0][0][0]
+                    except:
+                        df["ripple_channel"] = data["ripples"]["detectorinfo"][0][0]["detectionparms"][0][0]["channel"][0][0][0]
 
     # remove flagged ripples, if exist
     try:
