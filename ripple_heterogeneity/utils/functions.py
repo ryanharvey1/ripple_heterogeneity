@@ -2032,9 +2032,14 @@ def relative_times(t, intervals, values=np.array([0, 1])):
         idx = np.searchsorted(start_times, t[i])
         if idx > 0 and t[i] <= end_times[idx - 1]:
             interval_i = idx - 1
-            scale = intervals_scale[interval_i]
-            rt[i] = ((t[i] - start_times[interval_i]) * scale) + values[0]
-            intervalID[i] = interval_i
+        elif idx < len(start_times) and t[i] == start_times[idx]:
+            interval_i = idx
+        else:
+            continue
+
+        scale = intervals_scale[interval_i]
+        rt[i] = ((t[i] - start_times[interval_i]) * scale) + values[0]
+        intervalID[i] = interval_i
 
     return rt, intervalID
 
