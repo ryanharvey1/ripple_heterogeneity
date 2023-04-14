@@ -1865,15 +1865,16 @@ def find_interval(logical):
     return intervals
 
 
+    
 @njit(parallel=True)
-def in_intervals(timestamps, intervals):
+def in_intervals(timestamps: np.ndarray, intervals: np.ndarray) -> np.ndarray:
     """
     Find which timestamps fall within the given intervals.
 
     Parameters
     ----------
     timestamps : ndarray
-        An array of timestamp values. assumes sorted
+        An array of timestamp values. Assumes sorted.
     intervals : ndarray
         An array of time intervals, represented as pairs of start and end times.
 
@@ -1889,11 +1890,28 @@ def in_intervals(timestamps, intervals):
     >>> in_intervals(timestamps, intervals)
     array([False,  True,  True,  True,  True,  True,  True, False])
     """
-    in_interval = np.empty(timestamps.shape, dtype=np.bool_) * False
-    for i, (start, end) in enumerate(intervals):
-        in_interval[(timestamps >= start) & (timestamps <= end)] = True
-
+    in_interval = np.zeros(timestamps.shape, dtype=np.bool_)
+    for start, end in intervals:
+        # Find the leftmost index of a timestamp that is >= start
+        left = np.searchsorted(timestamps, start, side='left')
+        if left == len(timestamps):
+            # If start is greater than all timestamps, skip this interval
+            continue
+        # Find the rightmost index of a timestamp that is <= end
+        right = np.searchsorted(timestamps, end, side='right')
+        if right == left:
+            # If there are no timestamps in the interval, skip it
+            continue
+        # Mark the timestamps in the interval
+        in_interval[left:right] = True
     return in_interval
+
+
+timestamps = np.array([1, 2, 3, 4, 5, 6, 7, 8])
+intervals = np.array([[2, 4], [5, 7]])
+in_intervals(timestamps, intervals)
+    
+
 
 
 @jit(nopython=True, parallel=True)
