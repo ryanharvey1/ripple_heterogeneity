@@ -7,6 +7,79 @@ from joblib import Parallel, delayed
 
 # from replay_trajectory_classification.standard_decoder import detect_line_with_radon
 
+def WeightedCorr(weights, x=None, y=None):
+    """
+    Provide a matrix of weights, and this function will check the correlation between the X and Y dimensions of the matrix.
+    You can provide the X-values and the Y-values for each column and row.
+    """
+    weights[np.isnan(weights)] = 0.0
+
+    if x is not None and x.size > 0:
+        if np.ndim(x) == 1:
+            x = np.tile(x, (weights.shape[0], 1))
+    else:
+        x, _ = np.meshgrid(
+            np.arange(1, weights.shape[1] + 1), np.arange(1, weights.shape[0] + 1)
+        )
+
+    if y is not None and y.size > 0:
+        if np.ndim(y) == 1:
+            y = np.tile(y, (weights.shape[0], 1))
+    else:
+        _, y = np.meshgrid(
+            np.arange(1, weights.shape[1] + 1), np.arange(1, weights.shape[0] + 1)
+        )
+
+    x = x.flatten()
+    y = y.flatten()
+    w = weights.flatten()
+
+    mX = np.nansum(w * x) / np.nansum(w)
+    mY = np.nansum(w * y) / np.nansum(w)
+
+    covXY = np.nansum(w * (x - mX) * (y - mY)) / np.nansum(w)
+    covXX = np.nansum(w * (x - mX) ** 2) / np.nansum(w)
+    covYY = np.nansum(w * (y - mY) ** 2) / np.nansum(w)
+
+    c = covXY / np.sqrt(covXX * covYY)
+
+    return c
+
+
+def WeightedCorrCirc(weights, x=None, alpha=None):
+    """Compute the correlation between x and y dimensions of a matrix with angular (circular) values
+
+    Args:
+    weights -- A 2D numpy array of weights.
+    x -- A 2D numpy array of x-values.
+    alpha -- A 2D numpy array of angular (circular) y-values. If None, generate it.
+
+    Returns:
+    rho -- The correlation between x and y dimensions.
+    """
+    weights[np.isnan(weights)] = 0.0
+
+    if x is not None and x.size > 0:
+        if np.ndim(x) == 1:
+            x = np.tile(x, (weights.shape[0], 1))
+    else:
+        x, _ = np.meshgrid(
+            np.arange(1, weights.shape[1] + 1), np.arange(1, weights.shape[0] + 1)
+        )
+    if alpha is None:
+        alpha = np.tile(
+            np.linspace(0, 2 * np.pi, weights.shape[0], endpoint=False),
+            (weights.shape[1], 1),
+        ).T
+
+    rxs = WeightedCorr(weights, x, np.sin(alpha))
+    rxc = WeightedCorr(weights, x, np.cos(alpha))
+    rcs = WeightedCorr(weights, np.sin(alpha), np.cos(alpha))
+
+    # Compute angular-linear correlation
+    rho = np.sqrt((rxc**2 + rxs**2 - 2 * rxc * rxs * rcs) / (1 - rcs**2))
+    return rho
+
 
 def weighted_correlation(posterior, time=None, place_bin_centers=None):
     def _m(x, w):
